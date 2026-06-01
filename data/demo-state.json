@@ -1,0 +1,46 @@
+{
+  "targetAmount": 1000,
+  "slogan": "8人点将，F1,F2，赛马球",
+  "sponsors": [
+    {
+      "id": "seed-001",
+      "bossName": "赛利亚的金币袋",
+      "amount": 188,
+      "programName": "红眼单刷竞速",
+      "note": "开场热身",
+      "createdAt": 1764639000001
+    },
+    {
+      "id": "25273843-37d1-4ba4-b959-0eaca640a97c",
+      "bossName": "极光赞助官",
+      "amount": 99,
+      "programName": "压轴爆发挑战",
+      "note": "指定玩法：全程高压输出，失败重开",
+      "createdAt": 1780349519561
+    },
+    {
+      "id": "39ae87cc-00ca-44c7-a4fc-f492f78e8468",
+      "bossName": "小M",
+      "amount": 200,
+      "programName": "点将",
+      "note": "",
+      "createdAt": 1780349744086
+    },
+    {
+      "id": "471391ac-591d-4ac8-a465-0cf38f8efc42",
+      "bossName": "鸡哥",
+      "amount": 500,
+      "programName": "点将",
+      "note": "",
+      "createdAt": 1780349775733
+    },
+    {
+      "id": "a6437ae5-4039-4e67-b476-a0ae5cebb7d1",
+      "bossName": "可口可乐",
+      "amount": 200,
+      "programName": "点将",
+      "note": "",
+      "createdAt": 1780349799993
+    }
+  ]
+}

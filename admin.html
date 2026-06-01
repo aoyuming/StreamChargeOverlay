@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>赞助后台管理</title>
+  </head>
+  <body>
+    <main class="admin-shell">
+      <header class="admin-header">
+        <div>
+          <h1>赞助后台管理</h1>
+          <p>添加老板赞助、节目点单和目标金额，展示页会实时同步。</p>
+        </div>
+        <div class="summary-card">
+          <span>当前总赞助</span>
+          <strong>¥<span id="adminTotal">0</span></strong>
+          <em id="adminStatus">未达成</em>
+        </div>
+      </header>
+
+      <section class="workspace-grid">
+        <form id="sponsorForm" class="tool-panel">
+          <h2>添加赞助节目</h2>
+          <label>
+            老板名
+            <input name="bossName" autocomplete="off" placeholder="例如：黄金罐子商会" required />
+          </label>
+          <label>
+            赞助金额
+            <input name="amount" type="number" min="1" step="0.01" placeholder="188" required />
+          </label>
+          <label>
+            点的节目
+            <input name="programName" autocomplete="off" placeholder="例如：红眼竞速挑战" required />
+          </label>
+          <label>
+            注释 / 指定职业或玩法
+            <textarea name="note" rows="3" placeholder="例如：指定职业、玩法、惩罚规则，给主持人看的提示"></textarea>
+          </label>
+          <div id="formError" class="form-error" role="alert"></div>
+          <button class="primary-button" type="submit">添加到榜单</button>
+        </form>
+
+        <aside class="side-stack">
+          <form id="targetForm" class="tool-panel compact-panel">
+            <h2>目标金额</h2>
+            <label>
+              凑够多少开始
+              <input id="targetAmountInput" name="targetAmount" type="number" min="1" step="1" required />
+            </label>
+            <label class="wide-field">
+              宣传语
+              <input
+                id="sloganInput"
+                name="slogan"
+                maxlength="32"
+                autocomplete="off"
+                placeholder="赞助点将，名场面马上开演"
+                required
+              />
+            </label>
+            <button class="secondary-button" type="submit">更新设置</button>
+          </form>
+
+          <section class="tool-panel records-panel">
+            <h2>赞助记录</h2>
+            <div id="recordList" class="record-list"></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+    <script type="module" src="/src/client/admin-main.ts"></script>
+  </body>
+</html>

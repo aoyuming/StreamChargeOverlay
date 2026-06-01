@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=360, initial-scale=1" />
+    <title>赞助展示条</title>
+  </head>
+  <body>
+    <main class="overlay-shell" aria-label="直播赞助展示条">
+      <section class="camera-slot" aria-label="摄像头预留区">
+        <span>摄像头区域</span>
+      </section>
+
+      <section class="panel progress-panel">
+        <div class="panel-title">赞助充能</div>
+        <div class="amount-line">
+          <span class="currency">¥</span>
+          <strong id="totalAmount">0</strong>
+        </div>
+        <div class="target-line">目标 <span id="targetAmount">1000</span></div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div class="progress-footer">
+          <span id="progressPercent">0%</span>
+          <span id="statusBadge" class="status-badge">赞助点将，名场面马上开演</span>
+        </div>
+      </section>
+
+      <section class="panel program-panel">
+        <div class="panel-title">当前赞助老板名单</div>
+        <div class="ticker-mask program-mask">
+          <ul id="programList" class="program-list"></ul>
+        </div>
+      </section>
+
+      <section class="panel ranking-panel">
+        <div class="panel-title">老板赞助总榜</div>
+        <ol id="rankingPinned" class="ranking-pinned"></ol>
+        <div class="ticker-mask ranking-mask">
+          <ol id="rankingList" class="ranking-list"></ol>
+        </div>
+      </section>
+
+      <canvas id="burstParticles" class="burst-particles" width="1920" height="360"></canvas>
+      <div id="sponsorBurst" class="sponsor-burst" aria-live="polite">
+        <span class="burst-kicker">新赞助入场</span>
+        <strong id="burstTitle"></strong>
+        <em id="burstNote"></em>
+      </div>
+    </main>
+    <script type="module" src="/src/client/display-main.ts"></script>
+  </body>
+</html>

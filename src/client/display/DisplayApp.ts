@@ -1,0 +1,76 @@
+import type { DerivedAppState } from "../../shared/types";
+import { ApiClient } from "../common/ApiClient";
+import { queryRequired } from "../common/dom";
+import { RealtimeClient } from "../common/RealtimeClient";
+import { ProgressPanel } from "./ProgressPanel";
+import { RankingTicker } from "./RankingTicker";
+import { BurstParticles } from "./BurstParticles";
+import { SponsorBurst } from "./SponsorBurst";
+import { SponsorListTicker } from "./SponsorListTicker";
+
+export class DisplayApp {
+  private readonly progressPanel: ProgressPanel;
+  private readonly sponsorListTicker: SponsorListTicker;
+  private readonly rankingTicker: RankingTicker;
+  private readonly sponsorBurst: SponsorBurst;
+  private knownSponsorIds = new Set<string>();
+  private lastTotalAmount = 0;
+  private hasRendered = false;
+
+  public constructor(
+    private readonly apiClient: ApiClient,
+    private readonly realtimeClient: RealtimeClient
+  ) {
+    this.progressPanel = new ProgressPanel(
+      queryRequired("#totalAmount"),
+      queryRequired("#targetAmount"),
+      queryRequired("#progressFill"),
+      queryRequired("#progressPercent"),
+      queryRequired("#statusBadge")
+    );
+    this.sponsorListTicker = new SponsorListTicker(queryRequired("#programList"));
+    this.rankingTicker = new RankingTicker(queryRequired("#rankingPinned"), queryRequired("#rankingList"));
+    this.sponsorBurst = new SponsorBurst(
+      queryRequired("#sponsorBurst"),
+      queryRequired("#burstTitle"),
+      queryRequired("#burstNote"),
+      new BurstParticles(queryRequired("#burstParticles"))
+    );
+  }
+
+  public async start(): Promise<void> {
+    this.realtimeClient.onStateUpdated((state) => this.render(state));
+    this.render(await this.apiClient.getState());
+  }
+
+  private render(state: DerivedAppState): void {
+    const shouldPulse = state.totalAmount > this.lastTotalAmount;
+    const latestNewSponsor = this.findLatestNewSponsor(state);
+    this.progressPanel.render(state);
+    this.sponsorListTicker.render(state.sponsors);
+    this.rankingTicker.render(state.ranking);
+
+    if (shouldPulse && this.lastTotalAmount > 0) {
+      this.progressPanel.pulse();
+      if (latestNewSponsor) {
+        this.sponsorBurst.show(latestNewSponsor);
+      }
+      document.body.classList.add("has-new-sponsor");
+      window.setTimeout(() => document.body.classList.remove("has-new-sponsor"), 900);
+    }
+
+    this.knownSponsorIds = new Set(state.sponsors.map((record) => record.id));
+    this.lastTotalAmount = state.totalAmount;
+    this.hasRendered = true;
+  }
+
+  private findLatestNewSponsor(state: DerivedAppState) {
+    if (!this.hasRendered) {
+      return undefined;
+    }
+
+    return state.sponsors
+      .filter((record) => !this.knownSponsorIds.has(record.id))
+      .sort((left, right) => right.createdAt - left.createdAt)[0];
+  }
+}
