@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import type { AddSponsorRequest, ApiErrorResponse, UpdateSettingsRequest, UpdateTargetRequest } from "../../shared/types";
 import { DonationService } from "../services/DonationService";
 import { RealtimeHub } from "../services/RealtimeHub";
+import { WindowsSpeechService } from "../services/WindowsSpeechService";
 
 type AsyncRoute = (request: Request, response: Response) => Promise<void>;
 
@@ -9,7 +10,8 @@ type AsyncRoute = (request: Request, response: Response) => Promise<void>;
 export class ApiController {
   public constructor(
     private readonly donationService: DonationService,
-    private readonly realtimeHub: RealtimeHub
+    private readonly realtimeHub: RealtimeHub,
+    private readonly speechService: WindowsSpeechService
   ) {}
 
   public register(app: Express): void {
@@ -19,8 +21,13 @@ export class ApiController {
 
     app.post("/api/sponsors", this.wrap(async (request, response) => {
       const state = await this.donationService.addSponsor(request.body as AddSponsorRequest);
-      this.realtimeHub.broadcastState(state);
-      response.status(201).json(state);
+      const newRecord = state.sponsors.reduce((latest, record) => {
+        return record.createdAt > latest.createdAt ? record : latest;
+      }, state.sponsors[0]);
+      const speechAlert = newRecord ? await this.speechService.createSponsorSpeech(newRecord) : null;
+      const stateWithSpeech = speechAlert ? { ...state, speechAlert } : state;
+      this.realtimeHub.broadcastState(stateWithSpeech);
+      response.status(201).json(stateWithSpeech);
     }));
 
     app.delete("/api/sponsors/:id", this.wrap(async (request, response) => {

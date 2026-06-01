@@ -7,12 +7,18 @@ import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
 import { SponsorBurst } from "./SponsorBurst";
 import { SponsorListTicker } from "./SponsorListTicker";
+import { SponsorSound } from "./SponsorSound";
+import { SponsorSpeech } from "./SponsorSpeech";
+import { SponsorSpeechAudio } from "./SponsorSpeechAudio";
 
 export class DisplayApp {
   private readonly progressPanel: ProgressPanel;
   private readonly sponsorListTicker: SponsorListTicker;
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
+  private readonly sponsorSound = new SponsorSound();
+  private readonly sponsorSpeech = new SponsorSpeech();
+  private readonly sponsorSpeechAudio = new SponsorSpeechAudio();
   private knownSponsorIds = new Set<string>();
   private lastTotalAmount = 0;
   private hasRendered = false;
@@ -54,6 +60,12 @@ export class DisplayApp {
       this.progressPanel.pulse();
       if (latestNewSponsor) {
         this.sponsorBurst.show(latestNewSponsor);
+        void this.sponsorSound.play();
+        if (state.speechAlert) {
+          this.sponsorSpeechAudio.play(state.speechAlert);
+        } else {
+          this.sponsorSpeech.speak(latestNewSponsor);
+        }
       }
       document.body.classList.add("has-new-sponsor");
       window.setTimeout(() => document.body.classList.remove("has-new-sponsor"), 900);

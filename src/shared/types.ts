@@ -26,6 +26,14 @@ export interface DerivedAppState extends AppState {
   goalReached: boolean;
   ranking: SponsorRankingItem[];
   programQueue: SponsorRecord[];
+  speechAlert?: SpeechAlert;
+}
+
+export interface SpeechAlert {
+  id: string;
+  url: string;
+  text: string;
+  createdAt: number;
 }
 
 export interface AddSponsorRequest {
