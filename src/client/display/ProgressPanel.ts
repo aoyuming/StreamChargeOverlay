@@ -1,5 +1,7 @@
 import type { DerivedAppState } from "../../shared/types";
-import { formatAmount } from "../common/format";
+import { formatRootUnits } from "../../shared/displayUnits";
+
+const WAITING_STATUS_TEXT = "名场面马上开演";
 
 export class ProgressPanel {
   public constructor(
@@ -11,10 +13,10 @@ export class ProgressPanel {
   ) {}
 
   public render(state: DerivedAppState): void {
-    this.totalElement.textContent = formatAmount(state.totalAmount);
-    this.targetElement.textContent = formatAmount(state.targetAmount);
+    this.totalElement.textContent = formatRootUnits(state.totalAmount);
+    this.targetElement.textContent = formatRootUnits(state.targetAmount);
     this.percentElement.textContent = `${Math.round(state.progressPercent)}%`;
-    this.statusElement.textContent = state.goalReached ? "可以开始" : state.slogan;
+    this.statusElement.textContent = state.goalReached ? "可以开始" : WAITING_STATUS_TEXT;
     this.statusElement.classList.toggle("is-ready", state.goalReached);
     this.progressFill.style.setProperty("--progress", `${state.progressPercent}%`);
   }

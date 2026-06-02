@@ -1,6 +1,6 @@
 import type { SponsorRecord } from "../../shared/types";
+import { formatDisplayName, formatRootUnits, neutralizePublicText } from "../../shared/displayUnits";
 import { clearAndAppend } from "../common/dom";
-import { formatAmount } from "../common/format";
 
 export class SponsorListTicker {
   public constructor(private readonly listElement: HTMLElement) {}
@@ -27,19 +27,19 @@ export class SponsorListTicker {
 
     const bossName = document.createElement("strong");
     bossName.className = "sponsor-name";
-    bossName.textContent = record.bossName;
+    bossName.textContent = formatDisplayName(record.bossName);
 
     const amount = document.createElement("span");
     amount.className = "sponsor-amount";
-    amount.textContent = `¥${formatAmount(record.amount)}`;
+    amount.textContent = formatRootUnits(record.amount);
 
     const note = document.createElement("span");
     note.className = "sponsor-note";
-    note.textContent = record.note || record.programName || "等待备注";
+    note.textContent = neutralizePublicText(record.note || record.programName || "等待备注");
 
     const tag = document.createElement("span");
     tag.className = "sponsor-tag";
-    tag.textContent = record.programName;
+    tag.textContent = neutralizePublicText(record.programName);
 
     card.append(bossName, amount, note, tag);
     return card;
@@ -48,7 +48,7 @@ export class SponsorListTicker {
   private createEmptyCard(): HTMLElement {
     const card = document.createElement("li");
     card.className = "sponsor-card is-empty";
-    card.textContent = "等待老板入场";
+    card.textContent = "等待大哥入场";
     return card;
   }
 }

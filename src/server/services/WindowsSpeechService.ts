@@ -2,8 +2,8 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
+import { buildRootUnitSpeechText } from "../../shared/displayUnits";
 import type { SpeechAlert, SponsorRecord } from "../../shared/types";
-import { formatSpeechAmount } from "./formatSpeechAmount";
 
 const execFileAsync = promisify(execFile);
 const POWERSHELL_PATH = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
@@ -34,7 +34,7 @@ export class WindowsSpeechService {
 
   private buildSpeechText(record: SponsorRecord): string {
     const detail = record.note || record.programName;
-    return `感谢 ${record.bossName} 老板赞助 ${formatSpeechAmount(record.amount)} 米，${detail}`;
+    return buildRootUnitSpeechText(record.bossName, record.amount, detail);
   }
 
   private async generateWave(text: string, filePath: string): Promise<void> {

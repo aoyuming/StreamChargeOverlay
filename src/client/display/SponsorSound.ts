@@ -8,7 +8,7 @@ interface SoundStep {
   duration: number;
 }
 
-// 新赞助提示音用 Web Audio 合成，避免 demo 依赖外部音频素材。
+// 新入场提示音用 Web Audio 合成，避免 demo 依赖外部音频素材。
 export class SponsorSound {
   private audioContext: AudioContext | null = null;
 

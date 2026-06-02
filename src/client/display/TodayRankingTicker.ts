@@ -3,7 +3,7 @@ import { formatDisplayName, formatRootUnits } from "../../shared/displayUnits";
 import { clearAndAppend } from "../common/dom";
 import { splitPinnedRankingItems } from "./rankingSections";
 
-export class RankingTicker {
+export class TodayRankingTicker {
   public constructor(
     private readonly pinnedElement: HTMLElement,
     private readonly listElement: HTMLElement
@@ -19,7 +19,7 @@ export class RankingTicker {
     const fragment = document.createDocumentFragment();
 
     if (items.length === 0) {
-      fragment.append(this.createEmptyRow("等待大哥登榜"));
+      fragment.append(this.createEmptyRow());
       clearAndAppend(this.pinnedElement, fragment);
       return;
     }
@@ -30,18 +30,17 @@ export class RankingTicker {
 
   private renderRolling(items: SponsorRankingItem[]): void {
     const fragment = document.createDocumentFragment();
-    const visibleItems = items.length > 0 ? items : [];
-    const loopItems = visibleItems.length > 3 ? [...visibleItems, ...visibleItems] : visibleItems;
-    this.listElement.classList.toggle("is-scrolling", visibleItems.length > 3);
+    const loopItems = items.length > 3 ? [...items, ...items] : items;
+    this.listElement.classList.toggle("is-scrolling", items.length > 3);
 
     if (loopItems.length === 0) {
-      fragment.append(this.createEmptyRow("后续名次待命"));
+      fragment.append(this.createWaitingRow());
       clearAndAppend(this.listElement, fragment);
       return;
     }
 
     loopItems.forEach((item, index) => {
-      fragment.append(this.createRow(item, (index % visibleItems.length) + 3, false));
+      fragment.append(this.createRow(item, (index % items.length) + 3, false));
     });
     clearAndAppend(this.listElement, fragment);
   }
@@ -66,10 +65,17 @@ export class RankingTicker {
     return row;
   }
 
-  private createEmptyRow(text: string): HTMLElement {
+  private createEmptyRow(): HTMLElement {
     const row = document.createElement("li");
     row.className = "rank-row is-empty";
-    row.textContent = text;
+    row.textContent = "近24小时待命";
+    return row;
+  }
+
+  private createWaitingRow(): HTMLElement {
+    const row = document.createElement("li");
+    row.className = "rank-row is-empty";
+    row.textContent = "后续名次待命";
     return row;
   }
 }

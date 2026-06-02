@@ -1,5 +1,5 @@
 import type { SponsorRecord } from "../../shared/types";
-import { formatAmount } from "../common/format";
+import { buildRootUnitActionText, neutralizePublicText } from "../../shared/displayUnits";
 import { BurstParticles } from "./BurstParticles";
 
 export class SponsorBurst {
@@ -14,8 +14,8 @@ export class SponsorBurst {
 
   public show(record: SponsorRecord): void {
     window.clearTimeout(this.hideTimer);
-    this.titleElement.textContent = `${record.bossName} 赞助 ¥${formatAmount(record.amount)}`;
-    this.noteElement.textContent = record.note || record.programName;
+    this.titleElement.textContent = buildRootUnitActionText(record.bossName, record.amount);
+    this.noteElement.textContent = neutralizePublicText(record.note || record.programName);
 
     this.rootElement.classList.remove("is-visible");
     requestAnimationFrame(() => this.rootElement.classList.add("is-visible"));

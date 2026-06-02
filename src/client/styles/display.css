@@ -30,7 +30,7 @@ body {
 .overlay-shell {
   position: relative;
   display: grid;
-  grid-template-columns: 360px 350px minmax(0, 1fr) 520px;
+  grid-template-columns: 380px 320px 440px 340px 352px;
   gap: 14px;
   width: 1920px;
   height: 360px;
@@ -205,6 +205,8 @@ body {
 }
 
 .program-list,
+.today-ranking-pinned,
+.today-ranking-list,
 .ranking-pinned,
 .ranking-list {
   display: flex;
@@ -215,11 +217,16 @@ body {
   list-style: none;
 }
 
-.program-list.is-scrolling,
-.ranking-list.is-scrolling {
-  animation: tickerScroll 18s linear infinite;
+.program-list.is-scrolling {
+  animation: tickerScroll 28s linear infinite;
 }
 
+.today-ranking-list.is-scrolling,
+.ranking-list.is-scrolling {
+  animation: tickerScroll 32s linear infinite;
+}
+
+.today-ranking-pinned,
 .ranking-pinned {
   gap: 8px;
   margin-bottom: 10px;

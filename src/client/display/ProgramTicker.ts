@@ -1,6 +1,6 @@
 import type { SponsorRecord } from "../../shared/types";
+import { formatDisplayName, formatRootUnits, neutralizePublicText } from "../../shared/displayUnits";
 import { clearAndAppend } from "../common/dom";
-import { formatAmount } from "../common/format";
 
 export class ProgramTicker {
   public constructor(private readonly listElement: HTMLElement) {}
@@ -26,15 +26,15 @@ export class ProgramTicker {
 
     const title = document.createElement("strong");
     title.className = "program-title";
-    title.textContent = record.programName;
+    title.textContent = neutralizePublicText(record.programName);
 
     const meta = document.createElement("span");
     meta.className = "program-meta";
-    meta.textContent = `${record.bossName} / ${formatAmount(record.amount)}`;
+    meta.textContent = `${formatDisplayName(record.bossName)} / ${formatRootUnits(record.amount)}`;
 
     const note = document.createElement("span");
     note.className = "program-note";
-    note.textContent = record.note || "等待上场";
+    note.textContent = neutralizePublicText(record.note || "等待上场");
 
     card.append(title, meta, note);
     return card;

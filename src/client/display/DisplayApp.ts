@@ -10,10 +10,13 @@ import { SponsorListTicker } from "./SponsorListTicker";
 import { SponsorSound } from "./SponsorSound";
 import { SponsorSpeech } from "./SponsorSpeech";
 import { SponsorSpeechAudio } from "./SponsorSpeechAudio";
+import { TodayRankingTicker } from "./TodayRankingTicker";
+import { buildTodayRanking } from "./todayRanking";
 
 export class DisplayApp {
   private readonly progressPanel: ProgressPanel;
   private readonly sponsorListTicker: SponsorListTicker;
+  private readonly todayRankingTicker: TodayRankingTicker;
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
   private readonly sponsorSound = new SponsorSound();
@@ -35,6 +38,10 @@ export class DisplayApp {
       queryRequired("#statusBadge")
     );
     this.sponsorListTicker = new SponsorListTicker(queryRequired("#programList"));
+    this.todayRankingTicker = new TodayRankingTicker(
+      queryRequired("#todayRankingPinned"),
+      queryRequired("#todayRankingList")
+    );
     this.rankingTicker = new RankingTicker(queryRequired("#rankingPinned"), queryRequired("#rankingList"));
     this.sponsorBurst = new SponsorBurst(
       queryRequired("#sponsorBurst"),
@@ -54,6 +61,7 @@ export class DisplayApp {
     const latestNewSponsor = this.findLatestNewSponsor(state);
     this.progressPanel.render(state);
     this.sponsorListTicker.render(state.sponsors);
+    this.todayRankingTicker.render(buildTodayRanking(state.sponsors));
     this.rankingTicker.render(state.ranking);
 
     if (shouldPulse && this.lastTotalAmount > 0) {

@@ -1,5 +1,5 @@
 import type { SponsorRecord } from "../../shared/types";
-import { formatAmount } from "../common/format";
+import { buildRootUnitSpeechText } from "../../shared/displayUnits";
 
 type BrowserWindowWithSpeech = Window & {
   speechSynthesis?: SpeechSynthesis;
@@ -31,6 +31,6 @@ export class SponsorSpeech {
 
   private buildMessage(record: SponsorRecord): string {
     const detail = record.note || record.programName;
-    return `感谢 ${record.bossName} 老板赞助 ${formatAmount(record.amount)} 米，${detail}`;
+    return buildRootUnitSpeechText(record.bossName, record.amount, detail);
   }
 }
