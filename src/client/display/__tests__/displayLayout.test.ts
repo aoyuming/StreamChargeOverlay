@@ -80,4 +80,9 @@ describe("display layout", () => {
     expect(css).toContain(".progress-track.is-lightning::after");
     expect(css).toContain("animation: lightningFlash");
   });
+
+  it("clips progress track pseudo effects to the charged width", () => {
+    expect(css).toContain(".progress-track::before,\n.progress-track::after {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  width: var(--progress, 0%);");
+    expect(css).not.toContain(".progress-track::before,\n.progress-track::after {\n  position: absolute;\n  inset: 0;");
+  });
 });

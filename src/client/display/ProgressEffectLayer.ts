@@ -49,6 +49,9 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
     const height = this.canvas.height / this.devicePixelRatio;
     this.context.clearRect(0, 0, width, height);
     this.context.save();
+    this.context.beginPath();
+    this.context.rect(0, 0, this.progressWidth(width), height);
+    this.context.clip();
     this.context.globalCompositeOperation = "lighter";
 
     if (this.effect === "ice") {
@@ -67,8 +70,12 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
     this.frameId = window.requestAnimationFrame((nextTime) => this.animate(nextTime));
   }
 
+  private progressWidth(width: number): number {
+    return width * (this.progressPercent / 100);
+  }
+
   private drawIce(width: number, height: number, time: number): void {
-    const progressWidth = width * (this.progressPercent / 100);
+    const progressWidth = this.progressWidth(width);
     const shimmer = 0.45 + Math.sin(time / 420) * 0.18;
     this.context.strokeStyle = `rgba(190, 245, 255, ${shimmer})`;
     this.context.lineWidth = 1.4;
@@ -91,7 +98,7 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
   }
 
   private drawEnergy(width: number, height: number, time: number): void {
-    const progressWidth = width * (this.progressPercent / 100);
+    const progressWidth = this.progressWidth(width);
     const sweepX = ((time / 12) % (width + 160)) - 160;
     const gradient = this.context.createLinearGradient(sweepX, 0, sweepX + 160, 0);
     gradient.addColorStop(0, "rgba(64, 238, 229, 0)");
@@ -112,14 +119,14 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
   }
 
   private drawFire(width: number, height: number, time: number): void {
-    const progressWidth = width * (this.progressPercent / 100);
+    const progressWidth = this.progressWidth(width);
     this.spawnFireSparks(progressWidth, height, 1);
     this.drawFlames(progressWidth, height, time, 1);
     this.drawSparks(1);
   }
 
   private drawInferno(width: number, height: number, time: number): void {
-    const progressWidth = width * (this.progressPercent / 100);
+    const progressWidth = this.progressWidth(width);
     this.spawnFireSparks(progressWidth, height, 1.9);
     this.drawInfernoHeat(progressWidth, height, time);
     this.drawFlames(progressWidth, height, time, 1.65);

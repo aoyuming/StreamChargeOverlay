@@ -44,6 +44,7 @@ export class ProgressPanel {
     this.renderCurrentSponsors(sponsors);
     this.sloganElement.textContent = neutralizePublicText(state.slogan) || "充能进度";
     this.percentElement.textContent = this.formatChargeGoal(state);
+    this.progressTrack.style.setProperty("--progress", `${state.progressPercent}%`);
     this.progressFill.style.setProperty("--progress", `${state.progressPercent}%`);
     const effect = progressEffectFor(state.progressPercent);
     this.applyEffect(effect);

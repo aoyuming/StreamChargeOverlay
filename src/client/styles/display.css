@@ -316,7 +316,10 @@ html.is-preview-fit .overlay-shell {
 .progress-track::before,
 .progress-track::after {
   position: absolute;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--progress, 0%);
   z-index: 2;
   pointer-events: none;
   content: "";

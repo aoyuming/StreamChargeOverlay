@@ -203,6 +203,15 @@ describe("ProgressPanel", () => {
     expect(view.percentElement.textContent).not.toContain("%");
   });
 
+  it("sets the progress width on both the fill and effect track", () => {
+    const view = createPanel();
+
+    view.panel.render(state(62.8), [sponsor()]);
+
+    expect((view.progressFill.style as unknown as FakeStyle).get("--progress")).toBe("62.8%");
+    expect((view.progressTrack.style as unknown as FakeStyle).get("--progress")).toBe("62.8%");
+  });
+
   it("renders the campaign slogan to the left of the charge summary", () => {
     const view = createPanel();
 
