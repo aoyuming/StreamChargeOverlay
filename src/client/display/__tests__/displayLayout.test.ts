@@ -6,8 +6,22 @@ describe("display layout", () => {
   const css = readFileSync(resolve(process.cwd(), "src/client/styles/display.css"), "utf8");
   const html = readFileSync(resolve(process.cwd(), "display.html"), "utf8");
 
-  it("allocates more room to the camera and narrows the current list", () => {
-    expect(css).toContain("grid-template-columns: 380px 320px 440px 340px 352px;");
+  it("merges current sponsor and progress into a wider charge panel", () => {
+    expect(css).toContain("grid-template-columns: 380px 774px 340px 352px;");
+    expect(html).toContain('class="panel charge-panel"');
+    expect(html).toContain('id="currentBossList"');
+    expect(html).not.toContain('class="panel program-panel"');
+    expect(html).not.toContain('id="programList"');
+  });
+
+  it("scrolls the merged current boss ticker slowly", () => {
+    expect(css).toContain(".current-boss-list.is-scrolling-slow");
+    expect(css).toContain("animation: currentBossScroll var(--current-boss-scroll-duration, 36s) linear infinite;");
+  });
+
+  it("keeps the merged charge panel rows inside the bottom HUD height", () => {
+    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 118px 44px 64px;");
+    expect(css).toContain("padding: 12px 16px;");
   });
 
   it("uses a 1920 by 1440 transparent stage with the existing HUD docked at the bottom", () => {
@@ -30,7 +44,6 @@ describe("display layout", () => {
   });
 
   it("slows the current list while keeping ranking lists slower", () => {
-    expect(css).toContain(".program-list.is-scrolling {\n  animation: tickerScroll 28s linear infinite;\n}");
     expect(css).toContain("animation: tickerScroll 32s linear infinite;");
   });
 });

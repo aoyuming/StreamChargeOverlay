@@ -6,7 +6,6 @@ import { ProgressPanel } from "./ProgressPanel";
 import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
 import { SponsorBurst } from "./SponsorBurst";
-import { SponsorListTicker } from "./SponsorListTicker";
 import { SponsorSound } from "./SponsorSound";
 import { SponsorSpeech } from "./SponsorSpeech";
 import { SponsorSpeechAudio } from "./SponsorSpeechAudio";
@@ -15,7 +14,6 @@ import { buildTodayRanking } from "./todayRanking";
 
 export class DisplayApp {
   private readonly progressPanel: ProgressPanel;
-  private readonly sponsorListTicker: SponsorListTicker;
   private readonly todayRankingTicker: TodayRankingTicker;
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
@@ -31,13 +29,11 @@ export class DisplayApp {
     private readonly realtimeClient: RealtimeClient
   ) {
     this.progressPanel = new ProgressPanel(
-      queryRequired("#totalAmount"),
-      queryRequired("#targetAmount"),
+      queryRequired("#currentBossList"),
+      queryRequired("#progressTrack"),
       queryRequired("#progressFill"),
-      queryRequired("#progressPercent"),
-      queryRequired("#statusBadge")
+      queryRequired("#progressPercent")
     );
-    this.sponsorListTicker = new SponsorListTicker(queryRequired("#programList"));
     this.todayRankingTicker = new TodayRankingTicker(
       queryRequired("#todayRankingPinned"),
       queryRequired("#todayRankingList")
@@ -59,8 +55,7 @@ export class DisplayApp {
   private render(state: DerivedAppState): void {
     const shouldPulse = state.totalAmount > this.lastTotalAmount;
     const latestNewSponsor = this.findLatestNewSponsor(state);
-    this.progressPanel.render(state);
-    this.sponsorListTicker.render(state.sponsors);
+    this.progressPanel.render(state, state.sponsors);
     this.todayRankingTicker.render(buildTodayRanking(state.sponsors));
     this.rankingTicker.render(state.ranking);
 
@@ -93,4 +88,5 @@ export class DisplayApp {
       .filter((record) => !this.knownSponsorIds.has(record.id))
       .sort((left, right) => right.createdAt - left.createdAt)[0];
   }
+
 }
