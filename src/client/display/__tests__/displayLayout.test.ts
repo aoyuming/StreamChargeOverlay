@@ -42,9 +42,11 @@ describe("display layout", () => {
     expect(css).toContain("padding: 12px 16px 4px;");
   });
 
-  it("clips the current boss list above the progress percentage without showing a partial row", () => {
+  it("clips the current boss list above the charge summary without showing a partial row", () => {
     expect(css).toContain(".current-boss-viewport {\n  position: relative;\n  z-index: 1;\n  height: 160px;");
-    expect(css).toContain("max-width: calc(100% - 150px);");
+    expect(css).toContain("gap: 16px;");
+    expect(css).toContain("flex: 1 1 0;");
+    expect(css).toContain("white-space: nowrap;");
     expect(css).toContain(".charge-progress-row {\n  position: relative;\n  z-index: 3;");
   });
 

@@ -43,7 +43,7 @@ export class ProgressPanel {
   public render(state: DerivedAppState, sponsors: SponsorRecord[]): void {
     this.renderCurrentSponsors(sponsors);
     this.sloganElement.textContent = neutralizePublicText(state.slogan) || "充能进度";
-    this.percentElement.textContent = `${Math.round(state.progressPercent)}%`;
+    this.percentElement.textContent = this.formatChargeGoal(state);
     this.progressFill.style.setProperty("--progress", `${state.progressPercent}%`);
     const effect = progressEffectFor(state.progressPercent);
     this.applyEffect(effect);
@@ -110,5 +110,9 @@ export class ProgressPanel {
   private applyEffect(effect: ProgressEffect): void {
     this.progressTrack.classList.remove(...EFFECT_CLASSES);
     this.progressTrack.classList.add(`is-${effect}`);
+  }
+
+  private formatChargeGoal(state: DerivedAppState): string {
+    return `${formatRootUnits(state.totalAmount)}（目标${formatRootUnits(state.targetAmount)}）`;
   }
 }

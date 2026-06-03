@@ -194,15 +194,16 @@ describe("ProgressPanel", () => {
     expect(firstCard.className).toContain("is-empty");
   });
 
-  it("renders an integer progress percentage only", () => {
+  it("renders the current root units with the target root units", () => {
     const view = createPanel();
 
-    view.panel.render(state(62.8), [sponsor()]);
+    view.panel.render(state(62.8, { totalAmount: 628, targetAmount: 1000 }), [sponsor()]);
 
-    expect(view.percentElement.textContent).toBe("63%");
+    expect(view.percentElement.textContent).toBe("6.28根（目标10根）");
+    expect(view.percentElement.textContent).not.toContain("%");
   });
 
-  it("renders the campaign slogan to the left of the progress percentage", () => {
+  it("renders the campaign slogan to the left of the charge summary", () => {
     const view = createPanel();
 
     view.panel.render(state(100, { slogan: "Tonight double rewards" }), [sponsor()]);
