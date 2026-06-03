@@ -19,6 +19,8 @@ describe("display layout", () => {
     expect(css).toContain(".current-boss-row");
     expect(css).toContain(".current-boss-amount");
     expect(css).toContain(".current-boss-note");
+    expect(css).toContain(".current-boss-program");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr) minmax(88px, 132px) 106px;");
     expect(css).not.toContain(".current-boss-label");
     expect(css).not.toContain("font-size: 58px;");
   });
@@ -34,7 +36,8 @@ describe("display layout", () => {
   });
 
   it("keeps the merged charge panel rows inside the bottom HUD height", () => {
-    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 158px 28px 50px;");
+    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 178px 26px 42px;");
+    expect(css).toContain("gap: 4px;");
     expect(css).toContain("padding: 12px 16px;");
   });
 

@@ -136,7 +136,14 @@ describe("ProgressPanel", () => {
 
     view.panel.render(state(62.8), [
       sponsor({ id: "old", bossName: "Old Boss", createdAt: 1 }),
-      sponsor({ id: "new", bossName: "New Boss", amount: 628, note: "note first", createdAt: 2 })
+      sponsor({
+        id: "new",
+        bossName: "New Boss",
+        amount: 628,
+        note: "note first",
+        programName: "selected program",
+        createdAt: 2
+      })
     ]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
@@ -144,18 +151,22 @@ describe("ProgressPanel", () => {
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.28");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("note first");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("selected program");
+    expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-note");
+    expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-amount");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
     expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(true);
     expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(4);
   });
 
-  it("falls back to the program name when a current boss note is empty", () => {
+  it("keeps the program visible even when a current boss note is empty", () => {
     const view = createPanel();
 
     view.panel.render(state(30), [sponsor({ programName: "visible program", note: "" })]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
-    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("visible program");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("visible program");
   });
 
   it("slows the current boss ticker as the list grows", () => {

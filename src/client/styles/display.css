@@ -138,15 +138,15 @@ html.is-preview-fit .overlay-shell {
 
 .charge-panel {
   display: grid;
-  grid-template-rows: 32px 158px 28px 50px;
-  gap: 8px;
+  grid-template-rows: 32px 178px 26px 42px;
+  gap: 4px;
   padding: 12px 16px;
 }
 
 .current-boss-card {
   position: relative;
   min-width: 0;
-  padding: 8px 10px;
+  padding: 6px 10px;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 20%, rgba(73, 235, 255, 0.18), transparent 30%),
@@ -171,14 +171,14 @@ html.is-preview-fit .overlay-shell {
 .current-boss-viewport {
   position: relative;
   z-index: 1;
-  height: 126px;
+  height: 164px;
   overflow: hidden;
 }
 
 .current-boss-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -190,12 +190,12 @@ html.is-preview-fit .overlay-shell {
 
 .current-boss-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 112px;
-  grid-template-rows: 29px 17px;
-  gap: 2px 10px;
+  grid-template-columns: minmax(0, 1fr) minmax(88px, 132px) 106px;
+  grid-template-rows: 27px 16px;
+  gap: 2px 8px;
   align-items: center;
-  height: 60px;
-  padding: 5px 10px;
+  height: 50px;
+  padding: 4px 8px;
   min-width: 0;
   background:
     linear-gradient(90deg, rgba(8, 12, 16, 0.92), rgba(40, 34, 27, 0.86)),
@@ -221,7 +221,7 @@ html.is-preview-fit .overlay-shell {
   max-width: 100%;
   overflow: hidden;
   color: #fff5d6;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 900;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -231,13 +231,27 @@ html.is-preview-fit .overlay-shell {
   white-space: nowrap;
 }
 
+.current-boss-note {
+  position: relative;
+  z-index: 1;
+  display: block;
+  overflow: hidden;
+  color: #d7bd82;
+  font-size: 14px;
+  font-weight: 900;
+  line-height: 1;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .current-boss-amount {
   position: relative;
   z-index: 1;
   display: block;
   overflow: hidden;
   color: #7ee1d8;
-  font-size: 24px;
+  font-size: 23px;
   font-weight: 900;
   line-height: 1;
   text-align: right;
@@ -246,15 +260,15 @@ html.is-preview-fit .overlay-shell {
   white-space: nowrap;
 }
 
-.current-boss-note {
+.current-boss-program {
   position: relative;
   z-index: 1;
-  grid-column: 1 / 3;
+  grid-column: 1 / 4;
   overflow: hidden;
-  color: #d7bd82;
-  font-size: 15px;
+  color: #b9aa92;
+  font-size: 14px;
   font-weight: 900;
-  line-height: 1.1;
+  line-height: 1;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -268,13 +282,13 @@ html.is-preview-fit .overlay-shell {
 
 .charge-progress-label {
   color: #b9aa92;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 900;
 }
 
 .charge-percent {
   color: #f5df9a;
-  font-size: 44px;
+  font-size: 40px;
   font-weight: 900;
   line-height: 1;
   text-shadow: 0 0 18px rgba(199, 154, 85, 0.5), 3px 3px 0 #16100a;
@@ -282,7 +296,7 @@ html.is-preview-fit .overlay-shell {
 
 .progress-track {
   position: relative;
-  height: 50px;
+  height: 42px;
   overflow: hidden;
   background: #080a0b;
   border: 3px solid #3f3323;

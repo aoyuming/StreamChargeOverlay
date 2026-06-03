@@ -78,15 +78,19 @@ export class ProgressPanel {
     name.className = "current-boss-name";
     name.textContent = formatDisplayName(sponsor.bossName);
 
+    const note = this.currentBossListElement.ownerDocument.createElement("span");
+    note.className = "current-boss-note";
+    note.textContent = neutralizePublicText(sponsor.note);
+
     const amount = this.currentBossListElement.ownerDocument.createElement("span");
     amount.className = "current-boss-amount";
     amount.textContent = formatRootUnits(sponsor.amount);
 
-    const note = this.currentBossListElement.ownerDocument.createElement("span");
-    note.className = "current-boss-note";
-    note.textContent = neutralizePublicText(sponsor.note || sponsor.programName || "名场面");
+    const program = this.currentBossListElement.ownerDocument.createElement("span");
+    program.className = "current-boss-program";
+    program.textContent = neutralizePublicText(sponsor.programName || "等待节目");
 
-    item.append(name, amount, note);
+    item.append(name, note, amount, program);
     return item;
   }
 
