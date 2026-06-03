@@ -8,6 +8,8 @@
   --stone-dark: #050607;
   --red: #a94734;
   --cyan: #4d9b93;
+  --stage-scale: 1;
+  --stage-offset-x: 0px;
 }
 
 * {
@@ -25,6 +27,20 @@ body {
 
 body {
   color: #e8dec8;
+}
+
+html.is-preview-fit,
+html.is-preview-fit body {
+  width: 100vw;
+  height: 100vh;
+}
+
+html.is-preview-fit .overlay-shell {
+  position: absolute;
+  top: 0;
+  left: var(--stage-offset-x);
+  transform: scale(var(--stage-scale));
+  transform-origin: top left;
 }
 
 .overlay-shell {

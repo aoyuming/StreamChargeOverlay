@@ -23,6 +23,12 @@ describe("display layout", () => {
     expect(css).toContain(".burst-particles {\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  width: 1920px;\n  height: 1440px;");
   });
 
+  it("adds a fit-preview mode for ordinary browser windows", () => {
+    expect(css).toContain("html.is-preview-fit,\nhtml.is-preview-fit body");
+    expect(css).toContain("left: var(--stage-offset-x);");
+    expect(css).toContain("transform: scale(var(--stage-scale));");
+  });
+
   it("slows the current list while keeping ranking lists slower", () => {
     expect(css).toContain(".program-list.is-scrolling {\n  animation: tickerScroll 28s linear infinite;\n}");
     expect(css).toContain("animation: tickerScroll 32s linear infinite;");
