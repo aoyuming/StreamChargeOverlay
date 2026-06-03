@@ -72,4 +72,12 @@ describe("display layout", () => {
   it("slows the current list while keeping ranking lists slower", () => {
     expect(css).toContain("animation: tickerScroll 32s linear infinite;");
   });
+
+  it("includes stronger fire and enhanced lightning progress styles", () => {
+    expect(css).toContain(".progress-track.is-inferno");
+    expect(css).toContain(".progress-track.is-inferno .progress-fill");
+    expect(css).toContain(".progress-track.is-inferno::before");
+    expect(css).toContain(".progress-track.is-lightning::after");
+    expect(css).toContain("animation: lightningFlash");
+  });
 });

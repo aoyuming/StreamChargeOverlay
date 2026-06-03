@@ -405,9 +405,48 @@ html.is-preview-fit .overlay-shell {
   animation: flameRise 1.1s ease-in-out infinite alternate;
 }
 
+.progress-track.is-inferno {
+  border-color: rgba(255, 78, 38, 0.96);
+  box-shadow:
+    inset 0 0 30px rgba(255, 52, 24, 0.34),
+    0 0 28px rgba(255, 67, 28, 0.42),
+    0 0 44px rgba(255, 180, 58, 0.22);
+}
+
+.progress-track.is-inferno .progress-fill {
+  background:
+    radial-gradient(circle at 16% 100%, rgba(255, 246, 150, 0.95), transparent 25%),
+    radial-gradient(circle at 48% 100%, rgba(255, 84, 24, 0.94), transparent 34%),
+    radial-gradient(circle at 82% 100%, rgba(255, 33, 18, 0.88), transparent 30%),
+    linear-gradient(90deg, #9d2018, #f04a19 34%, #ffb62f 72%, #fff0a3);
+  animation: infernoFlicker 360ms ease-in-out infinite alternate;
+}
+
+.progress-track.is-inferno::before {
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 230, 100, 0) 0 18px, rgba(255, 230, 100, 0.42) 18px 22px, rgba(255, 76, 24, 0) 22px 42px),
+    linear-gradient(105deg, transparent 12%, rgba(255, 246, 181, 0.32) 42%, transparent 62%);
+  filter: blur(1px);
+  mix-blend-mode: screen;
+  animation: infernoHeat 820ms linear infinite;
+}
+
+.progress-track.is-inferno::after {
+  background:
+    radial-gradient(ellipse at 12% 100%, rgba(255, 224, 88, 0.62), transparent 34%),
+    radial-gradient(ellipse at 34% 100%, rgba(255, 76, 24, 0.58), transparent 33%),
+    radial-gradient(ellipse at 58% 100%, rgba(255, 225, 120, 0.52), transparent 30%),
+    radial-gradient(ellipse at 86% 100%, rgba(255, 44, 18, 0.54), transparent 32%);
+  mix-blend-mode: screen;
+  animation: flameRise 650ms ease-in-out infinite alternate;
+}
+
 .progress-track.is-lightning {
   border-color: rgba(115, 238, 255, 0.95);
-  box-shadow: inset 0 0 28px rgba(115, 238, 255, 0.32), 0 0 34px rgba(115, 238, 255, 0.46);
+  box-shadow:
+    inset 0 0 32px rgba(115, 238, 255, 0.42),
+    0 0 36px rgba(115, 238, 255, 0.55),
+    0 0 52px rgba(255, 238, 138, 0.26);
 }
 
 .progress-track.is-lightning .progress-fill {
@@ -425,6 +464,15 @@ html.is-preview-fit .overlay-shell {
     linear-gradient(138deg, transparent 0 70%, rgba(255, 246, 155, 0.86) 71%, transparent 73% 100%);
   filter: drop-shadow(0 0 14px rgba(115, 238, 255, 0.95));
   animation: lightningCrackle 700ms steps(2, end) infinite;
+}
+
+.progress-track.is-lightning::after {
+  background:
+    radial-gradient(circle at 18% 50%, rgba(255, 255, 255, 0.62), transparent 18%),
+    radial-gradient(circle at 52% 50%, rgba(115, 238, 255, 0.5), transparent 22%),
+    radial-gradient(circle at 82% 50%, rgba(255, 238, 138, 0.48), transparent 20%);
+  mix-blend-mode: screen;
+  animation: lightningFlash 460ms steps(2, end) infinite;
 }
 
 .ticker-mask {
@@ -828,6 +876,26 @@ html.is-preview-fit .overlay-shell {
   }
 }
 
+@keyframes infernoFlicker {
+  from {
+    filter: brightness(1.12) contrast(1.04) saturate(1.25);
+  }
+  to {
+    filter: brightness(1.62) contrast(1.16) saturate(1.68);
+  }
+}
+
+@keyframes infernoHeat {
+  from {
+    opacity: 0.46;
+    transform: translateX(-18px) skewX(-8deg);
+  }
+  to {
+    opacity: 0.9;
+    transform: translateX(22px) skewX(8deg);
+  }
+}
+
 @keyframes flameRise {
   from {
     opacity: 0.42;
@@ -858,6 +926,18 @@ html.is-preview-fit .overlay-shell {
   50% {
     opacity: 1;
     transform: translateX(16px);
+  }
+}
+
+@keyframes lightningFlash {
+  0%,
+  100% {
+    opacity: 0.18;
+    filter: brightness(1);
+  }
+  50% {
+    opacity: 0.78;
+    filter: brightness(1.8);
   }
 }
 

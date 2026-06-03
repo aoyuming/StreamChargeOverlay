@@ -222,10 +222,10 @@ describe("ProgressPanel", () => {
   it.each([
     [0, "ice"],
     [39, "ice"],
-    [40, "energy"],
-    [79, "energy"],
-    [80, "fire"],
-    [99, "fire"],
+    [40, "fire"],
+    [69, "fire"],
+    [70, "inferno"],
+    [99, "inferno"],
     [100, "lightning"]
   ] as const)("uses the %s percent progress effect", (percent, effect) => {
     expect(progressEffectFor(percent)).toBe(effect);
@@ -240,11 +240,20 @@ describe("ProgressPanel", () => {
     expect((view.progressTrack.classList as unknown as FakeClassList).has("is-fire")).toBe(false);
   });
 
+  it("applies the stronger fire effect class without keeping the normal fire class", () => {
+    const view = createPanel();
+
+    view.panel.render(state(88.4), [sponsor()]);
+
+    expect((view.progressTrack.classList as unknown as FakeClassList).has("is-inferno")).toBe(true);
+    expect((view.progressTrack.classList as unknown as FakeClassList).has("is-fire")).toBe(false);
+  });
+
   it("drives the cinematic progress effect layer with the active state", () => {
     const view = createPanel();
 
     view.panel.render(state(88.4), [sponsor()]);
 
-    expect(view.progressEffects.states).toEqual([{ effect: "fire", progressPercent: 88.4 }]);
+    expect(view.progressEffects.states).toEqual([{ effect: "inferno", progressPercent: 88.4 }]);
   });
 });
