@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DerivedAppState, SponsorRecord } from "../../../shared/types";
+import type { ProgressEffect } from "../ProgressPanel";
 import { ProgressPanel, progressEffectFor } from "../ProgressPanel";
 
 class FakeStyle {
@@ -65,6 +66,14 @@ class FakeDocument {
   }
 }
 
+class FakeProgressEffects {
+  public readonly states: Array<{ effect: ProgressEffect; progressPercent: number }> = [];
+
+  public setState(effect: ProgressEffect, progressPercent: number): void {
+    this.states.push({ effect, progressPercent });
+  }
+}
+
 const fakeDocument = new FakeDocument();
 const element = () => {
   const node = new FakeElement();
@@ -74,9 +83,9 @@ const element = () => {
 
 const sponsor = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
   id: "sponsor-1",
-  bossName: "赛博大哥",
+  bossName: "Alpha Boss",
   amount: 300,
-  programName: "燃烧名场面",
+  programName: "program fallback",
   note: "",
   createdAt: 1,
   ...overrides
@@ -98,17 +107,20 @@ const createPanel = () => {
   const progressTrack = element();
   const progressFill = element();
   const percentElement = element();
+  const progressEffects = new FakeProgressEffects();
 
   return {
     currentBossList,
     progressTrack,
     progressFill,
     percentElement,
+    progressEffects,
     panel: new ProgressPanel(
       currentBossList,
       progressTrack,
       progressFill,
-      percentElement
+      percentElement,
+      progressEffects
     )
   };
 };
@@ -119,25 +131,37 @@ const childWithClass = (element: HTMLElement, className: string) => {
 };
 
 describe("ProgressPanel", () => {
-  it("renders the latest sponsor first in the slow current boss ticker", () => {
+  it("renders the latest sponsor first in a compact current boss ticker row", () => {
     const view = createPanel();
 
     view.panel.render(state(62.8), [
-      sponsor({ id: "old", bossName: "旧大哥", createdAt: 1 }),
-      sponsor({ id: "new", bossName: "最新大哥", amount: 628, createdAt: 2 })
+      sponsor({ id: "old", bossName: "Old Boss", createdAt: 1 }),
+      sponsor({ id: "new", bossName: "New Boss", amount: 628, note: "note first", createdAt: 2 })
     ]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
-    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("最新大哥");
-    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-meta")?.textContent).toContain("6.28根");
+    expect(firstCard.className).toBe("current-boss-row");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.28");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("note first");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
     expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(true);
     expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(4);
+  });
+
+  it("falls back to the program name when a current boss note is empty", () => {
+    const view = createPanel();
+
+    view.panel.render(state(30), [sponsor({ programName: "visible program", note: "" })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("visible program");
   });
 
   it("slows the current boss ticker as the list grows", () => {
     const view = createPanel();
     const sponsors = Array.from({ length: 10 }, (_, index) =>
-      sponsor({ id: `sponsor-${index}`, bossName: `大哥${index}`, createdAt: index })
+      sponsor({ id: `sponsor-${index}`, bossName: `Boss ${index}`, createdAt: index })
     );
 
     view.panel.render(state(62.8), sponsors);
@@ -182,5 +206,13 @@ describe("ProgressPanel", () => {
 
     expect((view.progressTrack.classList as unknown as FakeClassList).has("is-lightning")).toBe(true);
     expect((view.progressTrack.classList as unknown as FakeClassList).has("is-fire")).toBe(false);
+  });
+
+  it("drives the cinematic progress effect layer with the active state", () => {
+    const view = createPanel();
+
+    view.panel.render(state(88.4), [sponsor()]);
+
+    expect(view.progressEffects.states).toEqual([{ effect: "fire", progressPercent: 88.4 }]);
   });
 });

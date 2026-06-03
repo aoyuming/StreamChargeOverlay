@@ -7,11 +7,25 @@ describe("display layout", () => {
   const html = readFileSync(resolve(process.cwd(), "display.html"), "utf8");
 
   it("merges current sponsor and progress into a wider charge panel", () => {
-    expect(css).toContain("grid-template-columns: 380px 774px 340px 352px;");
+    expect(css).toContain("grid-template-columns: 380px 660px 390px 416px;");
     expect(html).toContain('class="panel charge-panel"');
     expect(html).toContain('id="currentBossList"');
+    expect(html).toContain('id="progressEffectsCanvas"');
     expect(html).not.toContain('class="panel program-panel"');
     expect(html).not.toContain('id="programList"');
+  });
+
+  it("uses compact current boss rows instead of clipped hero text", () => {
+    expect(css).toContain(".current-boss-row");
+    expect(css).toContain(".current-boss-amount");
+    expect(css).toContain(".current-boss-note");
+    expect(css).not.toContain(".current-boss-label");
+    expect(css).not.toContain("font-size: 58px;");
+  });
+
+  it("gives ranking names more room than the previous narrow layout", () => {
+    expect(css).toContain("grid-template-columns: 42px minmax(0, 1fr) 112px;");
+    expect(css).toContain("grid-template-columns: 50px minmax(0, 1fr) 120px;");
   });
 
   it("scrolls the merged current boss ticker slowly", () => {
@@ -20,7 +34,7 @@ describe("display layout", () => {
   });
 
   it("keeps the merged charge panel rows inside the bottom HUD height", () => {
-    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 118px 44px 64px;");
+    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 158px 28px 50px;");
     expect(css).toContain("padding: 12px 16px;");
   });
 

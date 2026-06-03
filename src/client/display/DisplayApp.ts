@@ -2,6 +2,7 @@ import type { DerivedAppState } from "../../shared/types";
 import { ApiClient } from "../common/ApiClient";
 import { queryRequired } from "../common/dom";
 import { RealtimeClient } from "../common/RealtimeClient";
+import { ProgressEffectLayer } from "./ProgressEffectLayer";
 import { ProgressPanel } from "./ProgressPanel";
 import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
@@ -32,7 +33,8 @@ export class DisplayApp {
       queryRequired("#currentBossList"),
       queryRequired("#progressTrack"),
       queryRequired("#progressFill"),
-      queryRequired("#progressPercent")
+      queryRequired("#progressPercent"),
+      new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
     );
     this.todayRankingTicker = new TodayRankingTicker(
       queryRequired("#todayRankingPinned"),
