@@ -1,14 +1,17 @@
 import { io, type Socket } from "socket.io-client";
 import type { DerivedAppState } from "../../shared/types";
+import { RoomContext } from "./RoomContext";
 
 type StateListener = (state: DerivedAppState) => void;
+type SocketLike = Pick<Socket, "on">;
+type SocketFactory = (options: { query: { roomSlug: string } }) => SocketLike;
 
-// Socket.IO 只负责接收服务端状态广播，页面渲染逻辑放在各自 App 类里。
+// Receives server state updates for one room. Page classes decide how to render.
 export class RealtimeClient {
-  private readonly socket: Socket;
+  private readonly socket: SocketLike;
 
-  public constructor() {
-    this.socket = io();
+  public constructor(roomContext = new RoomContext("default"), socketFactory: SocketFactory = io) {
+    this.socket = socketFactory({ query: { roomSlug: roomContext.slug } });
   }
 
   public onStateUpdated(listener: StateListener): void {

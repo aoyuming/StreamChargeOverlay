@@ -1,36 +1,48 @@
 import type { AddSponsorRequest, ApiErrorResponse, DerivedAppState, UpdateSettingsRequest } from "../../shared/types";
+import { RoomContext } from "./RoomContext";
 
-// 统一封装 fetch，页面层不需要重复处理 JSON、错误码和接口路径。
+// Centralizes HTTP paths and JSON error handling for display/admin pages.
+// Room-aware paths keep deployment links stable while allowing isolated rooms.
 export class ApiClient {
+  public constructor(private readonly roomContext = new RoomContext("default")) {}
+
   public async getState(): Promise<DerivedAppState> {
-    return this.request<DerivedAppState>("/api/state");
+    return this.request<DerivedAppState>(this.apiPath("/state"));
   }
 
   public async addSponsor(request: AddSponsorRequest): Promise<DerivedAppState> {
-    return this.request<DerivedAppState>("/api/sponsors", {
+    return this.request<DerivedAppState>(this.apiPath("/sponsors"), {
       method: "POST",
       body: JSON.stringify(request)
     });
   }
 
   public async deleteSponsor(id: string): Promise<DerivedAppState> {
-    return this.request<DerivedAppState>(`/api/sponsors/${encodeURIComponent(id)}`, {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}`), {
       method: "DELETE"
     });
   }
 
   public async updateTargetAmount(targetAmount: number): Promise<DerivedAppState> {
-    return this.request<DerivedAppState>("/api/settings/target", {
+    return this.request<DerivedAppState>(this.apiPath("/settings/target"), {
       method: "PUT",
       body: JSON.stringify({ targetAmount })
     });
   }
 
   public async updateSettings(request: UpdateSettingsRequest): Promise<DerivedAppState> {
-    return this.request<DerivedAppState>("/api/settings", {
+    return this.request<DerivedAppState>(this.apiPath("/settings"), {
       method: "PUT",
       body: JSON.stringify(request)
     });
+  }
+
+  private apiPath(path: string): string {
+    if (this.roomContext.slug === "default") {
+      return `/api${path}`;
+    }
+
+    return `/rooms/${encodeURIComponent(this.roomContext.slug)}/api${path}`;
   }
 
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {

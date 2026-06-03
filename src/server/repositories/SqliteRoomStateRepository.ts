@@ -1,0 +1,261 @@
+import { mkdir, readFile } from "node:fs/promises";
+import { dirname } from "node:path";
+import { randomUUID } from "node:crypto";
+import Database from "better-sqlite3";
+import type { AppState, SponsorRecord, StateRepository } from "../../shared/types";
+
+const DEFAULT_TARGET_AMOUNT = 1000;
+const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
+
+type RepositoryOptions = {
+  legacyJsonPath?: string;
+};
+
+type RoomRow = {
+  id: string;
+};
+
+type SettingsRow = {
+  target_amount: number;
+  slogan: string;
+};
+
+type SponsorRow = {
+  id: string;
+  boss_name: string;
+  amount: number;
+  program_name: string;
+  note: string;
+  created_at: number;
+};
+
+// SQLite-backed room repository. Each instance is scoped to one room, while the
+// shared database keeps all rooms in one deployable file.
+export class SqliteRoomStateRepository implements StateRepository {
+  private static readonly databases = new Map<string, Database.Database>();
+
+  private constructor(
+    private readonly database: Database.Database,
+    private readonly roomSlug: string,
+    private readonly roomId: string
+  ) {}
+
+  public static async open(
+    databasePath: string,
+    roomSlug: string,
+    options: RepositoryOptions = {}
+  ): Promise<SqliteRoomStateRepository> {
+    await mkdir(dirname(databasePath), { recursive: true });
+
+    const database = this.getDatabase(databasePath);
+    this.initializeSchema(database);
+    const roomId = this.ensureRoom(database, roomSlug);
+    const repository = new SqliteRoomStateRepository(database, roomSlug, roomId);
+    await repository.migrateLegacyJsonIfNeeded(options.legacyJsonPath);
+    return repository;
+  }
+
+  public static closeDatabase(databasePath: string): void {
+    const database = this.databases.get(databasePath);
+    if (!database) {
+      return;
+    }
+
+    database.close();
+    this.databases.delete(databasePath);
+  }
+
+  public async load(): Promise<AppState> {
+    const settings = this.loadSettings();
+    const sponsors = this.database
+      .prepare(
+        `
+        SELECT id, boss_name, amount, program_name, note, created_at
+        FROM sponsor_records
+        WHERE room_id = ?
+        ORDER BY created_at ASC
+      `
+      )
+      .all(this.roomId) as SponsorRow[];
+
+    return {
+      targetAmount: settings.target_amount,
+      slogan: settings.slogan,
+      sponsors: sponsors.map((row) => ({
+        id: row.id,
+        bossName: row.boss_name,
+        amount: row.amount,
+        programName: row.program_name,
+        note: row.note,
+        createdAt: row.created_at
+      }))
+    };
+  }
+
+  public async save(state: AppState): Promise<void> {
+    const saveState = this.database.transaction((nextState: AppState) => {
+      this.database
+        .prepare(
+          `
+          INSERT INTO room_settings (room_id, target_amount, slogan)
+          VALUES (?, ?, ?)
+          ON CONFLICT(room_id) DO UPDATE SET
+            target_amount = excluded.target_amount,
+            slogan = excluded.slogan
+        `
+        )
+        .run(this.roomId, nextState.targetAmount, nextState.slogan);
+
+      this.database.prepare("DELETE FROM sponsor_records WHERE room_id = ?").run(this.roomId);
+
+      const insertSponsor = this.database.prepare(
+        `
+        INSERT INTO sponsor_records (id, room_id, boss_name, amount, program_name, note, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `
+      );
+
+      for (const record of nextState.sponsors) {
+        insertSponsor.run(
+          record.id,
+          this.roomId,
+          record.bossName,
+          record.amount,
+          record.programName,
+          record.note,
+          record.createdAt
+        );
+      }
+    });
+
+    saveState(state);
+  }
+
+  private static getDatabase(databasePath: string): Database.Database {
+    const cached = this.databases.get(databasePath);
+    if (cached) {
+      return cached;
+    }
+
+    const database = new Database(databasePath);
+    database.pragma("journal_mode = WAL");
+    this.databases.set(databasePath, database);
+    return database;
+  }
+
+  private static initializeSchema(database: Database.Database): void {
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS rooms (
+        id TEXT PRIMARY KEY,
+        slug TEXT NOT NULL UNIQUE,
+        name TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS room_settings (
+        room_id TEXT PRIMARY KEY,
+        target_amount REAL NOT NULL,
+        slogan TEXT NOT NULL,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+      );
+
+      CREATE TABLE IF NOT EXISTS sponsor_records (
+        id TEXT PRIMARY KEY,
+        room_id TEXT NOT NULL,
+        boss_name TEXT NOT NULL,
+        amount REAL NOT NULL,
+        program_name TEXT NOT NULL,
+        note TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+      );
+
+      CREATE INDEX IF NOT EXISTS idx_sponsor_records_room_created
+        ON sponsor_records(room_id, created_at);
+    `);
+  }
+
+  private static ensureRoom(database: Database.Database, roomSlug: string): string {
+    const now = Date.now();
+    database
+      .prepare(
+        `
+        INSERT INTO rooms (id, slug, name, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT(slug) DO NOTHING
+      `
+      )
+      .run(randomUUID(), roomSlug, roomSlug, now, now);
+
+    const room = database.prepare("SELECT id FROM rooms WHERE slug = ?").get(roomSlug) as RoomRow | undefined;
+    if (!room) {
+      throw new Error(`Room not found after creation: ${roomSlug}`);
+    }
+
+    database
+      .prepare(
+        `
+        INSERT INTO room_settings (room_id, target_amount, slogan)
+        VALUES (?, ?, ?)
+        ON CONFLICT(room_id) DO NOTHING
+      `
+      )
+      .run(room.id, DEFAULT_TARGET_AMOUNT, DEFAULT_SLOGAN);
+
+    return room.id;
+  }
+
+  private loadSettings(): SettingsRow {
+    const settings = this.database
+      .prepare("SELECT target_amount, slogan FROM room_settings WHERE room_id = ?")
+      .get(this.roomId) as SettingsRow | undefined;
+
+    if (!settings) {
+      return { target_amount: DEFAULT_TARGET_AMOUNT, slogan: DEFAULT_SLOGAN };
+    }
+
+    return settings;
+  }
+
+  private async migrateLegacyJsonIfNeeded(legacyJsonPath: string | undefined): Promise<void> {
+    if (!legacyJsonPath || this.roomSlug !== "default" || !this.isDefaultRoomEmpty()) {
+      return;
+    }
+
+    const legacyState = await this.loadLegacyState(legacyJsonPath);
+    if (legacyState) {
+      await this.save(legacyState);
+    }
+  }
+
+  private isDefaultRoomEmpty(): boolean {
+    const settings = this.loadSettings();
+    const sponsorCount = this.database
+      .prepare("SELECT COUNT(*) AS count FROM sponsor_records WHERE room_id = ?")
+      .get(this.roomId) as { count: number };
+
+    return (
+      settings.target_amount === DEFAULT_TARGET_AMOUNT &&
+      settings.slogan === DEFAULT_SLOGAN &&
+      sponsorCount.count === 0
+    );
+  }
+
+  private async loadLegacyState(legacyJsonPath: string): Promise<AppState | null> {
+    try {
+      const raw = await readFile(legacyJsonPath, "utf8");
+      const parsed = JSON.parse(raw) as Partial<AppState>;
+      return {
+        targetAmount: typeof parsed.targetAmount === "number" ? parsed.targetAmount : DEFAULT_TARGET_AMOUNT,
+        slogan: typeof parsed.slogan === "string" ? parsed.slogan : DEFAULT_SLOGAN,
+        sponsors: Array.isArray(parsed.sponsors) ? (parsed.sponsors as SponsorRecord[]) : []
+      };
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        return null;
+      }
+      throw error;
+    }
+  }
+}

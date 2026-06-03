@@ -7,8 +7,8 @@ export const STATE_UPDATED_EVENT = "state:updated";
 export class RealtimeHub {
   public constructor(private readonly io: SocketServer) {}
 
-  public broadcastState(state: DerivedAppState): void {
-    this.io.emit(STATE_UPDATED_EVENT, state);
+  public broadcastState(roomSlug: string, state: DerivedAppState): void {
+    this.io.to(roomSlug).emit(STATE_UPDATED_EVENT, state);
   }
 
   public sendInitialState(socketId: string, state: DerivedAppState): void {
