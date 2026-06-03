@@ -33,6 +33,7 @@ export class DisplayApp {
       queryRequired("#currentBossList"),
       queryRequired("#progressTrack"),
       queryRequired("#progressFill"),
+      queryRequired("#progressSlogan"),
       queryRequired("#progressPercent"),
       new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
     );

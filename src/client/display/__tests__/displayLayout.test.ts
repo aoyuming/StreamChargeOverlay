@@ -10,6 +10,7 @@ describe("display layout", () => {
     expect(css).toContain("grid-template-columns: 380px 660px 390px 416px;");
     expect(html).toContain('class="panel charge-panel"');
     expect(html).toContain('id="currentBossList"');
+    expect(html).toContain('id="progressSlogan"');
     expect(html).toContain('id="progressEffectsCanvas"');
     expect(html).not.toContain('class="panel program-panel"');
     expect(html).not.toContain('id="programList"');
@@ -36,9 +37,15 @@ describe("display layout", () => {
   });
 
   it("keeps the merged charge panel rows inside the bottom HUD height", () => {
-    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 188px 24px 50px;");
+    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 176px 36px 50px;");
     expect(css).toContain("gap: 4px;");
     expect(css).toContain("padding: 12px 16px 4px;");
+  });
+
+  it("clips the current boss list above the progress percentage without showing a partial row", () => {
+    expect(css).toContain(".current-boss-viewport {\n  position: relative;\n  z-index: 1;\n  height: 160px;");
+    expect(css).toContain("max-width: calc(100% - 150px);");
+    expect(css).toContain(".charge-progress-row {\n  position: relative;\n  z-index: 3;");
   });
 
   it("uses a 1920 by 1440 transparent stage with the existing HUD docked at the bottom", () => {

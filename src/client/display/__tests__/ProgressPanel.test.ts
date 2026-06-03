@@ -91,7 +91,7 @@ const sponsor = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
   ...overrides
 });
 
-const state = (progressPercent: number): DerivedAppState => ({
+const state = (progressPercent: number, overrides: Partial<DerivedAppState> = {}): DerivedAppState => ({
   targetAmount: 1000,
   slogan: "",
   sponsors: [],
@@ -99,13 +99,15 @@ const state = (progressPercent: number): DerivedAppState => ({
   progressPercent,
   goalReached: progressPercent >= 100,
   ranking: [],
-  programQueue: []
+  programQueue: [],
+  ...overrides
 });
 
 const createPanel = () => {
   const currentBossList = element();
   const progressTrack = element();
   const progressFill = element();
+  const sloganElement = element();
   const percentElement = element();
   const progressEffects = new FakeProgressEffects();
 
@@ -113,12 +115,14 @@ const createPanel = () => {
     currentBossList,
     progressTrack,
     progressFill,
+    sloganElement,
     percentElement,
     progressEffects,
     panel: new ProgressPanel(
       currentBossList,
       progressTrack,
       progressFill,
+      sloganElement,
       percentElement,
       progressEffects
     )
@@ -196,6 +200,22 @@ describe("ProgressPanel", () => {
     view.panel.render(state(62.8), [sponsor()]);
 
     expect(view.percentElement.textContent).toBe("63%");
+  });
+
+  it("renders the campaign slogan to the left of the progress percentage", () => {
+    const view = createPanel();
+
+    view.panel.render(state(100, { slogan: "Tonight double rewards" }), [sponsor()]);
+
+    expect(view.sloganElement.textContent).toBe("Tonight double rewards");
+  });
+
+  it("falls back to the progress label when the campaign slogan is empty", () => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor()]);
+
+    expect(view.sloganElement.textContent).toBe("充能进度");
   });
 
   it.each([
