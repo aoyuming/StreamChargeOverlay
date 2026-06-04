@@ -59,6 +59,8 @@ describe("display layout", () => {
   });
 
   it("gives ranking names more room than the previous narrow layout", () => {
+    expect(html).toContain("近两月榜单");
+    expect(html).not.toContain("历史大哥总榜单");
     expect(css).toContain("grid-template-columns: 42px 38px minmax(0, 1fr) 112px;");
     expect(css).toContain("grid-template-columns: 50px 46px minmax(0, 1fr) 120px;");
     expect(css).toContain(".rank-avatar");

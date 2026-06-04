@@ -14,6 +14,7 @@ const DEFAULT_TARGET_AMOUNT = 1000;
 const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
 const SHANGHAI_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_RANKING_WINDOW_MS = 60 * DAY_MS;
 
 type DonationServiceOptions = {
   avatarStorage?: SponsorAvatarStorage;
@@ -284,14 +285,15 @@ export class DonationService {
   private deriveState(state: AppState): DerivedAppState {
     const totalAmount = this.currentChargeAmount(state);
     const progressPercent = Math.min(100, Math.round((totalAmount / state.targetAmount) * 10000) / 100);
+    const now = Date.now();
 
     return {
       ...state,
       totalAmount,
       progressPercent,
       goalReached: totalAmount >= state.targetAmount,
-      ranking: this.buildRanking(state.sponsors),
-      programQueue: this.buildTodayProgramQueue(state.sponsors, Date.now())
+      ranking: this.buildRanking(state.sponsors, now),
+      programQueue: this.buildTodayProgramQueue(state.sponsors, now)
     };
   }
 
@@ -341,10 +343,15 @@ export class DonationService {
     return now >= noonUtc ? noonUtc : noonUtc - DAY_MS;
   }
 
-  private buildRanking(records: SponsorRecord[]): SponsorRankingItem[] {
+  private buildRanking(records: SponsorRecord[], now: number): SponsorRankingItem[] {
     const rankingMap = new Map<string, SponsorRankingItem & { avatarAt?: number }>();
+    const cutoff = now - RECENT_RANKING_WINDOW_MS;
 
     for (const record of records) {
+      if (record.createdAt < cutoff) {
+        continue;
+      }
+
       const current = rankingMap.get(record.bossName);
       if (current) {
         current.totalAmount = this.roundAmount(current.totalAmount + record.amount);

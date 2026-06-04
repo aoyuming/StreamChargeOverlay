@@ -298,34 +298,127 @@ export class StageEffectLayer implements StageEffectPlayer {
     const centerY = height * 0.43;
     const ringRadius = 120 + progress * 720;
     const glow = this.context.createRadialGradient(centerX, centerY, 1, centerX, centerY, ringRadius);
-    glow.addColorStop(0, "rgba(255, 246, 176, 0.72)");
-    glow.addColorStop(0.35, "rgba(255, 184, 54, 0.24)");
-    glow.addColorStop(1, "rgba(255, 120, 36, 0)");
+    glow.addColorStop(0, "rgba(46, 234, 255, 0.58)");
+    glow.addColorStop(0.34, "rgba(41, 132, 255, 0.22)");
+    glow.addColorStop(1, "rgba(16, 42, 112, 0)");
     this.context.fillStyle = glow;
     this.context.fillRect(0, 0, width, height);
 
-    this.context.strokeStyle = "rgba(255, 238, 142, 0.94)";
-    this.context.lineWidth = 6;
-    this.context.shadowBlur = 38;
-    this.context.shadowColor = "rgba(255, 213, 82, 1)";
+    this.context.strokeStyle = "rgba(46, 234, 255, 0.82)";
+    this.context.lineWidth = 5;
+    this.context.shadowBlur = 34;
+    this.context.shadowColor = "rgba(46, 234, 255, 0.96)";
     for (let index = 0; index < 3; index += 1) {
       this.context.beginPath();
       this.context.arc(centerX, centerY, ringRadius * (0.28 + index * 0.22), 0, Math.PI * 2);
       this.context.stroke();
     }
 
-    this.context.lineWidth = 3;
-    for (let index = 0; index < 18; index += 1) {
-      const angle = (Math.PI * 2 * index) / 18 + progress * 2.2;
-      const start = 80 + progress * 90;
-      const end = 360 + progress * 540;
-      this.context.beginPath();
-      this.context.moveTo(centerX + Math.cos(angle) * start, centerY + Math.sin(angle) * start);
-      this.context.lineTo(centerX + Math.cos(angle) * end, centerY + Math.sin(angle) * end);
-      this.context.stroke();
-    }
+    this.drawDianjiangDragon(width, height, centerX, centerY, progress);
+    this.drawDianjiangElectricArcs(width, height, centerX, centerY, progress);
     this.drawDianjiangText(centerX, height, progress);
     this.context.shadowBlur = 0;
+  }
+
+  private drawDianjiangDragon(
+    width: number,
+    height: number,
+    centerX: number,
+    centerY: number,
+    progress: number
+  ): void {
+    const sway = Math.sin(progress * Math.PI * 2) * 34;
+    const bodyStartX = centerX - width * 0.25;
+    const bodyEndX = centerX + width * 0.22;
+    const bodyStartY = centerY + height * 0.02;
+    const bodyEndY = centerY - height * 0.02;
+
+    this.context.save();
+    this.context.lineCap = "round";
+    this.context.lineJoin = "round";
+    this.context.strokeStyle = "rgba(46, 234, 255, 0.72)";
+    this.context.lineWidth = 22;
+    this.context.shadowBlur = 48;
+    this.context.shadowColor = "rgba(46, 234, 255, 0.94)";
+    this.context.beginPath();
+    this.context.moveTo(bodyStartX, bodyStartY);
+    this.context.bezierCurveTo(
+      centerX - width * 0.15,
+      centerY - height * 0.2 - sway,
+      centerX + width * 0.05,
+      centerY + height * 0.16 + sway,
+      bodyEndX,
+      bodyEndY
+    );
+    this.context.stroke();
+
+    this.context.strokeStyle = "rgba(190, 252, 255, 0.95)";
+    this.context.lineWidth = 6;
+    this.context.shadowBlur = 24;
+    this.context.beginPath();
+    this.context.moveTo(bodyStartX + width * 0.02, bodyStartY - height * 0.012);
+    this.context.bezierCurveTo(
+      centerX - width * 0.12,
+      centerY - height * 0.14 - sway * 0.6,
+      centerX + width * 0.06,
+      centerY + height * 0.1 + sway * 0.5,
+      bodyEndX - width * 0.03,
+      bodyEndY
+    );
+    this.context.stroke();
+
+    const headX = bodyEndX + width * 0.045;
+    const headY = bodyEndY - height * 0.025;
+    this.context.fillStyle = "rgba(10, 42, 62, 0.88)";
+    this.context.strokeStyle = "rgba(144, 244, 255, 0.96)";
+    this.context.lineWidth = 4;
+    this.context.shadowBlur = 34;
+    this.context.beginPath();
+    this.context.moveTo(headX - 54, headY + 10);
+    this.context.bezierCurveTo(headX - 24, headY - 38, headX + 48, headY - 40, headX + 74, headY + 2);
+    this.context.bezierCurveTo(headX + 42, headY + 38, headX - 16, headY + 36, headX - 54, headY + 10);
+    this.context.fill();
+    this.context.stroke();
+
+    this.context.strokeStyle = "rgba(112, 228, 255, 0.86)";
+    this.context.lineWidth = 5;
+    this.context.beginPath();
+    this.context.moveTo(headX + 24, headY - 28);
+    this.context.lineTo(headX + 48, headY - 72);
+    this.context.moveTo(headX + 2, headY - 28);
+    this.context.lineTo(headX + 4, headY - 76);
+    this.context.stroke();
+    this.context.restore();
+  }
+
+  private drawDianjiangElectricArcs(
+    width: number,
+    height: number,
+    centerX: number,
+    centerY: number,
+    progress: number
+  ): void {
+    const arcTargets = [
+      { endX: centerX - width * 0.34, endY: centerY - height * 0.16, seed: 51 },
+      { endX: centerX + width * 0.36, endY: centerY + height * 0.12, seed: 67 },
+      { endX: centerX - width * 0.2, endY: centerY + height * 0.22, seed: 83 },
+      { endX: centerX + width * 0.18, endY: centerY - height * 0.24, seed: 97 }
+    ];
+
+    for (const target of arcTargets) {
+      const points = buildLightningBoltPoints({
+        amplitude: width * 0.025,
+        endX: target.endX,
+        endY: target.endY,
+        progress,
+        seed: target.seed,
+        segments: 6,
+        startX: centerX,
+        startY: centerY
+      });
+      this.drawLightningPath(points, "rgba(46, 234, 255, 0.42)", 8, 30);
+      this.drawLightningPath(points, "rgba(237, 255, 255, 0.86)", 2.6, 14);
+    }
   }
 
   private drawDianjiangText(centerX: number, height: number, progress: number): void {
@@ -344,11 +437,11 @@ export class StageEffectLayer implements StageEffectPlayer {
     this.context.textAlign = "center";
     this.context.textBaseline = "middle";
     this.context.shadowBlur = 42;
-    this.context.shadowColor = "rgba(255, 213, 82, 0.96)";
-    this.context.fillStyle = "rgba(255, 244, 176, 0.98)";
+    this.context.shadowColor = "rgba(46, 234, 255, 0.96)";
+    this.context.fillStyle = "rgba(197, 252, 255, 0.98)";
     this.context.fillText(text, centerX, textY);
     this.context.shadowBlur = 18;
-    this.context.shadowColor = "rgba(110, 245, 255, 0.72)";
+    this.context.shadowColor = "rgba(84, 132, 255, 0.72)";
     this.context.fillStyle = "rgba(255, 255, 255, 0.86)";
     this.context.fillText(text, centerX, textY - 2);
     this.context.restore();
@@ -410,7 +503,7 @@ export class StageEffectLayer implements StageEffectPlayer {
     }
 
     if (effect === "dianjiang") {
-      return ["rgba(255, 245, 166, ALPHA)", "rgba(255, 184, 64, ALPHA)", "rgba(110, 245, 255, ALPHA)"];
+      return ["rgba(46, 234, 255, ALPHA)", "rgba(123, 171, 255, ALPHA)", "rgba(237, 255, 255, ALPHA)"];
     }
 
     return ["rgba(255, 238, 128, ALPHA)", "rgba(255, 107, 26, ALPHA)", "rgba(255, 32, 18, ALPHA)"];

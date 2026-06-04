@@ -15,6 +15,9 @@ const baseRecord = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
   ...overrides
 });
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+const RECENT_RANKING_WINDOW_MS = 60 * DAY_MS;
+
 describe("DonationService", () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -148,6 +151,8 @@ describe("DonationService", () => {
   });
 
   it("sorts the sponsor ranking by accumulated boss amount", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10);
     const repository = new MemoryStateRepository({
       targetAmount: 1000,
       sponsors: [
@@ -165,7 +170,74 @@ describe("DonationService", () => {
     ]);
   });
 
+  it("builds the display ranking from the last 60 days without deleting older records", async () => {
+    const now = new Date("2026-06-05T12:00:00+08:00").getTime();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const repository = new MemoryStateRepository({
+      targetAmount: 1000,
+      sponsors: [
+        baseRecord({ id: "recent-a", bossName: "Boss A", amount: 100, createdAt: now - RECENT_RANKING_WINDOW_MS }),
+        baseRecord({ id: "expired-a", bossName: "Boss A", amount: 900, createdAt: now - RECENT_RANKING_WINDOW_MS - 1 }),
+        baseRecord({ id: "recent-c", bossName: "Boss C", amount: 300, createdAt: now - DAY_MS }),
+        baseRecord({ id: "old-b", bossName: "Boss B", amount: 500, createdAt: now - RECENT_RANKING_WINDOW_MS - DAY_MS })
+      ]
+    });
+
+    const state = await new DonationService(repository).getState();
+
+    expect(state.sponsors.map((record) => record.id)).toEqual(["recent-a", "expired-a", "recent-c", "old-b"]);
+    expect(state.ranking.map((item) => [item.bossName, item.totalAmount])).toEqual([
+      ["Boss C", 300],
+      ["Boss A", 100]
+    ]);
+  });
+
+  it("uses the latest available avatar from records inside the recent ranking window", async () => {
+    const now = new Date("2026-06-05T12:00:00+08:00").getTime();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({
+          id: "old-avatar",
+          bossName: "Boss A",
+          amount: 800,
+          avatarUrl: "/avatars/old.webp",
+          createdAt: now - RECENT_RANKING_WINDOW_MS - 1
+        } as any),
+        baseRecord({
+          id: "recent-old-avatar",
+          bossName: "Boss A",
+          amount: 100,
+          avatarUrl: "/avatars/recent-old.webp",
+          createdAt: now - 3 * DAY_MS
+        } as any),
+        baseRecord({ id: "recent-no-avatar", bossName: "Boss A", amount: 100, createdAt: now - 2 * DAY_MS }),
+        baseRecord({
+          id: "recent-new-avatar",
+          bossName: "Boss A",
+          amount: 200,
+          avatarUrl: "/avatars/recent-new.webp",
+          createdAt: now - DAY_MS
+        } as any)
+      ]
+    });
+
+    const state = await new DonationService(repository).getState();
+
+    expect(state.ranking).toEqual([
+      expect.objectContaining({
+        bossName: "Boss A",
+        totalAmount: 400,
+        avatarUrl: "/avatars/recent-new.webp"
+      })
+    ]);
+  });
+
   it("uses the latest available sponsor avatar in the total ranking", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10);
     const repository = new MemoryStateRepository({
       sponsors: [
         baseRecord({ id: "a", bossName: "Boss A", amount: 100, avatarUrl: "/avatars/a-old.webp", createdAt: 1 } as any),
@@ -244,6 +316,8 @@ describe("DonationService", () => {
   });
 
   it("edits a historical sponsor amount and recalculates charge and ranking", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10);
     const repository = new MemoryStateRepository({
       targetAmount: 1000,
       sponsors: [

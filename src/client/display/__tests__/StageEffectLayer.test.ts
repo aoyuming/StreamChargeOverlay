@@ -8,11 +8,16 @@ import {
 } from "../StageEffectLayer";
 
 class FakeGradient {
-  public addColorStop(): void {}
+  public readonly stops: Array<[number, string]> = [];
+
+  public addColorStop(offset: number, color: string): void {
+    this.stops.push([offset, color]);
+  }
 }
 
 class FakeContext {
   public readonly calls: unknown[][] = [];
+  public readonly gradients: FakeGradient[] = [];
   public fillStyle = "";
   public globalAlpha = 1;
   public globalCompositeOperation = "";
@@ -29,6 +34,10 @@ class FakeContext {
     this.calls.push(["beginPath"]);
   }
 
+  public bezierCurveTo(...args: unknown[]): void {
+    this.calls.push(["bezierCurveTo", ...args]);
+  }
+
   public clearRect(...args: unknown[]): void {
     this.calls.push(["clearRect", ...args]);
   }
@@ -38,11 +47,15 @@ class FakeContext {
   }
 
   public createLinearGradient(): FakeGradient {
-    return new FakeGradient();
+    const gradient = new FakeGradient();
+    this.gradients.push(gradient);
+    return gradient;
   }
 
   public createRadialGradient(): FakeGradient {
-    return new FakeGradient();
+    const gradient = new FakeGradient();
+    this.gradients.push(gradient);
+    return gradient;
   }
 
   public fill(): void {
@@ -180,5 +193,41 @@ describe("StageEffectLayer", () => {
     expect(context.calls.some((call) => call[0] === "arc")).toBe(true);
     expect(context.calls.some((call) => call[0] === "fillRect")).toBe(true);
     expect(context.calls.some((call) => call[0] === "fillText" && call[1] === "现在开始点将")).toBe(true);
+  });
+
+  it("draws the dianjiang effect as a cool electric dragon without gold-orange colors", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playDianjiangEffect();
+    callbacks[0]?.(100);
+
+    const colors = [
+      ...context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)),
+      context.fillStyle,
+      context.strokeStyle,
+      context.shadowColor
+    ].join("\n");
+
+    expect(context.calls.some((call) => call[0] === "bezierCurveTo")).toBe(true);
+    expect(colors).toContain("rgba(46, 234, 255");
+    expect(colors).not.toContain("rgba(255, 246");
+    expect(colors).not.toContain("rgba(255, 184");
+    expect(colors).not.toContain("rgba(255, 120");
   });
 });
