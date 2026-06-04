@@ -87,6 +87,7 @@ const sponsor = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
   amount: 300,
   programName: "program fallback",
   note: "",
+  countsTowardCharge: true,
   createdAt: 1,
   ...overrides
 });
@@ -95,6 +96,7 @@ const state = (progressPercent: number, overrides: Partial<DerivedAppState> = {}
   targetAmount: 1000,
   slogan: "",
   sponsors: [],
+  chargeConsumedAmount: 0,
   totalAmount: progressPercent * 10,
   progressPercent,
   goalReached: progressPercent >= 100,

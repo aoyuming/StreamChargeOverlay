@@ -6,6 +6,7 @@ const emptyState: DerivedAppState = {
   targetAmount: 1000,
   slogan: "slogan",
   sponsors: [],
+  chargeConsumedAmount: 0,
   totalAmount: 0,
   progressPercent: 0,
   goalReached: false,

@@ -13,7 +13,7 @@ export class AdminSummaryView {
     this.totalElement.textContent = formatAmount(state.totalAmount);
     this.targetElement.value = String(state.targetAmount);
     this.sloganElement.value = state.slogan;
-    this.statusElement.textContent = state.goalReached ? "已达成，可以开始" : "未达成，继续累积";
+    this.statusElement.textContent = state.goalReached ? "已达成，可以开始" : "未达成，点将会归0";
     this.statusElement.classList.toggle("is-ready", state.goalReached);
   }
 }

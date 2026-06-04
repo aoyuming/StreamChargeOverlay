@@ -51,19 +51,19 @@ export class DisplayApp {
   private render(state: DerivedAppState): void {
     const shouldPulse = state.totalAmount > this.lastTotalAmount;
     const latestNewSponsor = this.findLatestNewSponsor(state);
-    this.progressPanel.render(state, state.sponsors);
+    this.progressPanel.render(state, state.programQueue);
     this.rankingTicker.render(state.ranking);
 
-    if (shouldPulse && this.lastTotalAmount > 0) {
-      this.progressPanel.pulse();
-      if (latestNewSponsor) {
-        this.sponsorBurst.show(latestNewSponsor);
-        void this.sponsorSound.play();
-        if (state.speechAlert) {
-          this.sponsorSpeechAudio.play(state.speechAlert);
-        } else {
-          this.sponsorSpeech.speak(latestNewSponsor);
-        }
+    if (latestNewSponsor) {
+      if (shouldPulse) {
+        this.progressPanel.pulse();
+      }
+      this.sponsorBurst.show(latestNewSponsor);
+      void this.sponsorSound.play();
+      if (state.speechAlert) {
+        this.sponsorSpeechAudio.play(state.speechAlert);
+      } else {
+        this.sponsorSpeech.speak(latestNewSponsor);
       }
       document.body.classList.add("has-new-sponsor");
       window.setTimeout(() => document.body.classList.remove("has-new-sponsor"), 900);

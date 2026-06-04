@@ -12,6 +12,8 @@ export class AdminApp {
   private readonly targetForm: TargetFormController;
   private readonly summaryView: AdminSummaryView;
   private readonly recordListView: RecordListView;
+  private readonly startDianjiangButton: HTMLButtonElement;
+  private readonly removeTodaySponsorsButton: HTMLButtonElement;
 
   public constructor(
     private readonly apiClient: ApiClient,
@@ -29,6 +31,8 @@ export class AdminApp {
       queryRequired("#adminStatus")
     );
     this.recordListView = new RecordListView(queryRequired("#recordList"));
+    this.startDianjiangButton = queryRequired("#startDianjiangButton");
+    this.removeTodaySponsorsButton = queryRequired("#removeTodaySponsorsButton");
   }
 
   public async start(): Promise<void> {
@@ -44,8 +48,20 @@ export class AdminApp {
       await this.apiClient.updateSettings(request);
     });
 
-    this.recordListView.onDelete(async (id) => {
-      await this.apiClient.deleteSponsor(id);
+    this.startDianjiangButton.addEventListener("click", () => {
+      void this.apiClient.startDianjiang();
+    });
+
+    this.removeTodaySponsorsButton.addEventListener("click", () => {
+      void this.apiClient.removeTodaySponsors();
+    });
+
+    this.recordListView.onRemoveFromToday(async (id) => {
+      await this.apiClient.removeSponsorFromToday(id);
+    });
+
+    this.recordListView.onUpdateAmount(async (id, amount) => {
+      await this.apiClient.updateSponsorAmount(id, amount);
     });
 
     this.realtimeClient.onStateUpdated((state) => this.render(state));
@@ -54,6 +70,9 @@ export class AdminApp {
 
   private render(state: DerivedAppState): void {
     this.summaryView.render(state);
-    this.recordListView.render(state.sponsors);
+    this.recordListView.render(state.sponsors, state.programQueue);
+    this.startDianjiangButton.disabled = state.totalAmount <= 0;
+    this.startDianjiangButton.textContent = state.goalReached ? "开始点将" : "开始点将（归0）";
+    this.removeTodaySponsorsButton.disabled = state.programQueue.length === 0;
   }
 }

@@ -33,6 +33,7 @@ export class SponsorFormController {
       bossName: String(formData.get("bossName") ?? ""),
       amount: Number(formData.get("amount") ?? 0),
       programName: String(formData.get("programName") ?? ""),
+      countsTowardCharge: formData.get("countsTowardCharge") === "on",
       note: String(formData.get("note") ?? "")
     };
 

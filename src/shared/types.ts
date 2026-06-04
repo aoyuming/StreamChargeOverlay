@@ -4,12 +4,15 @@ export interface SponsorRecord {
   amount: number;
   programName: string;
   note: string;
+  countsTowardCharge: boolean;
+  hiddenFromTodayAt?: number;
   createdAt: number;
 }
 
 export interface AppState {
   targetAmount: number;
   slogan: string;
+  chargeConsumedAmount: number;
   sponsors: SponsorRecord[];
 }
 
@@ -40,7 +43,12 @@ export interface AddSponsorRequest {
   bossName: string;
   amount: number;
   programName: string;
+  countsTowardCharge?: boolean;
   note?: string;
+}
+
+export interface UpdateSponsorAmountRequest {
+  amount: number;
 }
 
 export interface UpdateTargetRequest {

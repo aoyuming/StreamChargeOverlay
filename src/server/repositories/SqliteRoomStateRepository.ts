@@ -18,6 +18,7 @@ type RoomRow = {
 type SettingsRow = {
   target_amount: number;
   slogan: string;
+  charge_consumed_amount: number;
 };
 
 type SponsorRow = {
@@ -26,6 +27,8 @@ type SponsorRow = {
   amount: number;
   program_name: string;
   note: string;
+  counts_toward_charge: number;
+  hidden_from_today_at: number | null;
   created_at: number;
 };
 
@@ -70,7 +73,7 @@ export class SqliteRoomStateRepository implements StateRepository {
     const sponsors = this.database
       .prepare(
         `
-        SELECT id, boss_name, amount, program_name, note, created_at
+        SELECT id, boss_name, amount, program_name, note, counts_toward_charge, hidden_from_today_at, created_at
         FROM sponsor_records
         WHERE room_id = ?
         ORDER BY created_at ASC
@@ -81,12 +84,15 @@ export class SqliteRoomStateRepository implements StateRepository {
     return {
       targetAmount: settings.target_amount,
       slogan: settings.slogan,
+      chargeConsumedAmount: settings.charge_consumed_amount,
       sponsors: sponsors.map((row) => ({
         id: row.id,
         bossName: row.boss_name,
         amount: row.amount,
         programName: row.program_name,
         note: row.note,
+        countsTowardCharge: row.counts_toward_charge === 1,
+        hiddenFromTodayAt: row.hidden_from_today_at ?? undefined,
         createdAt: row.created_at
       }))
     };
@@ -97,21 +103,24 @@ export class SqliteRoomStateRepository implements StateRepository {
       this.database
         .prepare(
           `
-          INSERT INTO room_settings (room_id, target_amount, slogan)
-          VALUES (?, ?, ?)
+          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount)
+          VALUES (?, ?, ?, ?)
           ON CONFLICT(room_id) DO UPDATE SET
             target_amount = excluded.target_amount,
-            slogan = excluded.slogan
+            slogan = excluded.slogan,
+            charge_consumed_amount = excluded.charge_consumed_amount
         `
         )
-        .run(this.roomId, nextState.targetAmount, nextState.slogan);
+        .run(this.roomId, nextState.targetAmount, nextState.slogan, nextState.chargeConsumedAmount);
 
       this.database.prepare("DELETE FROM sponsor_records WHERE room_id = ?").run(this.roomId);
 
       const insertSponsor = this.database.prepare(
         `
-        INSERT INTO sponsor_records (id, room_id, boss_name, amount, program_name, note, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO sponsor_records (
+          id, room_id, boss_name, amount, program_name, note, counts_toward_charge, hidden_from_today_at, created_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       );
 
@@ -123,6 +132,8 @@ export class SqliteRoomStateRepository implements StateRepository {
           record.amount,
           record.programName,
           record.note,
+          record.countsTowardCharge === false ? 0 : 1,
+          record.hiddenFromTodayAt ?? null,
           record.createdAt
         );
       }
@@ -157,6 +168,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         room_id TEXT PRIMARY KEY,
         target_amount REAL NOT NULL,
         slogan TEXT NOT NULL,
+        charge_consumed_amount REAL NOT NULL DEFAULT 0,
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
       );
 
@@ -167,6 +179,8 @@ export class SqliteRoomStateRepository implements StateRepository {
         amount REAL NOT NULL,
         program_name TEXT NOT NULL,
         note TEXT NOT NULL,
+        counts_toward_charge INTEGER NOT NULL DEFAULT 1,
+        hidden_from_today_at INTEGER,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
       );
@@ -174,6 +188,18 @@ export class SqliteRoomStateRepository implements StateRepository {
       CREATE INDEX IF NOT EXISTS idx_sponsor_records_room_created
         ON sponsor_records(room_id, created_at);
     `);
+    this.ensureColumn(database, "room_settings", "charge_consumed_amount", "REAL NOT NULL DEFAULT 0");
+    this.ensureColumn(database, "sponsor_records", "counts_toward_charge", "INTEGER NOT NULL DEFAULT 1");
+    this.ensureColumn(database, "sponsor_records", "hidden_from_today_at", "INTEGER");
+  }
+
+  private static ensureColumn(database: Database.Database, tableName: string, columnName: string, definition: string): void {
+    const columns = database.prepare(`PRAGMA table_info(${tableName})`).all() as Array<{ name: string }>;
+    if (columns.some((column) => column.name === columnName)) {
+      return;
+    }
+
+    database.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
   }
 
   private static ensureRoom(database: Database.Database, roomSlug: string): string {
@@ -196,9 +222,9 @@ export class SqliteRoomStateRepository implements StateRepository {
     database
       .prepare(
         `
-        INSERT INTO room_settings (room_id, target_amount, slogan)
-        VALUES (?, ?, ?)
-        ON CONFLICT(room_id) DO NOTHING
+          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount)
+          VALUES (?, ?, ?, 0)
+          ON CONFLICT(room_id) DO NOTHING
       `
       )
       .run(room.id, DEFAULT_TARGET_AMOUNT, DEFAULT_SLOGAN);
@@ -208,11 +234,11 @@ export class SqliteRoomStateRepository implements StateRepository {
 
   private loadSettings(): SettingsRow {
     const settings = this.database
-      .prepare("SELECT target_amount, slogan FROM room_settings WHERE room_id = ?")
+      .prepare("SELECT target_amount, slogan, charge_consumed_amount FROM room_settings WHERE room_id = ?")
       .get(this.roomId) as SettingsRow | undefined;
 
     if (!settings) {
-      return { target_amount: DEFAULT_TARGET_AMOUNT, slogan: DEFAULT_SLOGAN };
+      return { target_amount: DEFAULT_TARGET_AMOUNT, slogan: DEFAULT_SLOGAN, charge_consumed_amount: 0 };
     }
 
     return settings;
@@ -249,7 +275,14 @@ export class SqliteRoomStateRepository implements StateRepository {
       return {
         targetAmount: typeof parsed.targetAmount === "number" ? parsed.targetAmount : DEFAULT_TARGET_AMOUNT,
         slogan: typeof parsed.slogan === "string" ? parsed.slogan : DEFAULT_SLOGAN,
-        sponsors: Array.isArray(parsed.sponsors) ? (parsed.sponsors as SponsorRecord[]) : []
+        chargeConsumedAmount: typeof parsed.chargeConsumedAmount === "number" ? parsed.chargeConsumedAmount : 0,
+        sponsors: Array.isArray(parsed.sponsors)
+          ? (parsed.sponsors as SponsorRecord[]).map((record) => ({
+              ...record,
+              countsTowardCharge: record.countsTowardCharge !== false,
+              hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined
+            }))
+          : []
       };
     } catch (error) {
       if (error instanceof Error && "code" in error && error.code === "ENOENT") {

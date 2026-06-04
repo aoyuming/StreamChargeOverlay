@@ -102,4 +102,67 @@ describe("ApiController room routing", () => {
 
     expect(state.sponsors.map((record) => record.bossName)).toEqual(["default boss"]);
   });
+
+  it("exposes room-scoped charge, amount edit, and today-list management routes", async () => {
+    const app = express();
+    const realtimeHub = new FakeRealtimeHub();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      realtimeHub,
+      new FakeSpeechService(),
+      "default"
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    await fetch(`${running.baseUrl}/rooms/alpha/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ targetAmount: 500, slogan: "alpha slogan" })
+    });
+    const added = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bossName: "alpha boss", amount: 300, programName: "alpha program", countsTowardCharge: true })
+    })).json()) as DerivedAppState;
+    const sponsorId = added.sponsors[0]?.id ?? "";
+
+    const edited = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/amount`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ amount: 240 })
+    })).json()) as DerivedAppState;
+    const started = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/charge/start`, {
+      method: "POST"
+    })).json()) as DerivedAppState;
+    const removed = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/remove-from-today`, {
+      method: "POST"
+    })).json()) as DerivedAppState;
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ bossName: "next boss", amount: 100, programName: "next program", countsTowardCharge: false })
+    });
+    const bulkRemoved = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/remove-from-today`, {
+      method: "POST"
+    })).json()) as DerivedAppState;
+
+    expect(edited.sponsors.find((record) => record.id === sponsorId)?.amount).toBe(240);
+    expect(edited.totalAmount).toBe(240);
+    expect(started.totalAmount).toBe(0);
+    expect(started.chargeConsumedAmount).toBe(240);
+    expect(removed.sponsors.find((record) => record.id === sponsorId)?.hiddenFromTodayAt).toEqual(expect.any(Number));
+    expect(removed.programQueue).toEqual([]);
+    expect(bulkRemoved.programQueue).toEqual([]);
+    expect(realtimeHub.updates.map((update) => update.roomSlug)).toEqual([
+      "alpha",
+      "alpha",
+      "alpha",
+      "alpha",
+      "alpha",
+      "alpha",
+      "alpha"
+    ]);
+  });
 });

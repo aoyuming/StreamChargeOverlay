@@ -11,6 +11,7 @@ const record = (overrides: Partial<SponsorRecord>): SponsorRecord => ({
   amount: 100,
   programName: "点将",
   note: "",
+  countsTowardCharge: true,
   createdAt: NOW,
   ...overrides
 });

@@ -13,7 +13,7 @@
           <p>添加老板赞助、节目点单和目标金额，展示页会实时同步。</p>
         </div>
         <div class="summary-card">
-          <span>当前总赞助</span>
+          <span>当前启动资金</span>
           <strong>¥<span id="adminTotal">0</span></strong>
           <em id="adminStatus">未达成</em>
         </div>
@@ -38,6 +38,10 @@
             注释 / 指定职业或玩法
             <textarea name="note" rows="3" placeholder="例如：指定职业、玩法、惩罚规则，给主持人看的提示"></textarea>
           </label>
+          <label class="checkbox-field">
+            <input name="countsTowardCharge" type="checkbox" checked />
+            <span>加入启动资金充能</span>
+          </label>
           <div id="formError" class="form-error" role="alert"></div>
           <button class="primary-button" type="submit">添加到榜单</button>
         </form>
@@ -61,10 +65,14 @@
               />
             </label>
             <button class="secondary-button" type="submit">更新设置</button>
+            <button id="startDianjiangButton" class="primary-button" type="button">开始点将</button>
           </form>
 
           <section class="tool-panel records-panel">
-            <h2>赞助记录</h2>
+            <div class="records-header">
+              <h2>赞助记录</h2>
+              <button id="removeTodaySponsorsButton" class="ghost-button" type="button">一键移除今日榜单</button>
+            </div>
             <div id="recordList" class="record-list"></div>
           </section>
         </aside>

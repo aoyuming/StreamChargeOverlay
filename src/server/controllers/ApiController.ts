@@ -6,6 +6,7 @@ import type {
   DerivedAppState,
   SpeechAlert,
   SponsorRecord,
+  UpdateSponsorAmountRequest,
   UpdateSettingsRequest,
   UpdateTargetRequest
 } from "../../shared/types";
@@ -42,6 +43,18 @@ export class ApiController {
     app.delete("/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
     app.delete("/rooms/:roomSlug/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
 
+    app.patch("/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
+    app.patch("/rooms/:roomSlug/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
+
+    app.post("/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
+    app.post("/rooms/:roomSlug/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
+
+    app.post("/api/sponsors/remove-from-today", this.wrap((request, response) => this.removeTodaySponsors(request, response)));
+    app.post("/rooms/:roomSlug/api/sponsors/remove-from-today", this.wrap((request, response) => this.removeTodaySponsors(request, response)));
+
+    app.post("/api/charge/start", this.wrap((request, response) => this.startDianjiang(request, response)));
+    app.post("/rooms/:roomSlug/api/charge/start", this.wrap((request, response) => this.startDianjiang(request, response)));
+
     app.put("/api/settings/target", this.wrap((request, response) => this.updateTargetAmount(request, response)));
     app.put("/rooms/:roomSlug/api/settings/target", this.wrap((request, response) => this.updateTargetAmount(request, response)));
 
@@ -68,6 +81,35 @@ export class ApiController {
   private async deleteSponsor(request: Request, response: Response): Promise<void> {
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteSponsor(String(request.params.id ?? ""));
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async updateSponsorAmount(request: Request, response: Response): Promise<void> {
+    const roomSlug = this.roomSlugFrom(request);
+    const body = request.body as UpdateSponsorAmountRequest;
+    const state = await (await this.serviceFor(request)).updateSponsorAmount(String(request.params.id ?? ""), body.amount);
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async removeSponsorFromToday(request: Request, response: Response): Promise<void> {
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).removeSponsorFromToday(String(request.params.id ?? ""));
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async removeTodaySponsors(request: Request, response: Response): Promise<void> {
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).removeTodaySponsors();
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async startDianjiang(request: Request, response: Response): Promise<void> {
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).startDianjiang();
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }

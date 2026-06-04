@@ -23,6 +23,7 @@ describe("display layout", () => {
     expect(displayApp).not.toContain("TodayRankingTicker");
     expect(displayApp).not.toContain("buildTodayRanking");
     expect(displayApp).not.toContain("todayRanking");
+    expect(displayApp).toContain("this.progressPanel.render(state, state.programQueue)");
   });
 
   it("labels all current boss columns", () => {

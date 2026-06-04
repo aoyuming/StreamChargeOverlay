@@ -1,0 +1,35 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { describe, expect, it } from "vitest";
+
+describe("admin layout", () => {
+  const adminHtml = readFileSync(resolve(process.cwd(), "admin.html"), "utf8");
+  const adminCss = readFileSync(resolve(process.cwd(), "src/client/styles/admin.css"), "utf8");
+  const adminApp = readFileSync(resolve(process.cwd(), "src/client/admin/AdminApp.ts"), "utf8");
+  const sponsorForm = readFileSync(resolve(process.cwd(), "src/client/admin/SponsorFormController.ts"), "utf8");
+  const recordListView = readFileSync(resolve(process.cwd(), "src/client/admin/RecordListView.ts"), "utf8");
+
+  it("asks whether a new sponsor joins startup charge", () => {
+    expect(adminHtml).toContain('name="countsTowardCharge"');
+    expect(adminHtml).toContain('type="checkbox"');
+    expect(adminHtml).toContain("加入启动资金充能");
+    expect(sponsorForm).toContain("countsTowardCharge");
+  });
+
+  it("adds start dianjiang and bulk today-list removal controls", () => {
+    expect(adminHtml).toContain('id="startDianjiangButton"');
+    expect(adminHtml).toContain("开始点将");
+    expect(adminHtml).toContain('id="removeTodaySponsorsButton"');
+    expect(adminApp).toContain("this.apiClient.startDianjiang()");
+    expect(adminApp).toContain("this.apiClient.removeTodaySponsors()");
+  });
+
+  it("uses inline amount editing and soft remove actions in records", () => {
+    expect(recordListView).toContain("onUpdateAmount");
+    expect(recordListView).toContain("onRemoveFromToday");
+    expect(recordListView).toContain("record-amount-input");
+    expect(recordListView).toContain("移除今日榜单");
+    expect(adminCss).toContain(".record-actions");
+    expect(adminCss).toContain(".record-amount-input");
+  });
+});

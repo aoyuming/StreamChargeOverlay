@@ -7,6 +7,7 @@ export class MemoryStateRepository implements StateRepository {
     this.state = {
       targetAmount: initialState?.targetAmount ?? 1000,
       slogan: initialState?.slogan ?? "赞助点将，名场面马上开演",
+      chargeConsumedAmount: initialState?.chargeConsumedAmount ?? 0,
       sponsors: initialState?.sponsors ?? []
     };
   }

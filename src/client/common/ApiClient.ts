@@ -23,6 +23,31 @@ export class ApiClient {
     });
   }
 
+  public async startDianjiang(): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath("/charge/start"), {
+      method: "POST"
+    });
+  }
+
+  public async updateSponsorAmount(id: string, amount: number): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/amount`), {
+      method: "PATCH",
+      body: JSON.stringify({ amount })
+    });
+  }
+
+  public async removeSponsorFromToday(id: string): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/remove-from-today`), {
+      method: "POST"
+    });
+  }
+
+  public async removeTodaySponsors(): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath("/sponsors/remove-from-today"), {
+      method: "POST"
+    });
+  }
+
   public async updateTargetAmount(targetAmount: number): Promise<DerivedAppState> {
     return this.request<DerivedAppState>(this.apiPath("/settings/target"), {
       method: "PUT",
