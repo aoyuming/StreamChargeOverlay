@@ -2,10 +2,10 @@ import { createServer } from "node:http";
 import { resolve } from "node:path";
 import express from "express";
 import { Server as SocketServer } from "socket.io";
-import { createServer as createViteServer } from "vite";
 import { normalizeRoomSlug } from "../shared/RoomSlug";
 import { AppConfig } from "./config/AppConfig";
 import { ApiController } from "./controllers/ApiController";
+import { registerFrontendRoutes } from "./frontendRoutes";
 import { SqliteRoomStateRepositoryFactory } from "./repositories/RoomStateRepositoryFactory";
 import { AuthService } from "./services/AuthService";
 import { AvatarService } from "./services/AvatarService";
@@ -57,34 +57,16 @@ io.on("connection", async (socket) => {
   realtimeHub.sendInitialState(socket.id, await donationService.getState());
 });
 
-// Room-scoped pages reuse the same Vite entries. The browser keeps the original
-// URL, and RoomContext scopes API/socket calls to the room segment.
-app.get("/rooms/:roomSlug/display.html", (request, _response, next) => {
-  request.url = "/display.html";
-  next();
+// Room-scoped pages reuse the same frontend entries. In production the server
+// serves dist/client; in development Vite keeps hot reload wired into HTTP.
+await registerFrontendRoutes({
+  app,
+  httpServer,
+  isProduction: config.isProduction
 });
-
-app.get("/rooms/:roomSlug/admin.html", (request, _response, next) => {
-  request.url = "/admin.html";
-  next();
-});
-
-// In development, Vite serves frontend files from the same Node process as API
-// and Socket.IO. Production can replace this with static dist serving later.
-const vite = await createViteServer({
-  appType: "mpa",
-  server: {
-    middlewareMode: true,
-    hmr: {
-      server: httpServer
-    }
-  }
-});
-
-app.use(vite.middlewares);
 
 httpServer.listen(config.port, () => {
-  console.log(`赞助同步服务已启动: http://localhost:${config.port}/display.html`);
-  console.log(`默认房间后台: http://localhost:${config.port}/admin.html`);
-  console.log(`房间示例: http://localhost:${config.port}/rooms/${config.defaultRoomSlug}/display.html`);
+  console.log(`Sponsor overlay server is running: http://localhost:${config.port}/display.html`);
+  console.log(`Admin page: http://localhost:${config.port}/admin.html`);
+  console.log(`Room display example: http://localhost:${config.port}/rooms/${config.defaultRoomSlug}/display.html`);
 });
