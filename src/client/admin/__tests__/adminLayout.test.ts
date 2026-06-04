@@ -40,12 +40,16 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="roomSelect"');
     expect(adminHtml).toContain('id="roomForm"');
     expect(adminHtml).toContain('id="deleteRoomButton"');
+    expect(adminHtml).toContain('id="roomViewerPasswordInput"');
+    expect(adminHtml).toContain('id="updateRoomViewerPasswordButton"');
     expect(adminHtml).toContain('id="authForm"');
     expect(adminHtml).toContain('name="password"');
     expect(adminApp).toContain("this.apiClient.login");
     expect(adminApp).toContain("this.apiClient.getRooms");
     expect(adminApp).toContain("this.apiClient.createRoom");
     expect(adminApp).toContain("this.apiClient.deleteRoom");
+    expect(adminApp).toContain("this.apiClient.updateRoomViewerPassword");
+    expect(adminApp).toContain("sessionCanOperateCurrentRoom");
   });
 
   it("adds start dianjiang and bulk today-list removal controls", () => {

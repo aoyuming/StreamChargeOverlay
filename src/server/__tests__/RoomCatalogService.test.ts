@@ -22,7 +22,7 @@ describe("RoomCatalogService", () => {
   });
 
   it("seeds default rooms, creates new rooms, and soft-deletes rooms", async () => {
-    const service = new RoomCatalogService(await createDatabasePath());
+    const service = new RoomCatalogService(await createDatabasePath(), "legacy-viewer-password");
 
     expect(service.listRooms().map((room) => [room.slug, room.name])).toEqual([
       ["wenrou", "温柔房"],
@@ -37,5 +37,18 @@ describe("RoomCatalogService", () => {
 
     service.deleteRoom(created.slug);
     expect(service.listRooms().map((room) => room.slug)).not.toContain(created.slug);
+  });
+
+  it("matches and updates room viewer passwords without exposing plaintext", async () => {
+    const service = new RoomCatalogService(await createDatabasePath(), "legacy-viewer-password");
+
+    expect(service.matchesViewerPassword("wenrou", "legacy-viewer-password")).toBe(true);
+    expect(service.matchesViewerPassword("liyong", "wrong-password")).toBe(false);
+
+    service.updateViewerPassword("wenrou", "next-viewer-password");
+
+    expect(service.matchesViewerPassword("wenrou", "legacy-viewer-password")).toBe(false);
+    expect(service.matchesViewerPassword("wenrou", "next-viewer-password")).toBe(true);
+    expect(service.listRooms()[0]).not.toHaveProperty("viewerPassword");
   });
 });

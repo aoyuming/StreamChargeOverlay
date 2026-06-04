@@ -6,9 +6,11 @@ import type {
   AuthRole,
   CreateRoomRequest,
   DerivedAppState,
+  LoginRequest,
   RoomInfo,
   SpeechAlert,
   SponsorRecord,
+  UpdateRoomViewerPasswordRequest,
   UpdateSponsorAmountRequest,
   UpdateSponsorAvatarRequest,
   UpdateSettingsRequest,
@@ -33,6 +35,8 @@ export interface RoomCatalog {
   listRooms(): RoomInfo[];
   createRoom(request: CreateRoomRequest): RoomInfo;
   deleteRoom(slug: string): RoomInfo[];
+  matchesViewerPassword(roomSlug: string, password: string): boolean;
+  updateViewerPassword(roomSlug: string, password: string): void;
 }
 
 // Resolves room-scoped HTTP requests, delegates business rules to DonationService,
@@ -52,6 +56,7 @@ export class ApiController {
     app.get("/api/rooms", this.wrap((request, response) => this.listRooms(request, response)));
     app.post("/api/rooms", this.wrap((request, response) => this.createRoom(request, response)));
     app.delete("/api/rooms/:roomSlug", this.wrap((request, response) => this.deleteRoom(request, response)));
+    app.patch("/api/rooms/:roomSlug/viewer-password", this.wrap((request, response) => this.updateRoomViewerPassword(request, response)));
 
     app.post("/api/auth/login", this.wrap((request, response) => this.login(request, response)));
     app.get("/api/auth/me", this.wrap((request, response) => this.getAuthSession(request, response)));
@@ -119,9 +124,31 @@ export class ApiController {
     response.json(this.roomCatalog.deleteRoom(String(request.params.roomSlug ?? "")));
   }
 
+  private async updateRoomViewerPassword(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    if (!this.roomCatalog) {
+      throw new Error("房间管理服务未启用");
+    }
+
+    const body = request.body as UpdateRoomViewerPasswordRequest;
+    this.roomCatalog.updateViewerPassword(String(request.params.roomSlug ?? ""), String(body.password ?? ""));
+    response.json({ ok: true });
+  }
+
   private async login(request: Request, response: Response): Promise<void> {
-    const body = request.body as { password?: string };
-    const session = this.authService.login(String(body.password ?? ""));
+    const body = request.body as LoginRequest;
+    const password = String(body.password ?? "");
+    const roomSlug = normalizeRoomSlug(body.roomSlug, this.defaultRoomSlug);
+    const session =
+      this.authService.loginAdmin(password) ??
+      (this.roomCatalog
+        ? this.roomCatalog.matchesViewerPassword(roomSlug, password)
+          ? { role: "viewer" as const, roomSlug }
+          : null
+        : this.authService.loginViewer(password, roomSlug));
     if (!session) {
       response.status(401).json({ error: "密码不正确" });
       return;
@@ -280,7 +307,7 @@ export class ApiController {
   }
 
   private requireRole(request: Request, response: Response, role: AuthRole): boolean {
-    if (this.authService.hasRole(request.headers.cookie, role)) {
+    if (this.authService.hasRole(request.headers.cookie, role, this.roomSlugFrom(request))) {
       return true;
     }
 

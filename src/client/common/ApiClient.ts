@@ -4,7 +4,9 @@ import type {
   AuthSession,
   CreateRoomRequest,
   DerivedAppState,
+  LoginRequest,
   RoomInfo,
+  UpdateRoomViewerPasswordRequest,
   UpdateSponsorAvatarRequest,
   UpdateSettingsRequest
 } from "../../shared/types";
@@ -46,9 +48,18 @@ export class ApiClient {
   }
 
   public async login(password: string): Promise<AuthSession> {
+    const request: LoginRequest = { password, roomSlug: this.roomContext.slug };
     return this.request<AuthSession>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ password })
+      body: JSON.stringify(request)
+    });
+  }
+
+  public async updateRoomViewerPassword(slug: string, password: string): Promise<void> {
+    const request: UpdateRoomViewerPasswordRequest = { password };
+    await this.request<{ ok: true }>(`/api/rooms/${encodeURIComponent(slug)}/viewer-password`, {
+      method: "PATCH",
+      body: JSON.stringify(request)
     });
   }
 

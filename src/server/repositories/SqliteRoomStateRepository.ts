@@ -186,6 +186,8 @@ export class SqliteRoomStateRepository implements StateRepository {
         name TEXT NOT NULL,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
+        viewer_password_hash TEXT,
+        viewer_password_salt TEXT,
         deleted_at INTEGER
       );
 
@@ -216,6 +218,8 @@ export class SqliteRoomStateRepository implements StateRepository {
         ON sponsor_records(room_id, created_at);
     `);
     this.ensureColumn(database, "rooms", "deleted_at", "INTEGER");
+    this.ensureColumn(database, "rooms", "viewer_password_hash", "TEXT");
+    this.ensureColumn(database, "rooms", "viewer_password_salt", "TEXT");
     this.ensureColumn(database, "room_settings", "charge_consumed_amount", "REAL NOT NULL DEFAULT 0");
     this.ensureColumn(database, "room_settings", "last_dianjiang_effect_at", "INTEGER");
     this.ensureColumn(database, "sponsor_records", "counts_toward_charge", "INTEGER NOT NULL DEFAULT 1");

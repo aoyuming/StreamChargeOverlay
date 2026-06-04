@@ -46,6 +46,7 @@ export type AuthRole = "viewer" | "admin";
 
 export interface AuthSession {
   role: AuthRole;
+  roomSlug?: string;
 }
 
 export interface RoomInfo {
@@ -56,6 +57,15 @@ export interface RoomInfo {
 
 export interface CreateRoomRequest {
   name: string;
+}
+
+export interface LoginRequest {
+  password: string;
+  roomSlug?: string;
+}
+
+export interface UpdateRoomViewerPasswordRequest {
+  password: string;
 }
 
 export interface AddSponsorRequest {

@@ -104,7 +104,8 @@ p {
 
 .auth-form,
 .room-admin,
-.room-form {
+.room-form,
+.room-password-form {
   display: flex;
   align-items: end;
   gap: 10px;
@@ -127,7 +128,8 @@ p {
 
 .auth-form input,
 .room-admin select,
-.room-form input {
+.room-form input,
+.room-password-form input {
   height: 40px;
   padding: 8px 10px;
 }
@@ -143,10 +145,16 @@ p {
 
 .auth-form button,
 .room-form button,
+.room-password-form button,
 .room-admin > button {
   width: auto;
   height: 40px;
   white-space: nowrap;
+}
+
+.room-password-form {
+  flex: 1 1 250px;
+  min-width: 250px;
 }
 
 .auth-status {

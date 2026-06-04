@@ -1,7 +1,7 @@
 import { createServer, type Server } from "node:http";
 import express from "express";
 import { afterEach, describe, expect, it } from "vitest";
-import type { DerivedAppState, SponsorRecord, StateRepository } from "../../shared/types";
+import type { CreateRoomRequest, DerivedAppState, RoomInfo, SponsorRecord, StateRepository } from "../../shared/types";
 import { ApiController } from "../controllers/ApiController";
 import { AuthService } from "../services/AuthService";
 import { MemoryStateRepository } from "./MemoryStateRepository";
@@ -44,6 +44,36 @@ class FakeAvatarStorage {
 
   public async clearAvatar(avatarUrl: string): Promise<void> {
     this.cleared.push(avatarUrl);
+  }
+}
+
+class FakeRoomCatalog {
+  private readonly viewerPasswords = new Map([
+    ["alpha", "alpha-viewer"],
+    ["beta", "beta-viewer"]
+  ]);
+
+  public listRooms(): RoomInfo[] {
+    return [
+      { slug: "alpha", name: "Alpha", createdAt: 1 },
+      { slug: "beta", name: "Beta", createdAt: 2 }
+    ];
+  }
+
+  public createRoom(_request: CreateRoomRequest): RoomInfo {
+    return { slug: "gamma", name: "Gamma", createdAt: 3 };
+  }
+
+  public deleteRoom(_slug: string): RoomInfo[] {
+    return this.listRooms();
+  }
+
+  public matchesViewerPassword(roomSlug: string, password: string): boolean {
+    return this.viewerPasswords.get(roomSlug) === password;
+  }
+
+  public updateViewerPassword(roomSlug: string, password: string): void {
+    this.viewerPasswords.set(roomSlug, password);
   }
 }
 
@@ -210,7 +240,7 @@ describe("ApiController room routing", () => {
     const viewerLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: "viewer-password" })
+      body: JSON.stringify({ password: "viewer-password", roomSlug: "alpha" })
     });
     const viewerCookie = viewerLogin.headers.get("set-cookie") ?? "";
     const added = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
@@ -278,7 +308,7 @@ describe("ApiController room routing", () => {
     const loginResponse = await fetch(`${running.baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password: "viewer-password" })
+      body: JSON.stringify({ password: "viewer-password", roomSlug: "default" })
     });
     const cookie = loginResponse.headers.get("set-cookie") ?? "";
 
@@ -308,5 +338,102 @@ describe("ApiController room routing", () => {
     expect(started.totalAmount).toBe(0);
     expect(started.chargeConsumedAmount).toBe(300);
     expect(editResponse.status).toBe(403);
+  });
+
+  it("binds viewer sessions to the room whose password was used", async () => {
+    const app = express();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "legacy-viewer"
+      }),
+      new FakeRoomCatalog()
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const loginResponse = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "alpha-viewer", roomSlug: "alpha" })
+    });
+    const cookie = loginResponse.headers.get("set-cookie") ?? "";
+
+    const alphaResponse = await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ bossName: "alpha boss", amount: 100, programName: "alpha program" })
+    });
+    const betaResponse = await fetch(`${running.baseUrl}/rooms/beta/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ bossName: "beta boss", amount: 100, programName: "beta program" })
+    });
+    const session = await (await fetch(`${running.baseUrl}/api/auth/me`, {
+      headers: { Cookie: cookie }
+    })).json();
+
+    expect(loginResponse.status).toBe(200);
+    expect(alphaResponse.status).toBe(201);
+    expect(betaResponse.status).toBe(403);
+    expect(session).toEqual({ role: "viewer", roomSlug: "alpha" });
+  });
+
+  it("lets admin update one room viewer password without affecting other rooms", async () => {
+    const app = express();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "legacy-viewer"
+      }),
+      new FakeRoomCatalog()
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const adminLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "admin-password", roomSlug: "alpha" })
+    });
+    const adminCookie = adminLogin.headers.get("set-cookie") ?? "";
+
+    const updateResponse = await fetch(`${running.baseUrl}/api/rooms/alpha/viewer-password`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({ password: "new-alpha-viewer" })
+    });
+    const oldAlphaLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "alpha-viewer", roomSlug: "alpha" })
+    });
+    const newAlphaLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "new-alpha-viewer", roomSlug: "alpha" })
+    });
+    const betaLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "beta-viewer", roomSlug: "beta" })
+    });
+
+    expect(updateResponse.status).toBe(200);
+    expect(oldAlphaLogin.status).toBe(401);
+    expect(newAlphaLogin.status).toBe(200);
+    expect(betaLogin.status).toBe(200);
   });
 });

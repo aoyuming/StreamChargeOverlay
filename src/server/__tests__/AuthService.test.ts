@@ -20,4 +20,19 @@ describe("AuthService", () => {
     expect(cookie).toContain("SameSite=Lax");
     expect(service.sessionFromCookie(cookie)?.role).toBe("admin");
   });
+
+  it("stores viewer room slugs in signed sessions", () => {
+    const service = new AuthService({
+      adminPassword: "super-secret",
+      sessionSecret: "session-secret",
+      viewerPassword: "add-secret"
+    });
+
+    const cookie = service.createSessionCookie({ role: "viewer", roomSlug: "wenrou" });
+    const session = service.sessionFromCookie(cookie);
+
+    expect(session).toEqual({ role: "viewer", roomSlug: "wenrou" });
+    expect(service.hasRole(cookie, "viewer", "wenrou")).toBe(true);
+    expect(service.hasRole(cookie, "viewer", "liyong")).toBe(false);
+  });
 });

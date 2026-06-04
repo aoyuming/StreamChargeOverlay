@@ -32,7 +32,7 @@ const authService = new AuthService({
   sessionSecret: config.sessionSecret,
   viewerPassword: config.viewerPassword
 });
-const roomCatalog = new RoomCatalogService(config.databasePath);
+const roomCatalog = new RoomCatalogService(config.databasePath, config.viewerPassword);
 const apiController = new ApiController(
   repositoryFactory,
   realtimeHub,

@@ -30,6 +30,8 @@ export class AdminApp {
   private readonly roomSelect: HTMLSelectElement;
   private readonly roomForm: HTMLFormElement;
   private readonly roomNameInput: HTMLInputElement;
+  private readonly roomViewerPasswordInput: HTMLInputElement;
+  private readonly updateRoomViewerPasswordButton: HTMLButtonElement;
   private readonly deleteRoomButton: HTMLButtonElement;
   private session: AuthSession | null = null;
   private rooms: RoomInfo[] = [];
@@ -60,6 +62,8 @@ export class AdminApp {
     this.roomSelect = queryRequired("#roomSelect");
     this.roomForm = queryRequired("#roomForm");
     this.roomNameInput = queryRequired("#roomNameInput");
+    this.roomViewerPasswordInput = queryRequired("#roomViewerPasswordInput");
+    this.updateRoomViewerPasswordButton = queryRequired("#updateRoomViewerPasswordButton");
     this.deleteRoomButton = queryRequired("#deleteRoomButton");
   }
 
@@ -69,6 +73,7 @@ export class AdminApp {
     this.roomSelect.addEventListener("change", () => this.changeRoom());
     this.roomForm.addEventListener("submit", (event) => void this.createRoom(event));
     this.deleteRoomButton.addEventListener("click", () => void this.deleteSelectedRoom());
+    this.updateRoomViewerPasswordButton.addEventListener("click", () => void this.updateRoomViewerPassword());
 
     this.sponsorForm.onSubmit(async (request) => {
       try {
@@ -125,12 +130,14 @@ export class AdminApp {
     this.sponsorForm.setKnownSponsors(state.sponsors);
     this.summaryView.render(state);
     this.recordListView.render(state.sponsors, state.programQueue);
-    const canOperate = this.session?.role === "viewer" || this.session?.role === "admin";
+    const canOperate = this.sessionCanOperateCurrentRoom();
     const canManage = this.session?.role === "admin";
     this.startDianjiangButton.disabled = !canOperate || state.totalAmount <= 0;
     this.startDianjiangButton.textContent = state.goalReached ? "开始点将" : "开始点将（当前不足）";
     this.removeTodaySponsorsButton.disabled = !canManage || state.programQueue.length === 0;
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
+    this.roomViewerPasswordInput.disabled = !canManage;
+    this.updateRoomViewerPasswordButton.disabled = !canManage || !this.roomSelect.value;
   }
 
   private async login(event: SubmitEvent): Promise<void> {
@@ -202,8 +209,21 @@ export class AdminApp {
     window.location.href = nextRoom ? roomPagePath(nextRoom.slug, "admin") : "/admin.html";
   }
 
+  private async updateRoomViewerPassword(): Promise<void> {
+    const slug = this.roomSelect.value;
+    const password = this.roomViewerPasswordInput.value;
+    if (!slug || !password.trim()) {
+      this.authStatus.textContent = "请输入本房间普通密码";
+      return;
+    }
+
+    await this.apiClient.updateRoomViewerPassword(slug, password);
+    this.roomViewerPasswordInput.value = "";
+    this.authStatus.textContent = "本房间普通密码已更新";
+  }
+
   private applyRole(): void {
-    const canAdd = this.session?.role === "viewer" || this.session?.role === "admin";
+    const canAdd = this.sessionCanOperateCurrentRoom();
     const canOperate = canAdd;
     const canManage = this.session?.role === "admin";
     this.sponsorForm.setEnabled(canAdd);
@@ -213,11 +233,27 @@ export class AdminApp {
       element.disabled = !canManage;
     });
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
+    this.roomViewerPasswordInput.disabled = !canManage;
+    this.updateRoomViewerPasswordButton.disabled = !canManage || !this.roomSelect.value;
     this.logoutButton.disabled = !this.session;
     this.authStatus.textContent = this.session
       ? this.session.role === "admin"
         ? "超级权限"
-        : "普通权限"
+        : this.sessionCanOperateCurrentRoom()
+          ? "普通权限"
+          : "请登录本房间普通权限"
       : "未登录";
+  }
+
+  private sessionCanOperateCurrentRoom(): boolean {
+    if (this.session?.role === "admin") {
+      return true;
+    }
+
+    return this.session?.role === "viewer" && this.session.roomSlug === this.currentRoomSlug();
+  }
+
+  private currentRoomSlug(): string {
+    return this.roomSelect.value || RoomContext.fromPath(window.location.pathname).slug;
   }
 }

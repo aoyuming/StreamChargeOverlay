@@ -106,6 +106,7 @@ describe("ApiClient", () => {
     await client.createRoom("测试房");
     await client.deleteRoom("room-abc");
     await client.login("secret");
+    await client.updateRoomViewerPassword("room-abc", "room-secret");
     await client.logout();
 
     expect(fetch).toHaveBeenNthCalledWith(1, "/api/rooms", expect.any(Object));
@@ -122,8 +123,13 @@ describe("ApiClient", () => {
     expect(fetch).toHaveBeenNthCalledWith(
       4,
       "/api/auth/login",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ password: "secret" }) })
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ password: "secret", roomSlug: "alpha" }) })
     );
-    expect(fetch).toHaveBeenNthCalledWith(5, "/api/auth/logout", expect.objectContaining({ method: "POST" }));
+    expect(fetch).toHaveBeenNthCalledWith(
+      5,
+      "/api/rooms/room-abc/viewer-password",
+      expect.objectContaining({ method: "PATCH", body: JSON.stringify({ password: "room-secret" }) })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(6, "/api/auth/logout", expect.objectContaining({ method: "POST" }));
   });
 });
