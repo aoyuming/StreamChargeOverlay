@@ -124,13 +124,27 @@ describe("display layout", () => {
     expect(sponsorBurst).toContain("avatarElement");
   });
 
+  it("makes the new sponsor burst avatar and title larger for full-stage entry moments", () => {
+    expect(css).toContain("grid-template-columns: 116px minmax(0, 1fr);");
+    expect(css).toContain("width: 760px;");
+    expect(css).toContain("width: 104px;");
+    expect(css).toContain("height: 104px;");
+    expect(css).toContain("font-size: 56px;");
+    expect(css).toContain("font-size: 26px;");
+  });
+
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {
     expect(html).toContain('<canvas id="stageEffectsCanvas" class="stage-effects-canvas" width="1920" height="1440"></canvas>');
     expect(html).toContain('<canvas id="stageShaderEffectsCanvas" class="stage-effects-canvas shader-effects-canvas" width="1920" height="1440"></canvas>');
     expect(html).toContain('<canvas id="burstParticles" class="burst-particles" width="1920" height="1440"></canvas>');
+    expect(html).toContain('id="stageEffectStartText"');
+    expect(html).toContain(">开始</div>");
     expect(css).toContain(".stage-effects-canvas {\n  position: absolute;\n  inset: 0;\n  z-index: 5;\n  width: 1920px;\n  height: 1440px;");
     expect(css).toContain("pointer-events: none;");
     expect(css).toContain(".burst-particles {\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  width: 1920px;\n  height: 1440px;");
+    expect(css).toContain(".stage-effect-start-text");
+    expect(css).toContain(".has-dianjiang-effect .stage-effect-start-text");
+    expect(displayApp).toContain("has-dianjiang-effect");
   });
 
   it("adds a fit-preview mode for ordinary browser windows", () => {

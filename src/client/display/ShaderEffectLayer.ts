@@ -33,6 +33,9 @@ uniform float u_seed;
 
 varying vec2 v_uv;
 
+const float STAGE_INFERNO_INTENSITY = 2.55;
+const float PROGRESS_EFFECT_BOOST = 1.38;
+
 float hash(float value) {
   return fract(sin(value * 12.9898 + u_seed * 78.233) * 43758.5453);
 }
@@ -69,6 +72,13 @@ float softLine(vec2 point, vec2 start, vec2 end, float width) {
   return smoothstep(width, 0.0, lineDistance(point, start, end));
 }
 
+float chargedEdgeMask(vec2 uv) {
+  float frontEdge = 1.0 - smoothstep(0.0, 0.038, abs(uv.x - u_progress));
+  float topEdge = 1.0 - smoothstep(0.0, 0.055, uv.y);
+  float bottomEdge = 1.0 - smoothstep(0.0, 0.055, 1.0 - uv.y);
+  return max(frontEdge, max(topEdge, bottomEdge) * 0.62);
+}
+
 float lightningBolt(vec2 uv, vec2 start, vec2 end, float width, float seed) {
   float bolt = 0.0;
   vec2 previous = start;
@@ -84,36 +94,79 @@ float lightningBolt(vec2 uv, vec2 start, vec2 end, float width, float seed) {
 }
 
 float lightningField(vec2 uv) {
-  float pulse = 0.55 + 0.45 * sin(u_time * 18.0);
-  float boltA = lightningBolt(uv, vec2(0.16, -0.08), vec2(0.72, 0.94), 0.012, 13.0);
-  float boltB = lightningBolt(uv, vec2(1.08, 0.1), vec2(0.44, 0.86), 0.01, 31.0);
-  float boltC = lightningBolt(uv, vec2(0.5, -0.06), vec2(0.6, 1.06), 0.008, 47.0);
+  float pulse = 0.68 + 0.32 * sin(u_time * 22.0);
+  float boltA = lightningBolt(uv, vec2(0.16, -0.08), vec2(0.72, 0.94), 0.014, 13.0);
+  float boltB = lightningBolt(uv, vec2(1.08, 0.1), vec2(0.44, 0.86), 0.012, 31.0);
+  float boltC = lightningBolt(uv, vec2(0.5, -0.06), vec2(0.6, 1.06), 0.01, 47.0);
   return (boltA + boltB + boltC) * pulse;
 }
 
+float forkedLightningField(vec2 uv) {
+  float mainField = lightningField(uv) * 1.32;
+  float branchA = lightningBolt(uv, vec2(0.24, 0.18), vec2(0.02, 0.66), 0.007, 71.0);
+  float branchB = lightningBolt(uv, vec2(0.56, 0.28), vec2(0.92, 0.74), 0.0075, 83.0);
+  float branchC = lightningBolt(uv, vec2(0.64, 0.05), vec2(0.26, 0.98), 0.0065, 97.0);
+  float microForks = fbm(uv * 18.0 + vec2(u_time * 2.2, -u_time * 1.6));
+  return mainField + (branchA + branchB + branchC) * (0.72 + microForks * 0.34);
+}
+
 float dragonBody(vec2 uv) {
-  float wave = sin((uv.x + u_time * 0.16) * 12.0) * 0.055;
+  float wave = sin((uv.x + u_time * 0.2) * 13.5) * 0.07;
   float y = 0.42 + wave;
-  float body = smoothstep(0.075, 0.0, abs(uv.y - y)) * smoothstep(0.05, 0.2, uv.x) * smoothstep(0.86, 0.62, uv.x);
-  float spine = smoothstep(0.022, 0.0, abs(uv.y - y - 0.012)) * smoothstep(0.16, 0.82, uv.x);
-  float head = smoothstep(0.12, 0.0, length((uv - vec2(0.78, 0.38)) * vec2(1.0, 1.45)));
-  float hornA = softLine(uv, vec2(0.78, 0.32), vec2(0.82, 0.2), 0.012);
-  float hornB = softLine(uv, vec2(0.73, 0.33), vec2(0.72, 0.2), 0.012);
-  float tail = softLine(uv, vec2(0.16, 0.43), vec2(0.04, 0.54), 0.028);
-  return max(max(body, spine), max(max(head, tail), max(hornA, hornB)));
+  float body = smoothstep(0.092, 0.0, abs(uv.y - y)) * smoothstep(0.04, 0.19, uv.x) * smoothstep(0.9, 0.6, uv.x);
+  float spine = smoothstep(0.026, 0.0, abs(uv.y - y - 0.014)) * smoothstep(0.14, 0.84, uv.x);
+  float head = smoothstep(0.15, 0.0, length((uv - vec2(0.79, 0.38)) * vec2(1.0, 1.38)));
+  float jaw = softLine(uv, vec2(0.74, 0.41), vec2(0.89, 0.35), 0.018);
+  float hornA = softLine(uv, vec2(0.8, 0.32), vec2(0.86, 0.17), 0.014);
+  float hornB = softLine(uv, vec2(0.73, 0.33), vec2(0.72, 0.17), 0.014);
+  float tail = softLine(uv, vec2(0.16, 0.43), vec2(0.02, 0.57), 0.034);
+  return max(max(body, spine), max(max(max(head, jaw), tail), max(hornA, hornB)));
+}
+
+float frostMist(vec2 uv) {
+  float rollingMist = fbm(uv * 6.4 + vec2(u_time * 0.16, -u_time * 0.1));
+  float fineMist = fbm(uv * 18.0 + vec2(-u_time * 0.22, u_time * 0.18));
+  float edgeFrost = max(
+    1.0 - smoothstep(0.0, 0.28, uv.x),
+    max(1.0 - smoothstep(0.0, 0.24, 1.0 - uv.x), max(1.0 - smoothstep(0.0, 0.24, uv.y), 1.0 - smoothstep(0.0, 0.24, 1.0 - uv.y)))
+  );
+  return clamp(rollingMist * 0.44 + fineMist * 0.3 + edgeFrost * 0.54, 0.0, 1.0);
+}
+
+float drawFrostCracks(vec2 uv) {
+  float crack = 0.0;
+  vec2 center = vec2(0.48 + sin(u_time * 0.34) * 0.035, 0.48 + cos(u_time * 0.28) * 0.026);
+
+  for (int index = 0; index < 11; index++) {
+    float seed = float(index) * 17.0 + floor(u_time * 1.6);
+    float angle = seed * 0.71 + hash(seed) * 1.7;
+    vec2 dir = vec2(cos(angle), sin(angle));
+    float reach = 0.28 + hash(seed + 3.0) * 0.55;
+    vec2 start = center + dir * (0.035 + hash(seed + 7.0) * 0.08);
+    vec2 end = center + dir * reach;
+    crack += softLine(uv, start, end, 0.0068);
+
+    vec2 middle = mix(start, end, 0.48 + hash(seed + 13.0) * 0.28);
+    vec2 branchDir = vec2(-dir.y, dir.x) * (hash(seed + 19.0) > 0.5 ? 1.0 : -1.0);
+    crack += softLine(uv, middle, middle + normalize(dir * 0.52 + branchDir * 0.78) * reach * 0.36, 0.0048);
+  }
+
+  float chippedEdge = softLine(uv, vec2(0.02, 0.92), vec2(0.24, 0.82), 0.006);
+  chippedEdge += softLine(uv, vec2(0.83, 0.1), vec2(0.98, 0.24), 0.006);
+  return clamp(crack + chippedEdge, 0.0, 1.0);
 }
 
 vec4 drawIce(vec2 uv) {
-  float crack = 0.0;
-  for (int index = 0; index < 8; index++) {
-    float x = float(index) / 8.0 + sin(u_time * 0.7 + float(index)) * 0.025;
-    crack += softLine(uv, vec2(x, 0.05), vec2(x + 0.03, 0.92), 0.01);
-    crack += softLine(uv, vec2(x + 0.03, 0.48), vec2(x - 0.08, 0.78), 0.008);
-  }
-  float frost = fbm(uv * 8.0 + u_time * 0.12);
-  vec3 color = mix(vec3(0.08, 0.46, 0.86), vec3(0.9, 1.0, 1.0), crack + frost * 0.4);
-  float alpha = clamp(crack * 0.8 + frost * 0.22, 0.0, 0.78);
-  return vec4(color, alpha);
+  float frost = frostMist(uv);
+  float crack = drawFrostCracks(uv);
+  float glint = pow(max(0.0, sin((uv.x + uv.y + u_time * 0.45) * 18.0)), 7.0);
+  vec3 deepIce = vec3(0.035, 0.28, 0.62);
+  vec3 electricIce = vec3(0.36, 0.88, 1.0);
+  vec3 whiteCold = vec3(0.92, 1.0, 1.0);
+  vec3 color = mix(deepIce, electricIce, frost * 0.7);
+  color = mix(color, whiteCold, crack * 0.86 + glint * 0.28);
+  float alpha = clamp(frost * 0.34 + crack * 0.92 + glint * 0.16, 0.0, 0.9);
+  return vec4(color * PROGRESS_EFFECT_BOOST, alpha);
 }
 
 vec4 drawEnergy(vec2 uv) {
@@ -125,31 +178,68 @@ vec4 drawEnergy(vec2 uv) {
 }
 
 vec4 drawFire(vec2 uv, float intensity) {
-  float heat = fbm(vec2(uv.x * 6.0, uv.y * 5.0 - u_time * 2.2));
-  float flame = smoothstep(uv.y, uv.y + 0.55 * intensity, heat * 0.58 + (1.0 - uv.y) * 0.72);
-  vec3 base = mix(vec3(0.95, 0.08, 0.04), vec3(1.0, 0.55, 0.12), flame);
-  vec3 hot = mix(base, vec3(1.0, 0.92, 0.5), smoothstep(0.72, 1.0, flame) * 0.5);
-  float alpha = clamp(flame * (0.42 + 0.24 * intensity), 0.0, 0.92);
+  vec2 warped = uv + vec2(sin(uv.y * 12.0 + u_time * 3.4), sin(uv.x * 8.0 - u_time * 2.2)) * 0.025 * intensity;
+  float heat = fbm(vec2(warped.x * (6.5 + intensity), warped.y * 5.4 - u_time * (2.6 + intensity * 0.65)));
+  float tongues = pow(max(0.0, sin((warped.x * 18.0 + heat * 5.0) - u_time * 5.2)), 2.0);
+  float verticalFuel = pow(1.0 - uv.y, 0.58);
+  float flame = smoothstep(0.2, 0.86, heat * 0.74 + verticalFuel * (0.75 + intensity * 0.22) + tongues * 0.18);
+  float whiteCore = smoothstep(0.72, 1.0, flame) * smoothstep(0.78, 0.06, uv.y) * (0.46 + intensity * 0.18);
+  vec3 base = mix(vec3(0.72, 0.03, 0.025), vec3(1.0, 0.34, 0.06), flame);
+  vec3 hot = mix(base, vec3(1.0, 0.88, 0.42), whiteCore);
+  hot += vec3(1.0, 0.2, 0.04) * tongues * 0.22 * intensity;
+  float alpha = clamp(flame * (0.48 + 0.26 * intensity) + whiteCore * 0.12, 0.0, 0.98);
   return vec4(hot, alpha);
 }
 
 vec4 drawLightning(vec2 uv) {
-  float field = lightningField(uv);
-  float flash = pow(abs(sin(u_time * 13.0)), 18.0);
-  vec3 color = vec3(0.38, 0.96, 1.0) * field * 2.4 + vec3(1.0) * field * 0.8;
-  color += vec3(0.55, 0.85, 1.0) * flash * 0.45;
-  float alpha = clamp(field * 1.4 + flash * 0.18, 0.0, 1.0);
+  float field = forkedLightningField(uv);
+  float flash = pow(abs(sin(u_time * 15.5)), 13.0);
+  float strobe = pow(abs(sin(u_time * 27.0 + fbm(uv * 9.0) * 3.0)), 18.0);
+  vec3 color = vec3(0.2, 0.9, 1.0) * field * 3.05 + vec3(1.0) * field * 1.15;
+  color += vec3(0.54, 0.84, 1.0) * (flash * 0.62 + strobe * 0.36);
+  float alpha = clamp(field * 1.72 + flash * 0.26 + strobe * 0.18, 0.0, 1.0);
   return vec4(color, alpha);
+}
+
+float dianjiangShockwave(vec2 uv) {
+  float distanceToCenter = length((uv - vec2(0.5, 0.43)) * vec2(1.0, 1.16));
+  float waveA = smoothstep(0.018, 0.0, abs(distanceToCenter - (0.14 + fract(u_time * 0.42) * 0.74)));
+  float waveB = smoothstep(0.012, 0.0, abs(distanceToCenter - (0.1 + fract(u_time * 0.62 + 0.36) * 0.62)));
+  float burst = smoothstep(0.46, 0.0, distanceToCenter) * pow(abs(sin(u_time * 5.2)), 2.0);
+  return clamp(waveA + waveB * 0.78 + burst * 0.46, 0.0, 1.0);
+}
+
+float startGlyphShape(vec2 uv, vec2 center, float scale) {
+  vec2 p = (uv - center) / scale + vec2(0.5);
+  float visible = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
+  float glyph = 0.0;
+  glyph += softLine(p, vec2(0.18, 0.75), vec2(0.82, 0.75), 0.045);
+  glyph += softLine(p, vec2(0.22, 0.48), vec2(0.78, 0.48), 0.038);
+  glyph += softLine(p, vec2(0.34, 0.2), vec2(0.34, 0.82), 0.04);
+  glyph += softLine(p, vec2(0.64, 0.2), vec2(0.64, 0.82), 0.04);
+  return glyph * visible;
+}
+
+float drawStartGlyph(vec2 uv) {
+  float startGlyph = startGlyphShape(uv, vec2(0.39, 0.62), 0.18);
+  float secondGlyph = startGlyphShape(uv, vec2(0.59, 0.62), 0.18);
+  secondGlyph += softLine((uv - vec2(0.59, 0.62)) / 0.18 + vec2(0.5), vec2(0.28, 0.24), vec2(0.72, 0.72), 0.036);
+  secondGlyph += softLine((uv - vec2(0.59, 0.62)) / 0.18 + vec2(0.5), vec2(0.72, 0.24), vec2(0.28, 0.72), 0.036);
+  return clamp(startGlyph + secondGlyph, 0.0, 1.0);
 }
 
 vec4 drawDragonDianjiang(vec2 uv) {
   float dragon = dragonBody(uv);
-  float field = lightningField(uv);
-  float ring = smoothstep(0.012, 0.0, abs(length(uv - vec2(0.5, 0.43)) - (0.16 + fract(u_time * 0.34) * 0.5)));
-  vec3 color = vec3(0.08, 0.42, 0.58) * dragon + vec3(0.18, 0.95, 1.0) * dragon * 2.2;
-  color += vec3(0.24, 0.72, 1.0) * field * 2.1;
-  color += vec3(0.34, 0.9, 1.0) * ring * 0.8;
-  float alpha = clamp(dragon * 0.82 + field * 0.55 + ring * 0.36, 0.0, 0.96);
+  float field = forkedLightningField(uv);
+  float shockwave = dianjiangShockwave(uv);
+  float glyph = drawStartGlyph(uv);
+  float dragonGlow = smoothstep(0.18, 0.0, length((uv - vec2(0.62, 0.4)) * vec2(0.82, 1.35)));
+  vec3 color = vec3(0.03, 0.25, 0.42) * dragon + vec3(0.15, 0.98, 1.0) * dragon * 3.2;
+  color += vec3(0.18, 0.72, 1.0) * field * 2.85;
+  color += vec3(0.28, 0.96, 1.0) * shockwave * 1.35;
+  color += vec3(0.88, 1.0, 1.0) * glyph * (1.2 + pow(abs(sin(u_time * 6.0)), 2.0) * 0.7);
+  color += vec3(0.12, 0.72, 1.0) * dragonGlow * 0.48;
+  float alpha = clamp(dragon * 0.96 + field * 0.74 + shockwave * 0.58 + glyph * 0.88, 0.0, 1.0);
   return vec4(color, alpha);
 }
 
@@ -164,14 +254,19 @@ void main() {
   } else if (u_effect < 1.5) {
     effectColor = drawEnergy(v_uv);
   } else if (u_effect < 2.5) {
-    effectColor = drawFire(v_uv, 1.0);
+    effectColor = drawFire(v_uv, 1.18);
   } else if (u_effect < 3.5) {
-    effectColor = drawFire(v_uv, 1.75);
+    effectColor = drawFire(v_uv, STAGE_INFERNO_INTENSITY);
   } else if (u_effect < 4.5) {
     effectColor = drawLightning(v_uv);
   } else {
     effectColor = drawDragonDianjiang(v_uv);
   }
+
+  float rimGlow = chargedEdgeMask(v_uv) * (0.42 + 0.58 * pow(abs(sin(u_time * 9.0)), 3.0));
+  float edgeSpark = rimGlow * (0.55 + 0.45 * fbm(v_uv * 34.0 + u_time * 1.7)) * PROGRESS_EFFECT_BOOST;
+  effectColor.rgb += mix(vec3(0.28, 0.9, 1.0), vec3(1.0, 0.28, 0.08), step(2.5, u_effect) * (1.0 - step(4.5, u_effect))) * edgeSpark * 0.72;
+  effectColor.a = clamp(effectColor.a + edgeSpark * 0.48, 0.0, 1.0);
 
   gl_FragColor = vec4(effectColor.rgb, effectColor.a * u_opacity);
 }

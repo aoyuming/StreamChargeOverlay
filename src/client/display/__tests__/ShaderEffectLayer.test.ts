@@ -27,6 +27,32 @@ describe("ShaderEffectLayer", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("lightningField");
   });
 
+  it("uses mist and branching cracks for ice instead of screen-wide stripe bars", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawFrostCracks");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("frostMist");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("vec2(x, 0.05)");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("vec2(x + 0.03, 0.48)");
+  });
+
+  it("adds charged edge and rim glow treatment around the active progress shape", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("chargedEdgeMask");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("rimGlow");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("edgeSpark");
+  });
+
+  it("boosts inferno, fire, ice, and lightning shader intensity markers", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("STAGE_INFERNO_INTENSITY");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("PROGRESS_EFFECT_BOOST");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("forkedLightningField");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawFire(v_uv, STAGE_INFERNO_INTENSITY)");
+  });
+
+  it("draws a stronger dianjiang start signal with a separate start glyph", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawStartGlyph");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("dianjiangShockwave");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("startGlyph");
+  });
+
   it("falls back cleanly when WebGL is unavailable", () => {
     const canvas = {
       getContext: () => null

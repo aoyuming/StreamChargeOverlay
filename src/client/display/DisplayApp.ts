@@ -9,7 +9,7 @@ import { BurstParticles } from "./BurstParticles";
 import { DisplayEffectCoordinator } from "./DisplayEffectCoordinator";
 import { ShaderProgressEffectLayer } from "./ShaderProgressEffectLayer";
 import { ShaderStageEffectLayer } from "./ShaderStageEffectLayer";
-import { StageEffectLayer, type StageEffectPlayer } from "./StageEffectLayer";
+import { STAGE_EFFECT_DURATION_MS, StageEffectLayer, type StageEffectPlayer } from "./StageEffectLayer";
 import { SponsorBurst } from "./SponsorBurst";
 import { SponsorSound } from "./SponsorSound";
 import { SponsorSpeech } from "./SponsorSpeech";
@@ -24,6 +24,7 @@ export class DisplayApp {
   private readonly sponsorSound = new SponsorSound();
   private readonly sponsorSpeech = new SponsorSpeech();
   private readonly sponsorSpeechAudio = new SponsorSpeechAudio();
+  private dianjiangTextTimer = 0;
 
   public constructor(
     private readonly apiClient: ApiClient,
@@ -60,7 +61,7 @@ export class DisplayApp {
     this.rankingTicker.render(state.ranking);
 
     if (effectEvent.shouldPlayDianjiangEffect) {
-      this.stageEffects.playDianjiangEffect();
+      this.playDianjiangEffect();
     }
 
     if (effectEvent.latestNewSponsor) {
@@ -91,5 +92,15 @@ export class DisplayApp {
 
   private createStageEffectLayer(): StageEffectPlayer {
     return ShaderStageEffectLayer.create(queryRequired("#stageShaderEffectsCanvas")) ?? new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
+  }
+
+  private playDianjiangEffect(): void {
+    window.clearTimeout(this.dianjiangTextTimer);
+    this.stageEffects.playDianjiangEffect();
+    document.body.classList.add("has-dianjiang-effect");
+    this.dianjiangTextTimer = window.setTimeout(
+      () => document.body.classList.remove("has-dianjiang-effect"),
+      STAGE_EFFECT_DURATION_MS
+    );
   }
 }
