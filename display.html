@@ -11,9 +11,13 @@
         <span>摄像头区域</span>
       </section>
 
-      <section class="panel charge-panel" aria-label="当前大哥与充能进度">
-        <div class="panel-title">当前大哥</div>
+      <section class="panel charge-panel" aria-label="今日大哥节目榜单与充能进度">
+        <div class="panel-title">今日大哥节目榜单</div>
         <div class="current-boss-card">
+          <div class="current-boss-header" aria-hidden="true">
+            <span class="current-boss-header-note">备注</span>
+            <span class="current-boss-header-amount">实力</span>
+          </div>
           <div class="current-boss-viewport">
             <ul id="currentBossList" class="current-boss-list"></ul>
           </div>
@@ -25,14 +29,6 @@
         <div id="progressTrack" class="progress-track">
           <div id="progressFill" class="progress-fill"></div>
           <canvas id="progressEffectsCanvas" class="progress-effects-canvas" width="620" height="58"></canvas>
-        </div>
-      </section>
-
-      <section class="panel today-ranking-panel">
-        <div class="panel-title">今日大哥榜单</div>
-        <ol id="todayRankingPinned" class="today-ranking-pinned"></ol>
-        <div class="ticker-mask today-ranking-mask">
-          <ol id="todayRankingList" class="today-ranking-list"></ol>
         </div>
       </section>
 

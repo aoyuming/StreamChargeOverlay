@@ -4,16 +4,34 @@ import { describe, expect, it } from "vitest";
 
 describe("display layout", () => {
   const css = readFileSync(resolve(process.cwd(), "src/client/styles/display.css"), "utf8");
+  const displayApp = readFileSync(resolve(process.cwd(), "src/client/display/DisplayApp.ts"), "utf8");
   const html = readFileSync(resolve(process.cwd(), "display.html"), "utf8");
 
-  it("merges current sponsor and progress into a wider charge panel", () => {
-    expect(css).toContain("grid-template-columns: 380px 660px 390px 416px;");
+  it("removes the today ranking panel and splits its width into charge and total ranking panels", () => {
+    expect(css).toContain("grid-template-columns: 380px 862px 618px;");
     expect(html).toContain('class="panel charge-panel"');
+    expect(html).toContain("今日大哥节目榜单");
     expect(html).toContain('id="currentBossList"');
     expect(html).toContain('id="progressSlogan"');
     expect(html).toContain('id="progressEffectsCanvas"');
+    expect(html).not.toContain("今日大哥榜单");
+    expect(html).not.toContain('class="panel today-ranking-panel"');
+    expect(html).not.toContain("todayRankingPinned");
+    expect(html).not.toContain("todayRankingList");
     expect(html).not.toContain('class="panel program-panel"');
     expect(html).not.toContain('id="programList"');
+    expect(displayApp).not.toContain("TodayRankingTicker");
+    expect(displayApp).not.toContain("buildTodayRanking");
+    expect(displayApp).not.toContain("todayRanking");
+  });
+
+  it("labels the current boss note and amount columns", () => {
+    expect(html).toContain('class="current-boss-header"');
+    expect(html).toContain('class="current-boss-header-note">备注</span>');
+    expect(html).toContain('class="current-boss-header-amount">实力</span>');
+    expect(css).toContain(".current-boss-header");
+    expect(css).toContain(".current-boss-header-note");
+    expect(css).toContain(".current-boss-header-amount");
   });
 
   it("uses compact current boss rows instead of clipped hero text", () => {
@@ -21,7 +39,7 @@ describe("display layout", () => {
     expect(css).toContain(".current-boss-amount");
     expect(css).toContain(".current-boss-note");
     expect(css).toContain(".current-boss-program");
-    expect(css).toContain("grid-template-columns: minmax(0, 1fr) minmax(88px, 132px) 106px;");
+    expect(css).toContain("grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;");
     expect(css).not.toContain(".current-boss-label");
     expect(css).not.toContain("font-size: 58px;");
   });
@@ -43,7 +61,7 @@ describe("display layout", () => {
   });
 
   it("clips the current boss list above the charge summary without showing a partial row", () => {
-    expect(css).toContain(".current-boss-viewport {\n  position: relative;\n  z-index: 1;\n  height: 160px;");
+    expect(css).toContain(".current-boss-viewport {\n  position: relative;\n  z-index: 1;\n  height: 143px;");
     expect(css).toContain("gap: 16px;");
     expect(css).toContain("flex: 1 1 0;");
     expect(css).toContain("white-space: nowrap;");

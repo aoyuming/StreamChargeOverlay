@@ -10,12 +10,9 @@ import { SponsorBurst } from "./SponsorBurst";
 import { SponsorSound } from "./SponsorSound";
 import { SponsorSpeech } from "./SponsorSpeech";
 import { SponsorSpeechAudio } from "./SponsorSpeechAudio";
-import { TodayRankingTicker } from "./TodayRankingTicker";
-import { buildTodayRanking } from "./todayRanking";
 
 export class DisplayApp {
   private readonly progressPanel: ProgressPanel;
-  private readonly todayRankingTicker: TodayRankingTicker;
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
   private readonly sponsorSound = new SponsorSound();
@@ -37,10 +34,6 @@ export class DisplayApp {
       queryRequired("#progressPercent"),
       new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
     );
-    this.todayRankingTicker = new TodayRankingTicker(
-      queryRequired("#todayRankingPinned"),
-      queryRequired("#todayRankingList")
-    );
     this.rankingTicker = new RankingTicker(queryRequired("#rankingPinned"), queryRequired("#rankingList"));
     this.sponsorBurst = new SponsorBurst(
       queryRequired("#sponsorBurst"),
@@ -59,7 +52,6 @@ export class DisplayApp {
     const shouldPulse = state.totalAmount > this.lastTotalAmount;
     const latestNewSponsor = this.findLatestNewSponsor(state);
     this.progressPanel.render(state, state.sponsors);
-    this.todayRankingTicker.render(buildTodayRanking(state.sponsors));
     this.rankingTicker.render(state.ranking);
 
     if (shouldPulse && this.lastTotalAmount > 0) {

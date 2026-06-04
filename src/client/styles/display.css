@@ -46,7 +46,7 @@ html.is-preview-fit .overlay-shell {
 .overlay-shell {
   position: relative;
   display: grid;
-  grid-template-columns: 380px 660px 390px 416px;
+  grid-template-columns: 380px 862px 618px;
   grid-template-rows: 328px;
   align-content: end;
   gap: 14px;
@@ -145,8 +145,11 @@ html.is-preview-fit .overlay-shell {
 
 .current-boss-card {
   position: relative;
+  display: grid;
+  grid-template-rows: 18px 143px;
+  gap: 5px;
   min-width: 0;
-  padding: 6px 10px;
+  padding: 5px 10px;
   overflow: hidden;
   background:
     radial-gradient(circle at 18% 20%, rgba(73, 235, 255, 0.18), transparent 30%),
@@ -171,14 +174,40 @@ html.is-preview-fit .overlay-shell {
 .current-boss-viewport {
   position: relative;
   z-index: 1;
-  height: 160px;
+  height: 143px;
   overflow: hidden;
+}
+
+.current-boss-header {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;
+  gap: 0 8px;
+  align-items: center;
+  height: 18px;
+  padding: 0 8px;
+  color: #e7cf94;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(199, 154, 85, 0.32), 1px 1px 0 #080a0c;
+}
+
+.current-boss-header-note {
+  grid-column: 2;
+  text-align: right;
+}
+
+.current-boss-header-amount {
+  grid-column: 3;
+  text-align: right;
 }
 
 .current-boss-list {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -190,12 +219,12 @@ html.is-preview-fit .overlay-shell {
 
 .current-boss-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(88px, 132px) 106px;
-  grid-template-rows: 27px 16px;
-  gap: 2px 8px;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;
+  grid-template-rows: 24px 14px;
+  gap: 1px 8px;
   align-items: center;
-  height: 50px;
-  padding: 4px 8px;
+  height: 45px;
+  padding: 3px 8px;
   min-width: 0;
   background:
     linear-gradient(90deg, rgba(8, 12, 16, 0.92), rgba(40, 34, 27, 0.86)),
@@ -221,7 +250,7 @@ html.is-preview-fit .overlay-shell {
   max-width: 100%;
   overflow: hidden;
   color: #fff5d6;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 900;
   line-height: 1.1;
   text-overflow: ellipsis;
@@ -237,7 +266,7 @@ html.is-preview-fit .overlay-shell {
   display: block;
   overflow: hidden;
   color: #d7bd82;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
   line-height: 1;
   text-align: right;
@@ -251,7 +280,7 @@ html.is-preview-fit .overlay-shell {
   display: block;
   overflow: hidden;
   color: #7ee1d8;
-  font-size: 23px;
+  font-size: 21px;
   font-weight: 900;
   line-height: 1;
   text-align: right;
@@ -266,7 +295,7 @@ html.is-preview-fit .overlay-shell {
   grid-column: 1 / 4;
   overflow: hidden;
   color: #b9aa92;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 900;
   line-height: 1;
   text-overflow: ellipsis;
@@ -483,8 +512,6 @@ html.is-preview-fit .overlay-shell {
   overflow: hidden;
 }
 
-.today-ranking-pinned,
-.today-ranking-list,
 .ranking-pinned,
 .ranking-list {
   display: flex;
@@ -495,12 +522,10 @@ html.is-preview-fit .overlay-shell {
   list-style: none;
 }
 
-.today-ranking-list.is-scrolling,
 .ranking-list.is-scrolling {
   animation: tickerScroll 32s linear infinite;
 }
 
-.today-ranking-pinned,
 .ranking-pinned {
   gap: 8px;
   margin-bottom: 10px;
