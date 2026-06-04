@@ -122,6 +122,7 @@ export class AdminApp {
 
   private render(state: DerivedAppState): void {
     this.latestState = state;
+    this.sponsorForm.setKnownSponsors(state.sponsors);
     this.summaryView.render(state);
     this.recordListView.render(state.sponsors, state.programQueue);
     const canOperate = this.session?.role === "viewer" || this.session?.role === "admin";

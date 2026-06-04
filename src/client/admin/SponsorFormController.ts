@@ -1,11 +1,13 @@
-import type { AddSponsorRequest } from "../../shared/types";
+import type { AddSponsorRequest, SponsorRecord } from "../../shared/types";
 import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
 import { compressAvatarFile, readAvatarFromClipboard } from "./AvatarImageProcessor";
 
 type SubmitHandler = (request: AddSponsorRequest) => Promise<void>;
+type AvatarSource = "empty" | "manual" | "matched";
 
 export class SponsorFormController {
   private submitHandler: SubmitHandler | null = null;
+  private readonly bossNameInput: HTMLInputElement;
   private readonly programNameInput: HTMLInputElement;
   private readonly countsTowardChargeInput: HTMLInputElement;
   private readonly avatarPreview: HTMLElement;
@@ -13,14 +15,19 @@ export class SponsorFormController {
   private readonly chooseAvatarButton: HTMLButtonElement;
   private readonly pasteAvatarButton: HTMLButtonElement;
   private readonly clearAvatarButton: HTMLButtonElement;
+  private knownSponsors: SponsorRecord[] = [];
   private editableProgramName = "";
   private avatarDataUrl: string | undefined;
+  private avatarSource: AvatarSource = "empty";
   private formEnabled = true;
+  private matchRequestId = 0;
+  private matchedAvatarUrl: string | undefined;
 
   public constructor(
     private readonly form: HTMLFormElement,
     private readonly errorElement: HTMLElement
   ) {
+    this.bossNameInput = this.requiredInput("bossName");
     this.programNameInput = this.requiredInput("programName");
     this.countsTowardChargeInput = this.requiredInput("countsTowardCharge");
     this.avatarPreview = this.requiredElement("#avatarPreview", HTMLElement);
@@ -30,6 +37,7 @@ export class SponsorFormController {
     this.clearAvatarButton = this.requiredElement("#clearAvatarButton", HTMLButtonElement);
     this.form.addEventListener("submit", (event) => void this.handleSubmit(event));
     this.form.addEventListener("paste", (event) => void this.handlePaste(event));
+    this.bossNameInput.addEventListener("input", () => void this.matchExistingSponsorAvatar());
     this.countsTowardChargeInput.addEventListener("change", () => this.syncStartupProgramLock());
     this.avatarFileInput.addEventListener("change", () => void this.setAvatarFromSelectedFile());
     this.chooseAvatarButton.addEventListener("click", () => this.avatarFileInput.click());
@@ -59,6 +67,11 @@ export class SponsorFormController {
       this.syncStartupProgramLock();
     }
     this.renderAvatarPreview();
+  }
+
+  public setKnownSponsors(sponsors: SponsorRecord[]): void {
+    this.knownSponsors = sponsors;
+    void this.matchExistingSponsorAvatar();
   }
 
   private async handleSubmit(event: SubmitEvent): Promise<void> {
@@ -100,6 +113,8 @@ export class SponsorFormController {
   private async setAvatarFromClipboard(): Promise<void> {
     try {
       this.avatarDataUrl = await readAvatarFromClipboard();
+      this.avatarSource = "manual";
+      this.matchedAvatarUrl = undefined;
       this.renderAvatarPreview();
       this.showError("");
     } catch (error) {
@@ -120,6 +135,8 @@ export class SponsorFormController {
   private async setAvatarFromBlob(file: Blob): Promise<void> {
     try {
       this.avatarDataUrl = await compressAvatarFile(file);
+      this.avatarSource = "manual";
+      this.matchedAvatarUrl = undefined;
       this.renderAvatarPreview();
       this.showError("");
     } catch (error) {
@@ -129,7 +146,67 @@ export class SponsorFormController {
 
   private clearAvatar(): void {
     this.avatarDataUrl = undefined;
+    this.avatarSource = "empty";
+    this.matchedAvatarUrl = undefined;
     this.renderAvatarPreview();
+  }
+
+  private async matchExistingSponsorAvatar(): Promise<void> {
+    if (this.avatarSource === "manual") {
+      return;
+    }
+
+    const bossName = this.normalizedBossName(this.bossNameInput.value);
+    const requestId = (this.matchRequestId += 1);
+    const match = this.latestSponsorWithAvatar(bossName);
+
+    if (!match?.avatarUrl) {
+      if (this.avatarSource === "matched") {
+        this.clearAvatar();
+      }
+      return;
+    }
+
+    if (this.avatarSource === "matched" && this.matchedAvatarUrl === match.avatarUrl) {
+      return;
+    }
+
+    try {
+      const response = await fetch(match.avatarUrl);
+      if (!response.ok) {
+        return;
+      }
+
+      const avatarDataUrl = await compressAvatarFile(await response.blob());
+      if (requestId !== this.matchRequestId || this.isManualAvatarSource()) {
+        return;
+      }
+
+      this.avatarDataUrl = avatarDataUrl;
+      this.avatarSource = "matched";
+      this.matchedAvatarUrl = match.avatarUrl;
+      this.renderAvatarPreview();
+    } catch {
+      // Existing avatars are a convenience; failed auto-import should not block entry.
+    }
+  }
+
+  private latestSponsorWithAvatar(bossName: string): SponsorRecord | undefined {
+    if (!bossName) {
+      return undefined;
+    }
+
+    return [...this.knownSponsors]
+      .filter((record) => this.normalizedBossName(record.bossName) === bossName && Boolean(record.avatarUrl))
+      .sort((left, right) => right.createdAt - left.createdAt)[0];
+  }
+
+  private normalizedBossName(name: string): string {
+    return name.trim().toLocaleLowerCase("zh-CN");
+  }
+
+  private isManualAvatarSource(): boolean {
+    return this.avatarSource === "manual";
   }
 
   private renderAvatarPreview(): void {

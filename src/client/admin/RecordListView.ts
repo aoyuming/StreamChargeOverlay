@@ -8,6 +8,11 @@ type AddToTodayHandler = (id: string) => Promise<void>;
 type UpdateAmountHandler = (id: string, amount: number) => Promise<void>;
 type DeletePermanentlyHandler = (id: string) => Promise<void>;
 type UpdateAvatarHandler = (id: string, avatarDataUrl: string | null) => Promise<void>;
+type RecordAvatarSnapshot = {
+  backgroundImage: string;
+  className: string;
+  textContent: string;
+};
 
 export class RecordListView {
   private removeFromTodayHandler: RemoveFromTodayHandler | null = null;
@@ -220,14 +225,18 @@ export class RecordListView {
     }
 
     if (target.dataset.action === "paste-avatar" && this.updateAvatarHandler) {
+      let previousAvatar: RecordAvatarSnapshot | null = null;
       try {
         const avatarDataUrl = await readAvatarFromClipboard();
+        previousAvatar = this.previewRecordAvatar(row, avatarDataUrl);
         if (!window.confirm("确认用剪切板中的图片更换这条赞助记录的头像吗？")) {
+          this.restoreRecordAvatar(row, previousAvatar);
           return;
         }
 
         await this.updateAvatarHandler(id, avatarDataUrl);
       } catch (error) {
+        this.restoreRecordAvatar(row, previousAvatar);
         window.alert(error instanceof Error ? error.message : "头像处理失败");
       }
       return;
@@ -269,5 +278,33 @@ export class RecordListView {
 
   private avatarInitial(name: string): string {
     return name.trim().charAt(0).toUpperCase() || "B";
+  }
+
+  private previewRecordAvatar(row: HTMLElement, avatarDataUrl: string): RecordAvatarSnapshot | null {
+    const avatar = row.querySelector<HTMLElement>(".record-avatar");
+    if (!avatar) {
+      return null;
+    }
+
+    const snapshot = {
+      backgroundImage: avatar.style.backgroundImage,
+      className: avatar.className,
+      textContent: avatar.textContent ?? ""
+    };
+    avatar.className = "record-avatar has-image";
+    avatar.style.backgroundImage = `url("${avatarDataUrl}")`;
+    avatar.textContent = "";
+    return snapshot;
+  }
+
+  private restoreRecordAvatar(row: HTMLElement, snapshot: RecordAvatarSnapshot | null): void {
+    const avatar = row.querySelector<HTMLElement>(".record-avatar");
+    if (!avatar || !snapshot) {
+      return;
+    }
+
+    avatar.className = snapshot.className;
+    avatar.style.backgroundImage = snapshot.backgroundImage;
+    avatar.textContent = snapshot.textContent;
   }
 }

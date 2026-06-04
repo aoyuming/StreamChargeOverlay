@@ -25,8 +25,13 @@ describe("admin layout", () => {
     expect(adminHtml).toContain("剪切板导入头像");
     expect(adminHtml).toContain('id="clearAvatarButton"');
     expect(sponsorForm).toContain("avatarDataUrl");
+    expect(sponsorForm).toContain("setKnownSponsors");
+    expect(sponsorForm).toContain("bossNameInput");
+    expect(sponsorForm).toContain("matchExistingSponsorAvatar");
+    expect(sponsorForm).toContain("fetch(");
     expect(sponsorForm).toContain("compressAvatarFile");
     expect(sponsorForm).toContain("readAvatarFromClipboard");
+    expect(adminApp).toContain("this.sponsorForm.setKnownSponsors(state.sponsors)");
     expect(adminCss).toContain(".avatar-picker");
     expect(adminCss).toContain(".avatar-preview");
   });
@@ -65,6 +70,11 @@ describe("admin layout", () => {
     expect(recordListView).toContain("剪切板导入头像");
     expect(recordListView).toContain("readAvatarFromClipboard");
     expect(recordListView).toContain("window.confirm");
+    expect(recordListView).toContain("previewRecordAvatar");
+    expect(recordListView).toContain("restoreRecordAvatar");
+    expect(recordListView.indexOf("this.previewRecordAvatar(row, avatarDataUrl)")).toBeLessThan(
+      recordListView.indexOf("window.confirm")
+    );
     expect(recordListView).toContain("clear-avatar");
     expect(recordListView).toContain("移除今日榜单");
     expect(recordListView).toContain("加入今日榜单");
