@@ -158,10 +158,15 @@ describe("display layout", () => {
     expect(css).toContain("animation: tickerScroll 32s linear infinite;");
   });
 
-  it("includes stronger fire and enhanced lightning progress styles", () => {
+  it("uses canvas effect layers by default for progress and full-stage effects", () => {
     expect(html).toContain('id="progressShaderEffectsCanvas"');
-    expect(displayApp).toContain("ShaderProgressEffectLayer");
-    expect(displayApp).toContain("ShaderStageEffectLayer");
+    expect(displayApp).toContain('new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))');
+    expect(displayApp).toContain('new StageEffectLayer(queryRequired("#stageEffectsCanvas"))');
+    expect(displayApp).not.toContain("ShaderProgressEffectLayer");
+    expect(displayApp).not.toContain("ShaderStageEffectLayer");
+  });
+
+  it("includes stronger fire and enhanced lightning progress styles", () => {
     expect(css).toContain(".progress-track.is-inferno");
     expect(css).toContain(".progress-track.is-inferno .progress-fill");
     expect(css).toContain(".progress-track.is-inferno::before");

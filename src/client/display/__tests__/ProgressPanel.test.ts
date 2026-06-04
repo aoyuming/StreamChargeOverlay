@@ -318,9 +318,9 @@ describe("ProgressPanel", () => {
 
   it.each([
     [0, "ice"],
-    [39, "ice"],
-    [40, "fire"],
-    [69, "fire"],
+    [29.99, "ice"],
+    [30, "fire"],
+    [69.99, "fire"],
     [70, "inferno"],
     [99, "inferno"],
     [100, "lightning"]

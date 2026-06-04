@@ -168,6 +168,36 @@ describe("StageEffectLayer", () => {
     expect(uniqueXValues.size).toBeGreaterThan(7);
   });
 
+  it("keeps full-stage fire contained to the lower stage with transparent heat", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("fire");
+    callbacks[0]?.(100);
+
+    const heatFill = context.calls.find((call) => call[0] === "fillRect") as unknown[] | undefined;
+    const colors = context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)).join("\n");
+
+    expect(heatFill?.[2]).toBeGreaterThan(0);
+    expect(heatFill?.[4]).toBeLessThan(1440);
+    expect(colors).toContain("rgba(255, 32, 18, 0)");
+  });
+
   it("draws the dianjiang effect as lightning without canvas text", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {

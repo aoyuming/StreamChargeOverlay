@@ -7,8 +7,6 @@ import { ProgressPanel } from "./ProgressPanel";
 import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
 import { DisplayEffectCoordinator } from "./DisplayEffectCoordinator";
-import { ShaderProgressEffectLayer } from "./ShaderProgressEffectLayer";
-import { ShaderStageEffectLayer } from "./ShaderStageEffectLayer";
 import { STAGE_EFFECT_DURATION_MS, StageEffectLayer, type StageEffectPlayer } from "./StageEffectLayer";
 import { SponsorBurst } from "./SponsorBurst";
 import { SponsorSound } from "./SponsorSound";
@@ -84,14 +82,11 @@ export class DisplayApp {
   }
 
   private createProgressEffectLayer() {
-    return (
-      ShaderProgressEffectLayer.create(queryRequired("#progressShaderEffectsCanvas")) ??
-      new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
-    );
+    return new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"));
   }
 
   private createStageEffectLayer(): StageEffectPlayer {
-    return ShaderStageEffectLayer.create(queryRequired("#stageShaderEffectsCanvas")) ?? new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
+    return new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
   }
 
   private playDianjiangEffect(): void {

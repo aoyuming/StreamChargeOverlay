@@ -186,12 +186,13 @@ export class StageEffectLayer implements StageEffectPlayer {
   }
 
   private drawFire(width: number, height: number, progress: number, intensity: number): void {
+    const heatTop = height * (intensity > 1.2 ? 0.34 : 0.46);
     const heat = this.context.createRadialGradient(width / 2, height, 1, width / 2, height, height * 0.9);
     heat.addColorStop(0, `rgba(255, 232, 92, ${0.28 * intensity})`);
     heat.addColorStop(0.28, `rgba(255, 84, 20, ${0.2 * intensity})`);
     heat.addColorStop(1, "rgba(255, 32, 18, 0)");
     this.context.fillStyle = heat;
-    this.context.fillRect(0, 0, width, height);
+    this.context.fillRect(0, heatTop, width, height - heatTop);
 
     const flameCount = Math.round(18 * intensity);
     for (let index = 0; index < flameCount; index += 1) {

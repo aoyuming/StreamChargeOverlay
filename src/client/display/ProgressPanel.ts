@@ -23,7 +23,7 @@ export const progressEffectFor = (progressPercent: number): ProgressEffect => {
     return "inferno";
   }
 
-  if (percent >= 40) {
+  if (percent >= 30) {
     return "fire";
   }
 
