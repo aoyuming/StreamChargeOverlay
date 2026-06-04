@@ -13,6 +13,22 @@ interface StageParticle {
   color: string;
 }
 
+export interface LightningPoint {
+  x: number;
+  y: number;
+}
+
+export interface LightningBoltOptions {
+  amplitude: number;
+  endX: number;
+  endY: number;
+  progress: number;
+  seed: number;
+  segments: number;
+  startX: number;
+  startY: number;
+}
+
 export interface StageEffectPlayer {
   playSponsorEffect(effect: ProgressEffect): void;
   playDianjiangEffect(): void;
@@ -23,6 +39,35 @@ export const MAX_STAGE_EFFECT_DPR = 1.25;
 export const MAX_STAGE_EFFECT_PARTICLES = 240;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const seededNoise = (seed: number) => {
+  const raw = Math.sin(seed * 12.9898) * 43758.5453;
+  return raw - Math.floor(raw);
+};
+
+export const buildLightningBoltPoints = (options: LightningBoltOptions): LightningPoint[] => {
+  const segmentCount = Math.max(2, Math.round(options.segments));
+  const points: LightningPoint[] = [];
+  const pulseFrame = Math.floor(options.progress * 18);
+
+  for (let index = 0; index <= segmentCount; index += 1) {
+    const t = index / segmentCount;
+    const baseX = options.startX + (options.endX - options.startX) * t;
+    const baseY = options.startY + (options.endY - options.startY) * t;
+
+    if (index === 0 || index === segmentCount) {
+      points.push({ x: Math.round(baseX), y: Math.round(baseY) });
+      continue;
+    }
+
+    const jag = seededNoise(options.seed * 97 + index * 31 + pulseFrame * 13) * 2 - 1;
+    const wave = Math.sin((t + options.progress) * Math.PI * 5 + options.seed) * 0.34;
+    const centerWeight = 1 - Math.abs(t - 0.5) * 0.45;
+    const offset = (jag + wave) * options.amplitude * centerWeight;
+    points.push({ x: Math.round(baseX + offset), y: Math.round(baseY) });
+  }
+
+  return points;
+};
 
 export const clampStageEffectDevicePixelRatio = (devicePixelRatio: number): number => {
   if (!Number.isFinite(devicePixelRatio) || devicePixelRatio <= 0) {
@@ -169,29 +214,83 @@ export class StageEffectLayer implements StageEffectPlayer {
   }
 
   private drawLightning(width: number, height: number, progress: number): void {
-    this.context.fillStyle = `rgba(210, 250, 255, ${0.12 + Math.sin(progress * Math.PI * 12) * 0.08})`;
+    const flash = Math.max(0, Math.sin(progress * Math.PI * 10));
+    this.context.fillStyle = `rgba(210, 250, 255, ${0.08 + flash * 0.18})`;
     this.context.fillRect(0, 0, width, height);
-    this.context.strokeStyle = "rgba(255, 255, 255, 0.95)";
-    this.context.lineWidth = 4;
-    this.context.shadowBlur = 36;
-    this.context.shadowColor = "rgba(98, 238, 255, 1)";
 
-    for (let bolt = 0; bolt < 6; bolt += 1) {
-      let x = width * ((bolt + 0.7) / 6) + Math.sin(progress * 20 + bolt) * 110;
-      this.context.beginPath();
-      this.context.moveTo(x, 0);
-      for (let y = 0; y <= height; y += height / 8) {
-        x = clamp(x + Math.sin(progress * 42 + y + bolt) * 58, 0, width);
-        this.context.lineTo(x, y);
-        if (bolt % 2 === 0) {
-          this.context.moveTo(x, y);
-          this.context.lineTo(clamp(x + 70 * (bolt % 3 === 0 ? 1 : -1), 0, width), clamp(y + 36, 0, height));
-          this.context.moveTo(x, y);
-        }
-      }
-      this.context.stroke();
+    const bolts = [
+      { startX: width * 0.1, startY: -30, endX: width * 0.55, endY: height * 0.72, seed: 3 },
+      { startX: width * 0.88, startY: -40, endX: width * 0.47, endY: height * 0.65, seed: 9 },
+      { startX: width * 0.5, startY: -36, endX: width * 0.67, endY: height * 0.96, seed: 14 },
+      { startX: -44, startY: height * 0.22, endX: width * 0.42, endY: height * 0.58, seed: 21 },
+      { startX: width + 44, startY: height * 0.3, endX: width * 0.62, endY: height * 0.62, seed: 29 }
+    ];
+
+    for (const [index, bolt] of bolts.entries()) {
+      const points = buildLightningBoltPoints({
+        amplitude: width * (index === 2 ? 0.04 : 0.055),
+        endX: bolt.endX,
+        endY: bolt.endY,
+        progress,
+        seed: bolt.seed,
+        segments: index === 2 ? 11 : 9,
+        startX: bolt.startX,
+        startY: bolt.startY
+      });
+
+      this.drawLightningPath(points, "rgba(77, 225, 255, 0.46)", index === 2 ? 14 : 11, 46);
+      this.drawLightningPath(points, "rgba(255, 255, 255, 0.96)", index === 2 ? 4.4 : 3.4, 20);
+      this.drawLightningBranches(points, progress, bolt.seed, width, height);
     }
+
     this.context.shadowBlur = 0;
+  }
+
+  private drawLightningBranches(
+    points: LightningPoint[],
+    progress: number,
+    seed: number,
+    width: number,
+    height: number
+  ): void {
+    for (let index = 2; index < points.length - 2; index += 2) {
+      const point = points[index];
+      const direction = seededNoise(seed * 17 + index * 41) > 0.5 ? 1 : -1;
+      const length = width * (0.08 + seededNoise(seed * 43 + index * 19) * 0.08);
+      const endX = clamp(point.x + direction * length, -30, width + 30);
+      const endY = clamp(point.y + height * (0.03 + seededNoise(seed * 61 + index) * 0.09), -30, height + 30);
+      const branch = buildLightningBoltPoints({
+        amplitude: width * 0.022,
+        endX,
+        endY,
+        progress,
+        seed: seed + index * 7,
+        segments: 4,
+        startX: point.x,
+        startY: point.y
+      });
+
+      this.drawLightningPath(branch, "rgba(75, 236, 255, 0.36)", 6, 24);
+      this.drawLightningPath(branch, "rgba(255, 255, 255, 0.82)", 2, 12);
+    }
+  }
+
+  private drawLightningPath(points: LightningPoint[], color: string, lineWidth: number, shadowBlur: number): void {
+    const [firstPoint, ...remainingPoints] = points;
+    if (!firstPoint) {
+      return;
+    }
+
+    this.context.strokeStyle = color;
+    this.context.lineWidth = lineWidth;
+    this.context.shadowBlur = shadowBlur;
+    this.context.shadowColor = color;
+    this.context.beginPath();
+    this.context.moveTo(firstPoint.x, firstPoint.y);
+    for (const point of remainingPoints) {
+      this.context.lineTo(point.x, point.y);
+    }
+    this.context.stroke();
   }
 
   private drawDianjiang(width: number, height: number, progress: number): void {

@@ -3,6 +3,7 @@ import {
   MAX_STAGE_EFFECT_PARTICLES,
   STAGE_EFFECT_DURATION_MS,
   StageEffectLayer,
+  buildLightningBoltPoints,
   clampStageEffectDevicePixelRatio
 } from "../StageEffectLayer";
 
@@ -125,6 +126,29 @@ describe("StageEffectLayer", () => {
     expect(context.calls.some((call) => call[0] === "stroke")).toBe(true);
     expect(context.calls.at(-1)).toEqual(["clearRect", 0, 0, 1920, 1440]);
     expect(callbacks).toHaveLength(2);
+  });
+
+  it("builds jagged diagonal lightning bolt paths instead of straight screen cracks", () => {
+    const points = buildLightningBoltPoints({
+      amplitude: 120,
+      endX: 1540,
+      endY: 1120,
+      progress: 0.42,
+      seed: 7,
+      segments: 9,
+      startX: 260,
+      startY: 0
+    });
+    const horizontalTravel = points.slice(1).reduce((sum, point, index) => {
+      return sum + Math.abs(point.x - points[index].x);
+    }, 0);
+    const uniqueXValues = new Set(points.map((point) => Math.round(point.x / 10) * 10));
+
+    expect(points).toHaveLength(10);
+    expect(points[0]).toEqual({ x: 260, y: 0 });
+    expect(points.at(-1)).toEqual({ x: 1540, y: 1120 });
+    expect(horizontalTravel).toBeGreaterThan(1280);
+    expect(uniqueXValues.size).toBeGreaterThan(7);
   });
 
   it("draws the dianjiang effect as a center burst", () => {
