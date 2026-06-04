@@ -66,9 +66,14 @@ export class DonationService {
     const state = this.normalizeState(await this.repository.load());
     const currentChargeAmount = this.currentChargeAmount(state);
     const consumedNow = Math.min(currentChargeAmount, state.targetAmount);
+    if (consumedNow <= 0) {
+      return this.deriveState(state);
+    }
+
     const nextState: AppState = {
       ...state,
-      chargeConsumedAmount: this.roundAmount(state.chargeConsumedAmount + consumedNow)
+      chargeConsumedAmount: this.roundAmount(state.chargeConsumedAmount + consumedNow),
+      lastDianjiangEffectAt: Date.now()
     };
 
     await this.repository.save(nextState);
@@ -201,6 +206,7 @@ export class DonationService {
       targetAmount: state.targetAmount > 0 ? this.roundAmount(state.targetAmount) : DEFAULT_TARGET_AMOUNT,
       slogan: state.slogan?.trim() || DEFAULT_SLOGAN,
       chargeConsumedAmount: this.sanitizeAmount(state.chargeConsumedAmount),
+      lastDianjiangEffectAt: Number.isFinite(state.lastDianjiangEffectAt) ? state.lastDianjiangEffectAt : undefined,
       sponsors: Array.isArray(state.sponsors) ? state.sponsors.map((record) => this.normalizeRecord(record)) : []
     };
   }

@@ -90,7 +90,10 @@ describe("display layout", () => {
   });
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {
+    expect(html).toContain('<canvas id="stageEffectsCanvas" class="stage-effects-canvas" width="1920" height="1440"></canvas>');
     expect(html).toContain('<canvas id="burstParticles" class="burst-particles" width="1920" height="1440"></canvas>');
+    expect(css).toContain(".stage-effects-canvas {\n  position: absolute;\n  inset: 0;\n  z-index: 5;\n  width: 1920px;\n  height: 1440px;");
+    expect(css).toContain("pointer-events: none;");
     expect(css).toContain(".burst-particles {\n  position: absolute;\n  inset: 0;\n  z-index: 4;\n  width: 1920px;\n  height: 1440px;");
   });
 

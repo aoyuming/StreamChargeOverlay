@@ -6,6 +6,7 @@ const EMPTY_STATE: AppState = {
   targetAmount: 1000,
   slogan: "赞助点将，名场面马上开演",
   chargeConsumedAmount: 0,
+  lastDianjiangEffectAt: undefined,
   sponsors: []
 };
 
@@ -39,6 +40,8 @@ export class JsonStateRepository implements StateRepository {
       slogan: typeof state.slogan === "string" ? state.slogan : EMPTY_STATE.slogan,
       chargeConsumedAmount:
         typeof state.chargeConsumedAmount === "number" ? state.chargeConsumedAmount : EMPTY_STATE.chargeConsumedAmount,
+      lastDianjiangEffectAt:
+        typeof state.lastDianjiangEffectAt === "number" ? state.lastDianjiangEffectAt : undefined,
       sponsors: Array.isArray(state.sponsors) ? state.sponsors.map((record) => this.normalizeRecord(record)) : []
     };
   }

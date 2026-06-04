@@ -25,6 +25,7 @@ describe("JsonStateRepository", () => {
     const state = await new JsonStateRepository(filePath).load();
 
     expect(state.chargeConsumedAmount).toBe(0);
+    expect(state.lastDianjiangEffectAt).toBeUndefined();
     expect(state.sponsors[0]).toMatchObject({ id: "legacy-1", countsTowardCharge: true });
   });
 });

@@ -13,6 +13,7 @@ export interface AppState {
   targetAmount: number;
   slogan: string;
   chargeConsumedAmount: number;
+  lastDianjiangEffectAt?: number;
   sponsors: SponsorRecord[];
 }
 

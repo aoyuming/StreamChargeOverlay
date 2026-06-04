@@ -754,6 +754,16 @@ html.is-preview-fit .overlay-shell {
   animation: stageImpact 900ms ease;
 }
 
+.stage-effects-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: 1920px;
+  height: 1440px;
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
 .burst-particles {
   position: absolute;
   inset: 0;

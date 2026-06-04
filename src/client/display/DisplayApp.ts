@@ -6,6 +6,8 @@ import { ProgressEffectLayer } from "./ProgressEffectLayer";
 import { ProgressPanel } from "./ProgressPanel";
 import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
+import { DisplayEffectCoordinator } from "./DisplayEffectCoordinator";
+import { StageEffectLayer, type StageEffectPlayer } from "./StageEffectLayer";
 import { SponsorBurst } from "./SponsorBurst";
 import { SponsorSound } from "./SponsorSound";
 import { SponsorSpeech } from "./SponsorSpeech";
@@ -15,16 +17,16 @@ export class DisplayApp {
   private readonly progressPanel: ProgressPanel;
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
+  private readonly stageEffects: StageEffectPlayer;
+  private readonly effectCoordinator = new DisplayEffectCoordinator();
   private readonly sponsorSound = new SponsorSound();
   private readonly sponsorSpeech = new SponsorSpeech();
   private readonly sponsorSpeechAudio = new SponsorSpeechAudio();
-  private knownSponsorIds = new Set<string>();
-  private lastTotalAmount = 0;
-  private hasRendered = false;
 
   public constructor(
     private readonly apiClient: ApiClient,
-    private readonly realtimeClient: RealtimeClient
+    private readonly realtimeClient: RealtimeClient,
+    stageEffects?: StageEffectPlayer
   ) {
     this.progressPanel = new ProgressPanel(
       queryRequired("#currentBossList"),
@@ -41,6 +43,7 @@ export class DisplayApp {
       queryRequired("#burstNote"),
       new BurstParticles(queryRequired("#burstParticles"))
     );
+    this.stageEffects = stageEffects ?? new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
   }
 
   public async start(): Promise<void> {
@@ -49,39 +52,30 @@ export class DisplayApp {
   }
 
   private render(state: DerivedAppState): void {
-    const shouldPulse = state.totalAmount > this.lastTotalAmount;
-    const latestNewSponsor = this.findLatestNewSponsor(state);
+    const effectEvent = this.effectCoordinator.update(state);
     this.progressPanel.render(state, state.programQueue);
     this.rankingTicker.render(state.ranking);
 
-    if (latestNewSponsor) {
-      if (shouldPulse) {
+    if (effectEvent.shouldPlayDianjiangEffect) {
+      this.stageEffects.playDianjiangEffect();
+    }
+
+    if (effectEvent.latestNewSponsor) {
+      if (effectEvent.shouldPulseProgress) {
         this.progressPanel.pulse();
       }
-      this.sponsorBurst.show(latestNewSponsor);
+      if (effectEvent.sponsorEffect) {
+        this.stageEffects.playSponsorEffect(effectEvent.sponsorEffect);
+      }
+      this.sponsorBurst.show(effectEvent.latestNewSponsor);
       void this.sponsorSound.play();
       if (state.speechAlert) {
         this.sponsorSpeechAudio.play(state.speechAlert);
       } else {
-        this.sponsorSpeech.speak(latestNewSponsor);
+        this.sponsorSpeech.speak(effectEvent.latestNewSponsor);
       }
       document.body.classList.add("has-new-sponsor");
       window.setTimeout(() => document.body.classList.remove("has-new-sponsor"), 900);
     }
-
-    this.knownSponsorIds = new Set(state.sponsors.map((record) => record.id));
-    this.lastTotalAmount = state.totalAmount;
-    this.hasRendered = true;
   }
-
-  private findLatestNewSponsor(state: DerivedAppState) {
-    if (!this.hasRendered) {
-      return undefined;
-    }
-
-    return state.sponsors
-      .filter((record) => !this.knownSponsorIds.has(record.id))
-      .sort((left, right) => right.createdAt - left.createdAt)[0];
-  }
-
 }

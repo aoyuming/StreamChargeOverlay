@@ -84,6 +84,8 @@ describe("DonationService", () => {
   });
 
   it("starts dianjiang by subtracting the target amount from current charge", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-04T12:30:00+08:00"));
     const repository = new MemoryStateRepository({
       targetAmount: 500,
       sponsors: [baseRecord({ id: "charge", amount: 900 })]
@@ -93,10 +95,13 @@ describe("DonationService", () => {
 
     expect(state.totalAmount).toBe(400);
     expect(state.chargeConsumedAmount).toBe(500);
+    expect(state.lastDianjiangEffectAt).toBe(new Date("2026-06-04T12:30:00+08:00").getTime());
     expect(state.sponsors.map((record) => [record.id, record.amount])).toEqual([["charge", 900]]);
   });
 
   it("starts dianjiang by zeroing current charge when it is below the target", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-04T12:35:00+08:00"));
     const repository = new MemoryStateRepository({
       targetAmount: 500,
       sponsors: [baseRecord({ id: "charge", amount: 240 })]
@@ -106,6 +111,24 @@ describe("DonationService", () => {
 
     expect(state.totalAmount).toBe(0);
     expect(state.chargeConsumedAmount).toBe(240);
+    expect(state.lastDianjiangEffectAt).toBe(new Date("2026-06-04T12:35:00+08:00").getTime());
+  });
+
+  it("does not emit a dianjiang effect marker when current charge is already zero", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-04T12:40:00+08:00"));
+    const repository = new MemoryStateRepository({
+      targetAmount: 500,
+      sponsors: [baseRecord({ id: "spent", amount: 240 })],
+      chargeConsumedAmount: 240,
+      lastDianjiangEffectAt: new Date("2026-06-04T12:00:00+08:00").getTime()
+    });
+
+    const state = await new DonationService(repository).startDianjiang();
+
+    expect(state.totalAmount).toBe(0);
+    expect(state.chargeConsumedAmount).toBe(240);
+    expect(state.lastDianjiangEffectAt).toBe(new Date("2026-06-04T12:00:00+08:00").getTime());
   });
 
   it("edits a historical sponsor amount and recalculates charge and ranking", async () => {

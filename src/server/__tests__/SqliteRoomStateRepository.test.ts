@@ -39,6 +39,7 @@ describe("SqliteRoomStateRepository", () => {
       targetAmount: 1200,
       slogan: "alpha slogan",
       chargeConsumedAmount: 30,
+      lastDianjiangEffectAt: 1717488000000,
       sponsors: [
         {
           id: "alpha-1",
@@ -74,6 +75,7 @@ describe("SqliteRoomStateRepository", () => {
     expect((await alpha.load()).sponsors.map((record) => record.id)).toEqual(["alpha-1"]);
     expect((await beta.load()).sponsors.map((record) => record.id)).toEqual(["beta-1"]);
     expect((await alpha.load()).chargeConsumedAmount).toBe(30);
+    expect((await alpha.load()).lastDianjiangEffectAt).toBe(1717488000000);
     expect((await alpha.load()).sponsors[0]).toMatchObject({ countsTowardCharge: true, hiddenFromTodayAt: 123 });
     expect((await beta.load()).sponsors[0]).toMatchObject({ countsTowardCharge: false });
   });
@@ -97,6 +99,7 @@ describe("SqliteRoomStateRepository", () => {
     expect(state.targetAmount).toBe(1500);
     expect(state.slogan).toBe("legacy slogan");
     expect(state.chargeConsumedAmount).toBe(0);
+    expect(state.lastDianjiangEffectAt).toBeUndefined();
     expect(state.sponsors.map((record) => record.id)).toEqual(["legacy-1"]);
     expect(state.sponsors[0]?.countsTowardCharge).toBe(true);
     expect(await readFile(legacyPath, "utf8")).toContain("legacy-1");
