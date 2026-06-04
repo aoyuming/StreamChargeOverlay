@@ -92,10 +92,14 @@ describe("display layout", () => {
   it("adds a camera-area room selector and red program-only row styling", () => {
     expect(html).toContain('id="roomSelect"');
     expect(html).toContain('id="roomCycleButton"');
+    expect(html).toContain('id="adminOpenButton"');
     expect(css).toContain(".room-selector");
     expect(css).toContain(".room-cycle-button");
+    expect(css).toContain(".admin-open-button");
     expect(css).not.toContain(".current-boss-row.is-program-only {\n  background:");
     expect(css).toContain(".current-boss-row.is-program-only .current-boss-program");
+    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain("window.open");
+    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain('roomPagePath(selectedSlug, "admin")');
   });
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {
