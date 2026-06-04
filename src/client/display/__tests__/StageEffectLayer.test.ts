@@ -168,7 +168,7 @@ describe("StageEffectLayer", () => {
     expect(uniqueXValues.size).toBeGreaterThan(7);
   });
 
-  it("draws the dianjiang effect as a center burst", () => {
+  it("draws the dianjiang effect as lightning without canvas text", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
       addEventListener: () => undefined,
@@ -190,12 +190,12 @@ describe("StageEffectLayer", () => {
     layer.playDianjiangEffect();
     callbacks[0]?.(100);
 
-    expect(context.calls.some((call) => call[0] === "arc")).toBe(true);
+    expect(context.calls.some((call) => call[0] === "stroke")).toBe(true);
     expect(context.calls.some((call) => call[0] === "fillRect")).toBe(true);
-    expect(context.calls.some((call) => call[0] === "fillText" && call[1] === "现在开始点将")).toBe(true);
+    expect(context.calls.some((call) => call[0] === "fillText")).toBe(false);
   });
 
-  it("draws the dianjiang effect as a cool electric dragon without gold-orange colors", () => {
+  it("draws the dianjiang effect as cool electric bolts without dragon curves or gold-orange colors", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
       addEventListener: () => undefined,
@@ -224,7 +224,7 @@ describe("StageEffectLayer", () => {
       context.shadowColor
     ].join("\n");
 
-    expect(context.calls.some((call) => call[0] === "bezierCurveTo")).toBe(true);
+    expect(context.calls.some((call) => call[0] === "bezierCurveTo")).toBe(false);
     expect(colors).toContain("rgba(46, 234, 255");
     expect(colors).not.toContain("rgba(255, 246");
     expect(colors).not.toContain("rgba(255, 184");

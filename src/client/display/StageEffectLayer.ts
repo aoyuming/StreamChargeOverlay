@@ -296,99 +296,19 @@ export class StageEffectLayer implements StageEffectPlayer {
   private drawDianjiang(width: number, height: number, progress: number): void {
     const centerX = width / 2;
     const centerY = height * 0.43;
-    const ringRadius = 120 + progress * 720;
-    const glow = this.context.createRadialGradient(centerX, centerY, 1, centerX, centerY, ringRadius);
-    glow.addColorStop(0, "rgba(46, 234, 255, 0.58)");
-    glow.addColorStop(0.34, "rgba(41, 132, 255, 0.22)");
-    glow.addColorStop(1, "rgba(16, 42, 112, 0)");
-    this.context.fillStyle = glow;
+    const flash = Math.max(0, Math.sin(progress * Math.PI * 9));
+    const sweep = this.context.createLinearGradient(0, height * 0.18, width, height * 0.82);
+    sweep.addColorStop(0, "rgba(46, 234, 255, 0)");
+    sweep.addColorStop(0.42, `rgba(46, 234, 255, ${0.22 + flash * 0.22})`);
+    sweep.addColorStop(0.5, `rgba(255, 255, 255, ${0.16 + flash * 0.28})`);
+    sweep.addColorStop(0.58, `rgba(84, 132, 255, ${0.18 + flash * 0.18})`);
+    sweep.addColorStop(1, "rgba(46, 234, 255, 0)");
+    this.context.fillStyle = sweep;
     this.context.fillRect(0, 0, width, height);
 
-    this.context.strokeStyle = "rgba(46, 234, 255, 0.82)";
-    this.context.lineWidth = 5;
-    this.context.shadowBlur = 34;
-    this.context.shadowColor = "rgba(46, 234, 255, 0.96)";
-    for (let index = 0; index < 3; index += 1) {
-      this.context.beginPath();
-      this.context.arc(centerX, centerY, ringRadius * (0.28 + index * 0.22), 0, Math.PI * 2);
-      this.context.stroke();
-    }
-
-    this.drawDianjiangDragon(width, height, centerX, centerY, progress);
+    this.drawLightning(width, height, progress);
     this.drawDianjiangElectricArcs(width, height, centerX, centerY, progress);
-    this.drawDianjiangText(centerX, height, progress);
     this.context.shadowBlur = 0;
-  }
-
-  private drawDianjiangDragon(
-    width: number,
-    height: number,
-    centerX: number,
-    centerY: number,
-    progress: number
-  ): void {
-    const sway = Math.sin(progress * Math.PI * 2) * 34;
-    const bodyStartX = centerX - width * 0.25;
-    const bodyEndX = centerX + width * 0.22;
-    const bodyStartY = centerY + height * 0.02;
-    const bodyEndY = centerY - height * 0.02;
-
-    this.context.save();
-    this.context.lineCap = "round";
-    this.context.lineJoin = "round";
-    this.context.strokeStyle = "rgba(46, 234, 255, 0.72)";
-    this.context.lineWidth = 22;
-    this.context.shadowBlur = 48;
-    this.context.shadowColor = "rgba(46, 234, 255, 0.94)";
-    this.context.beginPath();
-    this.context.moveTo(bodyStartX, bodyStartY);
-    this.context.bezierCurveTo(
-      centerX - width * 0.15,
-      centerY - height * 0.2 - sway,
-      centerX + width * 0.05,
-      centerY + height * 0.16 + sway,
-      bodyEndX,
-      bodyEndY
-    );
-    this.context.stroke();
-
-    this.context.strokeStyle = "rgba(190, 252, 255, 0.95)";
-    this.context.lineWidth = 6;
-    this.context.shadowBlur = 24;
-    this.context.beginPath();
-    this.context.moveTo(bodyStartX + width * 0.02, bodyStartY - height * 0.012);
-    this.context.bezierCurveTo(
-      centerX - width * 0.12,
-      centerY - height * 0.14 - sway * 0.6,
-      centerX + width * 0.06,
-      centerY + height * 0.1 + sway * 0.5,
-      bodyEndX - width * 0.03,
-      bodyEndY
-    );
-    this.context.stroke();
-
-    const headX = bodyEndX + width * 0.045;
-    const headY = bodyEndY - height * 0.025;
-    this.context.fillStyle = "rgba(10, 42, 62, 0.88)";
-    this.context.strokeStyle = "rgba(144, 244, 255, 0.96)";
-    this.context.lineWidth = 4;
-    this.context.shadowBlur = 34;
-    this.context.beginPath();
-    this.context.moveTo(headX - 54, headY + 10);
-    this.context.bezierCurveTo(headX - 24, headY - 38, headX + 48, headY - 40, headX + 74, headY + 2);
-    this.context.bezierCurveTo(headX + 42, headY + 38, headX - 16, headY + 36, headX - 54, headY + 10);
-    this.context.fill();
-    this.context.stroke();
-
-    this.context.strokeStyle = "rgba(112, 228, 255, 0.86)";
-    this.context.lineWidth = 5;
-    this.context.beginPath();
-    this.context.moveTo(headX + 24, headY - 28);
-    this.context.lineTo(headX + 48, headY - 72);
-    this.context.moveTo(headX + 2, headY - 28);
-    this.context.lineTo(headX + 4, headY - 76);
-    this.context.stroke();
-    this.context.restore();
   }
 
   private drawDianjiangElectricArcs(
@@ -419,32 +339,6 @@ export class StageEffectLayer implements StageEffectPlayer {
       this.drawLightningPath(points, "rgba(46, 234, 255, 0.42)", 8, 30);
       this.drawLightningPath(points, "rgba(237, 255, 255, 0.86)", 2.6, 14);
     }
-  }
-
-  private drawDianjiangText(centerX: number, height: number, progress: number): void {
-    const text = "现在开始点将";
-    const textY = height * 0.58;
-    const pulse = 1 + Math.sin(progress * Math.PI) * 0.08;
-    const fontSize = Math.round(clamp(height * 0.072 * pulse, 72, 118));
-    const backdropWidth = Math.min(980, fontSize * 7.8);
-    const backdropHeight = fontSize * 1.34;
-
-    this.context.save();
-    this.context.globalCompositeOperation = "source-over";
-    this.context.fillStyle = "rgba(3, 5, 7, 0.46)";
-    this.context.fillRect(centerX - backdropWidth / 2, textY - backdropHeight / 2, backdropWidth, backdropHeight);
-    this.context.font = `900 ${fontSize}px "Microsoft YaHei", "Segoe UI", system-ui, sans-serif`;
-    this.context.textAlign = "center";
-    this.context.textBaseline = "middle";
-    this.context.shadowBlur = 42;
-    this.context.shadowColor = "rgba(46, 234, 255, 0.96)";
-    this.context.fillStyle = "rgba(197, 252, 255, 0.98)";
-    this.context.fillText(text, centerX, textY);
-    this.context.shadowBlur = 18;
-    this.context.shadowColor = "rgba(84, 132, 255, 0.72)";
-    this.context.fillStyle = "rgba(255, 255, 255, 0.86)";
-    this.context.fillText(text, centerX, textY - 2);
-    this.context.restore();
   }
 
   private seedParticles(effect: StageEffect): void {

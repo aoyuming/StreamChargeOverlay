@@ -17,13 +17,12 @@ describe("ShaderEffectLayer", () => {
     });
   });
 
-  it("contains shader branches for progress stages and dianjiang electric dragon", () => {
+  it("contains shader branches for progress stages and dianjiang lightning", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawIce");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawEnergy");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawFire");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawLightning");
-    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawDragonDianjiang");
-    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("dragonBody");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawDianjiangLightning");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("lightningField");
   });
 
@@ -47,10 +46,14 @@ describe("ShaderEffectLayer", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawFire(v_uv, STAGE_INFERNO_INTENSITY)");
   });
 
-  it("draws a stronger dianjiang start signal with a separate start glyph", () => {
-    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawStartGlyph");
-    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("dianjiangShockwave");
-    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("startGlyph");
+  it("keeps dianjiang to lightning only without dragon rings or shader-drawn text", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawDianjiangLightning");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("dianjiangFlash");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("drawDragonDianjiang");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("dragonBody");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("dianjiangShockwave");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("drawStartGlyph");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).not.toContain("startGlyph");
   });
 
   it("falls back cleanly when WebGL is unavailable", () => {

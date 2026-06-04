@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DerivedAppState, SponsorRecord } from "../../../shared/types";
-import { DisplayEffectCoordinator } from "../DisplayEffectCoordinator";
+import { DisplayEffectCoordinator, sponsorEffectForAmount } from "../DisplayEffectCoordinator";
 
 const sponsor = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
   id: "sponsor-1",
@@ -36,7 +36,17 @@ describe("DisplayEffectCoordinator", () => {
     expect(event.sponsorEffect).toBeUndefined();
   });
 
-  it("plays the current charge-stage sponsor effect for a new sponsor", () => {
+  it("maps full-stage sponsor effects from the new sponsor amount", () => {
+    expect(sponsorEffectForAmount(0)).toBe("ice");
+    expect(sponsorEffectForAmount(99.99)).toBe("ice");
+    expect(sponsorEffectForAmount(100)).toBe("fire");
+    expect(sponsorEffectForAmount(199.99)).toBe("fire");
+    expect(sponsorEffectForAmount(200)).toBe("inferno");
+    expect(sponsorEffectForAmount(399.99)).toBe("inferno");
+    expect(sponsorEffectForAmount(400)).toBe("lightning");
+  });
+
+  it("plays the amount-stage sponsor effect for a new sponsor without changing progress stages", () => {
     const coordinator = new DisplayEffectCoordinator();
     coordinator.update(state({ sponsors: [sponsor({ id: "known" })], totalAmount: 200, progressPercent: 20 }));
 
@@ -52,7 +62,7 @@ describe("DisplayEffectCoordinator", () => {
     );
 
     expect(event.latestNewSponsor?.id).toBe("new");
-    expect(event.sponsorEffect).toBe("inferno");
+    expect(event.sponsorEffect).toBe("ice");
     expect(event.shouldPulseProgress).toBe(false);
   });
 

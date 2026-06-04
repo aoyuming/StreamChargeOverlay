@@ -110,19 +110,6 @@ float forkedLightningField(vec2 uv) {
   return mainField + (branchA + branchB + branchC) * (0.72 + microForks * 0.34);
 }
 
-float dragonBody(vec2 uv) {
-  float wave = sin((uv.x + u_time * 0.2) * 13.5) * 0.07;
-  float y = 0.42 + wave;
-  float body = smoothstep(0.092, 0.0, abs(uv.y - y)) * smoothstep(0.04, 0.19, uv.x) * smoothstep(0.9, 0.6, uv.x);
-  float spine = smoothstep(0.026, 0.0, abs(uv.y - y - 0.014)) * smoothstep(0.14, 0.84, uv.x);
-  float head = smoothstep(0.15, 0.0, length((uv - vec2(0.79, 0.38)) * vec2(1.0, 1.38)));
-  float jaw = softLine(uv, vec2(0.74, 0.41), vec2(0.89, 0.35), 0.018);
-  float hornA = softLine(uv, vec2(0.8, 0.32), vec2(0.86, 0.17), 0.014);
-  float hornB = softLine(uv, vec2(0.73, 0.33), vec2(0.72, 0.17), 0.014);
-  float tail = softLine(uv, vec2(0.16, 0.43), vec2(0.02, 0.57), 0.034);
-  return max(max(body, spine), max(max(max(head, jaw), tail), max(hornA, hornB)));
-}
-
 float frostMist(vec2 uv) {
   float rollingMist = fbm(uv * 6.4 + vec2(u_time * 0.16, -u_time * 0.1));
   float fineMist = fbm(uv * 18.0 + vec2(-u_time * 0.22, u_time * 0.18));
@@ -201,45 +188,32 @@ vec4 drawLightning(vec2 uv) {
   return vec4(color, alpha);
 }
 
-float dianjiangShockwave(vec2 uv) {
-  float distanceToCenter = length((uv - vec2(0.5, 0.43)) * vec2(1.0, 1.16));
-  float waveA = smoothstep(0.018, 0.0, abs(distanceToCenter - (0.14 + fract(u_time * 0.42) * 0.74)));
-  float waveB = smoothstep(0.012, 0.0, abs(distanceToCenter - (0.1 + fract(u_time * 0.62 + 0.36) * 0.62)));
-  float burst = smoothstep(0.46, 0.0, distanceToCenter) * pow(abs(sin(u_time * 5.2)), 2.0);
-  return clamp(waveA + waveB * 0.78 + burst * 0.46, 0.0, 1.0);
+float dianjiangFlash(vec2 uv) {
+  float strobe = pow(abs(sin(u_time * 9.4)), 8.0);
+  float snap = pow(abs(sin(u_time * 23.0 + fbm(uv * 7.0) * 4.0)), 16.0);
+  float diagonalA = smoothstep(0.09, 0.0, abs(uv.y - (1.0 - uv.x) - sin(u_time * 3.2) * 0.18));
+  float diagonalB = smoothstep(0.075, 0.0, abs(uv.y - uv.x + cos(u_time * 2.8) * 0.16));
+  float edgeBurst = max(
+    max(1.0 - smoothstep(0.0, 0.16, uv.x), 1.0 - smoothstep(0.0, 0.16, 1.0 - uv.x)),
+    max(1.0 - smoothstep(0.0, 0.14, uv.y), 1.0 - smoothstep(0.0, 0.14, 1.0 - uv.y))
+  );
+  return clamp(strobe * 0.42 + snap * 0.24 + (diagonalA + diagonalB) * 0.34 + edgeBurst * 0.2, 0.0, 1.0);
 }
 
-float startGlyphShape(vec2 uv, vec2 center, float scale) {
-  vec2 p = (uv - center) / scale + vec2(0.5);
-  float visible = step(0.0, p.x) * step(p.x, 1.0) * step(0.0, p.y) * step(p.y, 1.0);
-  float glyph = 0.0;
-  glyph += softLine(p, vec2(0.18, 0.75), vec2(0.82, 0.75), 0.045);
-  glyph += softLine(p, vec2(0.22, 0.48), vec2(0.78, 0.48), 0.038);
-  glyph += softLine(p, vec2(0.34, 0.2), vec2(0.34, 0.82), 0.04);
-  glyph += softLine(p, vec2(0.64, 0.2), vec2(0.64, 0.82), 0.04);
-  return glyph * visible;
-}
+vec4 drawDianjiangLightning(vec2 uv) {
+  float field = forkedLightningField(uv) * 1.72;
+  field += lightningBolt(uv, vec2(-0.08, 0.1), vec2(0.88, 0.82), 0.016, 131.0) * 1.12;
+  field += lightningBolt(uv, vec2(1.08, 0.0), vec2(0.18, 0.9), 0.015, 149.0) * 1.08;
+  field += lightningBolt(uv, vec2(0.5, -0.12), vec2(0.48, 1.12), 0.018, 173.0) * 1.18;
+  field += lightningBolt(uv, vec2(-0.05, 0.62), vec2(1.04, 0.42), 0.012, 191.0) * 0.78;
 
-float drawStartGlyph(vec2 uv) {
-  float startGlyph = startGlyphShape(uv, vec2(0.39, 0.62), 0.18);
-  float secondGlyph = startGlyphShape(uv, vec2(0.59, 0.62), 0.18);
-  secondGlyph += softLine((uv - vec2(0.59, 0.62)) / 0.18 + vec2(0.5), vec2(0.28, 0.24), vec2(0.72, 0.72), 0.036);
-  secondGlyph += softLine((uv - vec2(0.59, 0.62)) / 0.18 + vec2(0.5), vec2(0.72, 0.24), vec2(0.28, 0.72), 0.036);
-  return clamp(startGlyph + secondGlyph, 0.0, 1.0);
-}
-
-vec4 drawDragonDianjiang(vec2 uv) {
-  float dragon = dragonBody(uv);
-  float field = forkedLightningField(uv);
-  float shockwave = dianjiangShockwave(uv);
-  float glyph = drawStartGlyph(uv);
-  float dragonGlow = smoothstep(0.18, 0.0, length((uv - vec2(0.62, 0.4)) * vec2(0.82, 1.35)));
-  vec3 color = vec3(0.03, 0.25, 0.42) * dragon + vec3(0.15, 0.98, 1.0) * dragon * 3.2;
-  color += vec3(0.18, 0.72, 1.0) * field * 2.85;
-  color += vec3(0.28, 0.96, 1.0) * shockwave * 1.35;
-  color += vec3(0.88, 1.0, 1.0) * glyph * (1.2 + pow(abs(sin(u_time * 6.0)), 2.0) * 0.7);
-  color += vec3(0.12, 0.72, 1.0) * dragonGlow * 0.48;
-  float alpha = clamp(dragon * 0.96 + field * 0.74 + shockwave * 0.58 + glyph * 0.88, 0.0, 1.0);
+  float flash = dianjiangFlash(uv);
+  float electricFog = fbm(uv * 9.0 + vec2(u_time * 1.7, -u_time * 1.2)) * flash;
+  vec3 color = vec3(0.08, 0.66, 1.0) * field * 3.15;
+  color += vec3(0.36, 1.0, 1.0) * field * 1.2;
+  color += vec3(1.0) * (field * 0.92 + flash * 0.68);
+  color += vec3(0.18, 0.42, 1.0) * electricFog * 0.72;
+  float alpha = clamp(field * 1.32 + flash * 0.46 + electricFog * 0.2, 0.0, 1.0);
   return vec4(color, alpha);
 }
 
@@ -260,7 +234,7 @@ void main() {
   } else if (u_effect < 4.5) {
     effectColor = drawLightning(v_uv);
   } else {
-    effectColor = drawDragonDianjiang(v_uv);
+    effectColor = drawDianjiangLightning(v_uv);
   }
 
   float rimGlow = chargedEdgeMask(v_uv) * (0.42 + 0.58 * pow(abs(sin(u_time * 9.0)), 3.0));

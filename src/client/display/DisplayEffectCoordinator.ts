@@ -1,6 +1,5 @@
 import type { DerivedAppState, SponsorRecord } from "../../shared/types";
 import type { ProgressEffect } from "./ProgressPanel";
-import { progressEffectFor } from "./ProgressPanel";
 
 export interface DisplayEffectEvent {
   latestNewSponsor?: SponsorRecord;
@@ -8,6 +7,22 @@ export interface DisplayEffectEvent {
   shouldPlayDianjiangEffect: boolean;
   sponsorEffect?: ProgressEffect;
 }
+
+export const sponsorEffectForAmount = (amount: number): ProgressEffect => {
+  if (!Number.isFinite(amount) || amount < 100) {
+    return "ice";
+  }
+
+  if (amount < 200) {
+    return "fire";
+  }
+
+  if (amount < 400) {
+    return "inferno";
+  }
+
+  return "lightning";
+};
 
 export class DisplayEffectCoordinator {
   private knownSponsorIds = new Set<string>();
@@ -22,7 +37,7 @@ export class DisplayEffectCoordinator {
       latestNewSponsor,
       shouldPulseProgress: state.totalAmount > this.lastTotalAmount,
       shouldPlayDianjiangEffect,
-      sponsorEffect: latestNewSponsor ? progressEffectFor(state.progressPercent) : undefined
+      sponsorEffect: latestNewSponsor ? sponsorEffectForAmount(latestNewSponsor.amount) : undefined
     };
 
     this.knownSponsorIds = new Set(state.sponsors.map((record) => record.id));

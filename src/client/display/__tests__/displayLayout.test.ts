@@ -72,7 +72,7 @@ describe("display layout", () => {
   });
 
   it("keeps the merged charge panel rows inside the bottom HUD height", () => {
-    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 176px 36px 50px;");
+    expect(css).toContain(".charge-panel {\n  display: grid;\n  grid-template-rows: 32px 176px 34px 46px;");
     expect(css).toContain("gap: 4px;");
     expect(css).toContain("padding: 12px 16px 4px;");
   });
@@ -145,6 +145,7 @@ describe("display layout", () => {
     expect(css).toContain(".stage-effect-start-text");
     expect(css).toContain(".has-dianjiang-effect .stage-effect-start-text");
     expect(displayApp).toContain("has-dianjiang-effect");
+    expect(css).toContain("font-size: 210px;");
   });
 
   it("adds a fit-preview mode for ordinary browser windows", () => {
@@ -171,5 +172,10 @@ describe("display layout", () => {
   it("clips progress track pseudo effects to the charged width", () => {
     expect(css).toContain(".progress-track::before,\n.progress-track::after {\n  position: absolute;\n  top: 0;\n  bottom: 0;\n  left: 0;\n  width: var(--progress, 0%);");
     expect(css).not.toContain(".progress-track::before,\n.progress-track::after {\n  position: absolute;\n  inset: 0;");
+    expect(css).toContain("contain: paint;");
+    expect(css).toContain("grid-template-rows: 32px 176px 34px 46px;");
+    expect(css).toContain("height: 46px;");
+    expect(css).not.toContain("0 0 70px rgba(180, 246, 255, 0.34)");
+    expect(css).not.toContain("0 0 62px rgba(255, 180, 58, 0.3)");
   });
 });
