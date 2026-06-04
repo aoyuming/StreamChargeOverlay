@@ -1,5 +1,7 @@
 import type { SponsorRecord } from "./types";
 
+export const STARTUP_FUNDING_PROGRAM_NAME = "启动资金";
+
 const ROOT_UNIT_DIVISOR = 100;
 
 export const formatRootUnits = (amount: number): string => {

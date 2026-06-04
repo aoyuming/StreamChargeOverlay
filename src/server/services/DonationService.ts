@@ -7,6 +7,7 @@ import type {
   StateRepository,
   UpdateSettingsRequest
 } from "../../shared/types";
+import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
 
 const DEFAULT_TARGET_AMOUNT = 1000;
 const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
@@ -24,7 +25,9 @@ export class DonationService {
 
   public async addSponsor(request: AddSponsorRequest): Promise<DerivedAppState> {
     const bossName = request.bossName.trim();
-    const programName = request.programName.trim();
+    const countsTowardCharge = request.countsTowardCharge !== false;
+    const requestedProgramName = request.programName.trim();
+    const programName = countsTowardCharge ? STARTUP_FUNDING_PROGRAM_NAME : requestedProgramName;
     const amount = Number(request.amount);
 
     if (!bossName || !programName || !Number.isFinite(amount) || amount <= 0) {
@@ -38,7 +41,7 @@ export class DonationService {
       amount: this.roundAmount(amount),
       programName,
       note: request.note?.trim() ?? "",
-      countsTowardCharge: request.countsTowardCharge !== false,
+      countsTowardCharge,
       createdAt: Date.now()
     };
 

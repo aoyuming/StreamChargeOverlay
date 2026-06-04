@@ -40,6 +40,22 @@ export interface SpeechAlert {
   createdAt: number;
 }
 
+export type AuthRole = "viewer" | "admin";
+
+export interface AuthSession {
+  role: AuthRole;
+}
+
+export interface RoomInfo {
+  slug: string;
+  name: string;
+  createdAt: number;
+}
+
+export interface CreateRoomRequest {
+  name: string;
+}
+
 export interface AddSponsorRequest {
   bossName: string;
   amount: number;

@@ -86,4 +86,32 @@ describe("ApiClient", () => {
       expect.objectContaining({ method: "POST" })
     );
   });
+
+  it("uses global room and auth endpoints even on room-scoped pages", async () => {
+    const client = new ApiClient(new RoomContext("alpha"));
+
+    await client.getRooms();
+    await client.createRoom("测试房");
+    await client.deleteRoom("room-abc");
+    await client.login("secret");
+    await client.logout();
+
+    expect(fetch).toHaveBeenNthCalledWith(1, "/api/rooms", expect.any(Object));
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/api/rooms",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ name: "测试房" }) })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      "/api/rooms/room-abc",
+      expect.objectContaining({ method: "DELETE" })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      4,
+      "/api/auth/login",
+      expect.objectContaining({ method: "POST", body: JSON.stringify({ password: "secret" }) })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(5, "/api/auth/logout", expect.objectContaining({ method: "POST" }));
+  });
 });

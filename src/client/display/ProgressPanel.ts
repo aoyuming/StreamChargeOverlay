@@ -82,7 +82,7 @@ export class ProgressPanel {
 
   private createBossCard(sponsor: SponsorRecord): HTMLElement {
     const item = this.currentBossListElement.ownerDocument.createElement("li");
-    item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}`;
+    item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}${sponsor.countsTowardCharge ? "" : " is-program-only"}`;
 
     const name = this.currentBossListElement.ownerDocument.createElement("strong");
     name.className = "current-boss-name";
@@ -144,6 +144,10 @@ export class ProgressPanel {
   }
 
   private formatChargeGoal(state: DerivedAppState): string {
+    if (state.goalReached) {
+      return `${formatRootUnits(state.totalAmount)}（已达成，可以开始）`;
+    }
+
     return `${formatRootUnits(state.totalAmount)}（目标${formatRootUnits(state.targetAmount)}）`;
   }
 }

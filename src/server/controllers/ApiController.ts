@@ -3,7 +3,10 @@ import { normalizeRoomSlug } from "../../shared/RoomSlug";
 import type {
   AddSponsorRequest,
   ApiErrorResponse,
+  AuthRole,
+  CreateRoomRequest,
   DerivedAppState,
+  RoomInfo,
   SpeechAlert,
   SponsorRecord,
   UpdateSponsorAmountRequest,
@@ -11,6 +14,7 @@ import type {
   UpdateTargetRequest
 } from "../../shared/types";
 import type { RoomStateRepositoryFactory } from "../repositories/RoomStateRepositoryFactory";
+import { AuthService } from "../services/AuthService";
 import { DonationService } from "../services/DonationService";
 
 type AsyncRoute = (request: Request, response: Response) => Promise<void>;
@@ -23,6 +27,12 @@ export interface RealtimeStateBroadcaster {
   broadcastState(roomSlug: string, state: DerivedAppState): void;
 }
 
+export interface RoomCatalog {
+  listRooms(): RoomInfo[];
+  createRoom(request: CreateRoomRequest): RoomInfo;
+  deleteRoom(slug: string): RoomInfo[];
+}
+
 // Resolves room-scoped HTTP requests, delegates business rules to DonationService,
 // and broadcasts updates only to clients watching the same room.
 export class ApiController {
@@ -30,10 +40,20 @@ export class ApiController {
     private readonly repositoryFactory: RoomStateRepositoryFactory,
     private readonly realtimeHub: RealtimeStateBroadcaster,
     private readonly speechService: SponsorSpeechService,
-    private readonly defaultRoomSlug: string
+    private readonly defaultRoomSlug: string,
+    private readonly authService = AuthService.disabled(),
+    private readonly roomCatalog: RoomCatalog | null = null
   ) {}
 
   public register(app: Express): void {
+    app.get("/api/rooms", this.wrap((request, response) => this.listRooms(request, response)));
+    app.post("/api/rooms", this.wrap((request, response) => this.createRoom(request, response)));
+    app.delete("/api/rooms/:roomSlug", this.wrap((request, response) => this.deleteRoom(request, response)));
+
+    app.post("/api/auth/login", this.wrap((request, response) => this.login(request, response)));
+    app.get("/api/auth/me", this.wrap((request, response) => this.getAuthSession(request, response)));
+    app.post("/api/auth/logout", this.wrap((request, response) => this.logout(request, response)));
+
     app.get("/api/state", this.wrap((request, response) => this.getState(request, response)));
     app.get("/rooms/:roomSlug/api/state", this.wrap((request, response) => this.getState(request, response)));
 
@@ -65,11 +85,70 @@ export class ApiController {
     app.put("/rooms/:roomSlug/api/settings", this.wrap((request, response) => this.updateSettings(request, response)));
   }
 
+  private async listRooms(_request: Request, response: Response): Promise<void> {
+    response.json(this.roomCatalog?.listRooms() ?? []);
+  }
+
+  private async createRoom(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    if (!this.roomCatalog) {
+      throw new Error("房间管理服务未启用");
+    }
+
+    response.status(201).json(this.roomCatalog.createRoom(request.body as CreateRoomRequest));
+  }
+
+  private async deleteRoom(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    if (!this.roomCatalog) {
+      throw new Error("房间管理服务未启用");
+    }
+
+    response.json(this.roomCatalog.deleteRoom(String(request.params.roomSlug ?? "")));
+  }
+
+  private async login(request: Request, response: Response): Promise<void> {
+    const body = request.body as { password?: string };
+    const session = this.authService.login(String(body.password ?? ""));
+    if (!session) {
+      response.status(401).json({ error: "密码不正确" });
+      return;
+    }
+
+    response.setHeader("Set-Cookie", this.authService.createSessionCookie(session));
+    response.json(session);
+  }
+
+  private async getAuthSession(request: Request, response: Response): Promise<void> {
+    const session = this.authService.sessionFromCookie(request.headers.cookie);
+    if (!session) {
+      response.status(401).json({ error: "请先登录后台" });
+      return;
+    }
+
+    response.json(session);
+  }
+
+  private async logout(_request: Request, response: Response): Promise<void> {
+    response.setHeader("Set-Cookie", this.authService.createClearCookie());
+    response.json({ ok: true });
+  }
+
   private async getState(request: Request, response: Response): Promise<void> {
     response.json(await (await this.serviceFor(request)).getState());
   }
 
   private async addSponsor(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "viewer")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).addSponsor(request.body as AddSponsorRequest);
     const newRecord = state.sponsors.reduce((latest, record) => {
@@ -82,6 +161,10 @@ export class ApiController {
   }
 
   private async deleteSponsor(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteSponsor(String(request.params.id ?? ""));
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -89,6 +172,10 @@ export class ApiController {
   }
 
   private async updateSponsorAmount(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateSponsorAmountRequest;
     const state = await (await this.serviceFor(request)).updateSponsorAmount(String(request.params.id ?? ""), body.amount);
@@ -97,6 +184,10 @@ export class ApiController {
   }
 
   private async removeSponsorFromToday(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).removeSponsorFromToday(String(request.params.id ?? ""));
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -104,6 +195,10 @@ export class ApiController {
   }
 
   private async addSponsorToToday(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).addSponsorToToday(String(request.params.id ?? ""));
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -111,6 +206,10 @@ export class ApiController {
   }
 
   private async removeTodaySponsors(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).removeTodaySponsors();
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -118,6 +217,10 @@ export class ApiController {
   }
 
   private async startDianjiang(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).startDianjiang();
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -125,6 +228,10 @@ export class ApiController {
   }
 
   private async updateTargetAmount(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateTargetRequest;
     const state = await (await this.serviceFor(request)).updateTargetAmount(body.targetAmount);
@@ -133,6 +240,10 @@ export class ApiController {
   }
 
   private async updateSettings(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).updateSettings(request.body as UpdateSettingsRequest);
     this.realtimeHub.broadcastState(roomSlug, state);
@@ -141,6 +252,16 @@ export class ApiController {
 
   private async serviceFor(request: Request): Promise<DonationService> {
     return new DonationService(await this.repositoryFactory.getRepository(this.roomSlugFrom(request)));
+  }
+
+  private requireRole(request: Request, response: Response, role: AuthRole): boolean {
+    if (this.authService.hasRole(request.headers.cookie, role)) {
+      return true;
+    }
+
+    const session = this.authService.sessionFromCookie(request.headers.cookie);
+    response.status(session ? 403 : 401).json({ error: session ? "权限不足" : "请先登录后台" });
+    return false;
   }
 
   private roomSlugFrom(request: Request): string {

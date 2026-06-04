@@ -17,6 +17,30 @@
           <strong>¥<span id="adminTotal">0</span></strong>
           <em id="adminStatus">未达成</em>
         </div>
+        <div class="admin-top-controls">
+          <form id="authForm" class="auth-form">
+            <label>
+              后台密码
+              <input id="authPasswordInput" name="password" type="password" autocomplete="current-password" placeholder="普通或超级密码" required />
+            </label>
+            <button class="secondary-button" type="submit">登录</button>
+            <button id="logoutButton" class="ghost-button" type="button">退出</button>
+            <span id="authStatus" class="auth-status">未登录</span>
+          </form>
+          <div class="room-admin">
+            <label>
+              房间
+              <select id="roomSelect" aria-label="选择房间">
+                <option value="">选择房间</option>
+              </select>
+            </label>
+            <form id="roomForm" class="room-form">
+              <input id="roomNameInput" name="roomName" autocomplete="off" placeholder="新房间名" />
+              <button class="secondary-button" type="submit">新增房间</button>
+            </form>
+            <button id="deleteRoomButton" class="ghost-button danger" type="button">删除房间</button>
+          </div>
+        </div>
       </header>
 
       <section class="workspace-grid">

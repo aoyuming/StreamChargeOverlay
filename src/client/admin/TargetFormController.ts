@@ -13,6 +13,12 @@ export class TargetFormController {
     this.submitHandler = handler;
   }
 
+  public setEnabled(enabled: boolean): void {
+    this.form.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((element) => {
+      element.disabled = !enabled;
+    });
+  }
+
   private async handleSubmit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
     if (!this.submitHandler) {

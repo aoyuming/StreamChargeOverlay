@@ -89,6 +89,13 @@ describe("display layout", () => {
     expect(css).toContain(".overlay-shell::before {\n  inset: auto 0 0 0;\n  height: 360px;");
   });
 
+  it("adds a camera-area room selector and red program-only row styling", () => {
+    expect(html).toContain('id="roomSelect"');
+    expect(css).toContain(".room-selector");
+    expect(css).toContain(".current-boss-row.is-program-only");
+    expect(css).toContain(".current-boss-row.is-program-only .current-boss-program");
+  });
+
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {
     expect(html).toContain('<canvas id="stageEffectsCanvas" class="stage-effects-canvas" width="1920" height="1440"></canvas>');
     expect(html).toContain('<canvas id="burstParticles" class="burst-particles" width="1920" height="1440"></canvas>');

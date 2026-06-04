@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { SponsorRecord } from "../../shared/types";
+import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
 import { DonationService } from "../services/DonationService";
 import { MemoryStateRepository } from "./MemoryStateRepository";
 
@@ -33,7 +34,7 @@ describe("DonationService", () => {
     expect(state.totalAmount).toBe(260);
     expect(state.goalReached).toBe(false);
     expect(state.sponsors).toHaveLength(1);
-    expect(state.programQueue[0]?.programName).toBe("红眼竞速");
+    expect(state.programQueue[0]?.programName).toBe(STARTUP_FUNDING_PROGRAM_NAME);
   });
 
   it("keeps non-charge sponsors visible without increasing current charge", async () => {
@@ -51,6 +52,21 @@ describe("DonationService", () => {
     expect(state.progressPercent).toBe(0);
     expect(state.sponsors[0]?.countsTowardCharge).toBe(false);
     expect(state.programQueue.map((record) => record.programName)).toEqual(["Show only"]);
+  });
+
+  it("stores startup charge sponsors as startup funding programs", async () => {
+    const service = new DonationService(new MemoryStateRepository());
+
+    const state = await service.addSponsor({
+      bossName: "Charge Boss",
+      amount: 260,
+      programName: "should be replaced",
+      countsTowardCharge: true,
+      note: ""
+    });
+
+    expect(state.sponsors[0]?.programName).toBe(STARTUP_FUNDING_PROGRAM_NAME);
+    expect(state.programQueue[0]?.programName).toBe(STARTUP_FUNDING_PROGRAM_NAME);
   });
 
   it("sorts the sponsor ranking by accumulated boss amount", async () => {

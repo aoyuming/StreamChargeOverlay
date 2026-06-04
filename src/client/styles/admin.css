@@ -96,6 +96,67 @@ p {
   color: #7dff9d;
 }
 
+.admin-top-controls {
+  display: grid;
+  gap: 12px;
+  min-width: 420px;
+}
+
+.auth-form,
+.room-admin,
+.room-form {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+}
+
+.auth-form,
+.room-admin {
+  padding: 12px;
+  background: rgba(16, 10, 6, 0.62);
+  border: 1px solid rgba(240, 191, 91, 0.22);
+  border-radius: 6px;
+}
+
+.auth-form label,
+.room-admin label {
+  flex: 1 1 150px;
+  min-width: 0;
+  margin: 0;
+}
+
+.auth-form input,
+.room-admin select,
+.room-form input {
+  height: 40px;
+  padding: 8px 10px;
+}
+
+.room-admin select {
+  width: 100%;
+  color: #fff1d4;
+  font: inherit;
+  background: #100a06;
+  border: 2px solid #59401c;
+  border-radius: 4px;
+}
+
+.auth-form button,
+.room-form button,
+.room-admin > button {
+  width: auto;
+  height: 40px;
+  white-space: nowrap;
+}
+
+.auth-status {
+  min-width: 74px;
+  color: #ffe4a0;
+  font-size: 14px;
+  font-weight: 900;
+  text-align: right;
+}
+
 .workspace-grid {
   display: grid;
   grid-template-columns: 520px minmax(0, 1fr);
@@ -176,6 +237,20 @@ button:hover {
   filter: brightness(1.08);
 }
 
+button:disabled,
+input:disabled,
+textarea:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
+input.is-readonly {
+  color: #ffe4a0;
+  border-color: rgba(240, 191, 91, 0.72);
+  box-shadow: inset 4px 0 0 rgba(240, 191, 91, 0.26);
+}
+
 .primary-button,
 .secondary-button {
   width: 100%;
@@ -251,6 +326,10 @@ button:hover {
   max-height: 540px;
   overflow: auto;
   padding-right: 6px;
+}
+
+.record-list.is-readonly .record-actions {
+  opacity: 0.62;
 }
 
 .record-row {

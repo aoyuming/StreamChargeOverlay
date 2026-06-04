@@ -7,6 +7,12 @@ import type { AppState, SponsorRecord, StateRepository } from "../../shared/type
 const DEFAULT_TARGET_AMOUNT = 1000;
 const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
 
+const DEFAULT_ROOMS = [
+  { slug: "wenrou", name: "温柔房" },
+  { slug: "liyong", name: "李永房" },
+  { slug: "room-59", name: "59房" }
+] as const;
+
 type RepositoryOptions = {
   legacyJsonPath?: string;
 };
@@ -51,8 +57,7 @@ export class SqliteRoomStateRepository implements StateRepository {
   ): Promise<SqliteRoomStateRepository> {
     await mkdir(dirname(databasePath), { recursive: true });
 
-    const database = this.getDatabase(databasePath);
-    this.initializeSchema(database);
+    const database = this.prepareDatabase(databasePath);
     const roomId = this.ensureRoom(database, roomSlug);
     const repository = new SqliteRoomStateRepository(database, roomSlug, roomId);
     await repository.migrateLegacyJsonIfNeeded(options.legacyJsonPath);
@@ -67,6 +72,13 @@ export class SqliteRoomStateRepository implements StateRepository {
 
     database.close();
     this.databases.delete(databasePath);
+  }
+
+  public static prepareDatabase(databasePath: string): Database.Database {
+    const database = this.getDatabase(databasePath);
+    this.initializeSchema(database);
+    this.ensureDefaultRooms(database);
+    return database;
   }
 
   public async load(): Promise<AppState> {
@@ -170,7 +182,8 @@ export class SqliteRoomStateRepository implements StateRepository {
         slug TEXT NOT NULL UNIQUE,
         name TEXT NOT NULL,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL
+        updated_at INTEGER NOT NULL,
+        deleted_at INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS room_settings (
@@ -198,6 +211,7 @@ export class SqliteRoomStateRepository implements StateRepository {
       CREATE INDEX IF NOT EXISTS idx_sponsor_records_room_created
         ON sponsor_records(room_id, created_at);
     `);
+    this.ensureColumn(database, "rooms", "deleted_at", "INTEGER");
     this.ensureColumn(database, "room_settings", "charge_consumed_amount", "REAL NOT NULL DEFAULT 0");
     this.ensureColumn(database, "room_settings", "last_dianjiang_effect_at", "INTEGER");
     this.ensureColumn(database, "sponsor_records", "counts_toward_charge", "INTEGER NOT NULL DEFAULT 1");
@@ -213,7 +227,13 @@ export class SqliteRoomStateRepository implements StateRepository {
     database.prepare(`ALTER TABLE ${tableName} ADD COLUMN ${columnName} ${definition}`).run();
   }
 
-  private static ensureRoom(database: Database.Database, roomSlug: string): string {
+  private static ensureDefaultRooms(database: Database.Database): void {
+    for (const room of DEFAULT_ROOMS) {
+      this.ensureRoom(database, room.slug, room.name);
+    }
+  }
+
+  private static ensureRoom(database: Database.Database, roomSlug: string, roomName = roomSlug): string {
     const now = Date.now();
     database
       .prepare(
@@ -223,7 +243,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         ON CONFLICT(slug) DO NOTHING
       `
       )
-      .run(randomUUID(), roomSlug, roomSlug, now, now);
+      .run(randomUUID(), roomSlug, roomName, now, now);
 
     const room = database.prepare("SELECT id FROM rooms WHERE slug = ?").get(roomSlug) as RoomRow | undefined;
     if (!room) {

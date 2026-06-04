@@ -242,6 +242,40 @@ describe("ProgressPanel", () => {
     expect(view.percentElement.textContent).not.toContain("%");
   });
 
+  it("renders a ready message instead of the target once charge reaches the goal", () => {
+    const view = createPanel();
+
+    view.panel.render(state(100, { totalAmount: 1000, targetAmount: 1000, goalReached: true }), [sponsor()]);
+
+    expect(view.percentElement.textContent).toBe("10根（已达成，可以开始）");
+  });
+
+  it("keeps the ready message when charge is above the goal", () => {
+    const view = createPanel();
+
+    view.panel.render(state(100, { totalAmount: 1200, targetAmount: 1000, goalReached: true }), [sponsor()]);
+
+    expect(view.percentElement.textContent).toBe("12根（已达成，可以开始）");
+  });
+
+  it("marks non-startup program rows for red display styling", () => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor({ countsTowardCharge: false, programName: "selected program" })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(firstCard.className).toContain("is-program-only");
+  });
+
+  it("does not mark startup funding rows as program-only", () => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor({ countsTowardCharge: true, programName: "启动资金" })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(firstCard.className).not.toContain("is-program-only");
+  });
+
   it("sets the progress width on both the fill and effect track", () => {
     const view = createPanel();
 

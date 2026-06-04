@@ -14,6 +14,20 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('type="checkbox"');
     expect(adminHtml).toContain("加入启动资金充能");
     expect(sponsorForm).toContain("countsTowardCharge");
+    expect(sponsorForm).toContain("STARTUP_FUNDING_PROGRAM_NAME");
+    expect(sponsorForm).toContain("readOnly");
+  });
+
+  it("includes room selection, room management, and password login controls", () => {
+    expect(adminHtml).toContain('id="roomSelect"');
+    expect(adminHtml).toContain('id="roomForm"');
+    expect(adminHtml).toContain('id="deleteRoomButton"');
+    expect(adminHtml).toContain('id="authForm"');
+    expect(adminHtml).toContain('name="password"');
+    expect(adminApp).toContain("this.apiClient.login");
+    expect(adminApp).toContain("this.apiClient.getRooms");
+    expect(adminApp).toContain("this.apiClient.createRoom");
+    expect(adminApp).toContain("this.apiClient.deleteRoom");
   });
 
   it("adds start dianjiang and bulk today-list removal controls", () => {

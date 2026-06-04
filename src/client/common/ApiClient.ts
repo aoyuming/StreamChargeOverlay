@@ -1,4 +1,12 @@
-import type { AddSponsorRequest, ApiErrorResponse, DerivedAppState, UpdateSettingsRequest } from "../../shared/types";
+import type {
+  AddSponsorRequest,
+  ApiErrorResponse,
+  AuthSession,
+  CreateRoomRequest,
+  DerivedAppState,
+  RoomInfo,
+  UpdateSettingsRequest
+} from "../../shared/types";
 import { RoomContext } from "./RoomContext";
 
 // Centralizes HTTP paths and JSON error handling for display/admin pages.
@@ -8,6 +16,45 @@ export class ApiClient {
 
   public async getState(): Promise<DerivedAppState> {
     return this.request<DerivedAppState>(this.apiPath("/state"));
+  }
+
+  public async getRooms(): Promise<RoomInfo[]> {
+    return this.request<RoomInfo[]>("/api/rooms");
+  }
+
+  public async createRoom(name: string): Promise<RoomInfo> {
+    const request: CreateRoomRequest = { name };
+    return this.request<RoomInfo>("/api/rooms", {
+      method: "POST",
+      body: JSON.stringify(request)
+    });
+  }
+
+  public async deleteRoom(slug: string): Promise<RoomInfo[]> {
+    return this.request<RoomInfo[]>(`/api/rooms/${encodeURIComponent(slug)}`, {
+      method: "DELETE"
+    });
+  }
+
+  public async getAuthSession(): Promise<AuthSession | null> {
+    try {
+      return await this.request<AuthSession>("/api/auth/me");
+    } catch {
+      return null;
+    }
+  }
+
+  public async login(password: string): Promise<AuthSession> {
+    return this.request<AuthSession>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ password })
+    });
+  }
+
+  public async logout(): Promise<void> {
+    await this.request<{ ok: true }>("/api/auth/logout", {
+      method: "POST"
+    });
   }
 
   public async addSponsor(request: AddSponsorRequest): Promise<DerivedAppState> {
@@ -79,6 +126,7 @@ export class ApiClient {
   private async request<T>(url: string, init: RequestInit = {}): Promise<T> {
     const response = await fetch(url, {
       ...init,
+      credentials: "same-origin",
       headers: {
         "Content-Type": "application/json",
         ...init.headers

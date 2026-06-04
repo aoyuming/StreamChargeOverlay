@@ -13,6 +13,7 @@ export class RecordListView {
   private updateAmountHandler: UpdateAmountHandler | null = null;
   private deletePermanentlyHandler: DeletePermanentlyHandler | null = null;
   private visibleTodayIds = new Set<string>();
+  private canManage = true;
 
   public constructor(private readonly listElement: HTMLElement) {
     this.listElement.addEventListener("click", (event) => void this.handleClick(event));
@@ -32,6 +33,11 @@ export class RecordListView {
 
   public onDeletePermanently(handler: DeletePermanentlyHandler): void {
     this.deletePermanentlyHandler = handler;
+  }
+
+  public setCanManage(canManage: boolean): void {
+    this.canManage = canManage;
+    this.listElement.classList.toggle("is-readonly", !canManage);
   }
 
   public render(records: SponsorRecord[], visibleTodayRecords: SponsorRecord[] = records): void {
@@ -86,32 +92,35 @@ export class RecordListView {
     amountInput.min = "0.01";
     amountInput.step = "0.01";
     amountInput.value = String(record.amount);
+    amountInput.disabled = !this.canManage;
     amountInput.setAttribute("aria-label", `${record.bossName} 赞助金额`);
 
     const saveButton = document.createElement("button");
     saveButton.className = "ghost-button";
     saveButton.type = "button";
     saveButton.dataset.action = "save-amount";
+    saveButton.disabled = !this.canManage;
     saveButton.textContent = "保存金额";
 
     const removeButton = document.createElement("button");
     removeButton.className = "ghost-button danger";
     removeButton.type = "button";
     removeButton.dataset.action = "remove-today";
-    removeButton.disabled = !isVisibleToday;
+    removeButton.disabled = !this.canManage || !isVisibleToday;
     removeButton.textContent = isVisibleToday ? "移除今日榜单" : "已移除";
 
     const addButton = document.createElement("button");
     addButton.className = "ghost-button";
     addButton.type = "button";
     addButton.dataset.action = "add-today";
-    addButton.disabled = isVisibleToday;
+    addButton.disabled = !this.canManage || isVisibleToday;
     addButton.textContent = "加入今日榜单";
 
     const deleteButton = document.createElement("button");
     deleteButton.className = "ghost-button danger";
     deleteButton.type = "button";
     deleteButton.dataset.action = "delete-permanent";
+    deleteButton.disabled = !this.canManage;
     deleteButton.textContent = "永久删除";
 
     actions.append(amountInput, saveButton, removeButton, addButton, deleteButton);

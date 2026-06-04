@@ -7,8 +7,10 @@ import { normalizeRoomSlug } from "../shared/RoomSlug";
 import { AppConfig } from "./config/AppConfig";
 import { ApiController } from "./controllers/ApiController";
 import { SqliteRoomStateRepositoryFactory } from "./repositories/RoomStateRepositoryFactory";
+import { AuthService } from "./services/AuthService";
 import { DonationService } from "./services/DonationService";
 import { RealtimeHub } from "./services/RealtimeHub";
+import { RoomCatalogService } from "./services/RoomCatalogService";
 import { WindowsSpeechService } from "./services/WindowsSpeechService";
 
 const config = AppConfig.fromEnv();
@@ -22,7 +24,20 @@ const repositoryFactory = new SqliteRoomStateRepositoryFactory(config.databasePa
 const realtimeHub = new RealtimeHub(io);
 const speechDirectory = resolve(config.dataDirectory, "speech");
 const speechService = new WindowsSpeechService(speechDirectory);
-const apiController = new ApiController(repositoryFactory, realtimeHub, speechService, config.defaultRoomSlug);
+const authService = new AuthService({
+  adminPassword: config.adminPassword,
+  sessionSecret: config.sessionSecret,
+  viewerPassword: config.viewerPassword
+});
+const roomCatalog = new RoomCatalogService(config.databasePath);
+const apiController = new ApiController(
+  repositoryFactory,
+  realtimeHub,
+  speechService,
+  config.defaultRoomSlug,
+  authService,
+  roomCatalog
+);
 
 app.use(express.json());
 app.use("/speech", express.static(speechDirectory));
