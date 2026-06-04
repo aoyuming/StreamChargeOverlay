@@ -22,7 +22,7 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="avatarPreview"');
     expect(adminHtml).toContain('id="avatarFileInput"');
     expect(adminHtml).toContain('id="pasteAvatarButton"');
-    expect(adminHtml).toContain("剪切板导入头像");
+    expect(adminHtml).toContain("粘贴头像 Ctrl+V");
     expect(adminHtml).toContain('id="clearAvatarButton"');
     expect(sponsorForm).toContain("avatarDataUrl");
     expect(sponsorForm).toContain("setKnownSponsors");
@@ -67,7 +67,7 @@ describe("admin layout", () => {
     expect(recordListView).toContain("record-avatar");
     expect(recordListView).toContain("update-avatar");
     expect(recordListView).toContain("paste-avatar");
-    expect(recordListView).toContain("剪切板导入头像");
+    expect(recordListView).toContain("粘贴头像 Ctrl+V");
     expect(recordListView).toContain("readAvatarFromClipboard");
     expect(recordListView).toContain("window.confirm");
     expect(recordListView).toContain("previewRecordAvatar");

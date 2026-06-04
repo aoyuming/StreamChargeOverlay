@@ -59,6 +59,40 @@ describe("DonationService", () => {
     expect(record?.avatarUrl).toBe(`/avatars/alpha/${record?.id}.webp`);
   });
 
+  it("backfills missing avatars on older records with the same boss name when a new avatar is added", async () => {
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn(async (roomSlug: string, sponsorId: string) => `/avatars/${roomSlug}/${sponsorId}.webp`)
+    };
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "old-missing", bossName: "Same Boss", createdAt: 1 }),
+        baseRecord({ id: "old-existing", bossName: "Same Boss", avatarUrl: "/avatars/alpha/existing.webp", createdAt: 2 } as any),
+        baseRecord({ id: "other-missing", bossName: "Other Boss", createdAt: 3 })
+      ]
+    });
+    const service = new (DonationService as any)(repository, {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+
+    const state = await service.addSponsor({
+      bossName: "Same Boss",
+      amount: 260,
+      programName: "startup",
+      avatarDataUrl: "data:image/webp;base64,avatar"
+    });
+
+    expect(state.sponsors.find((record: SponsorRecord) => record.id === "old-missing")?.avatarUrl).toBe(
+      "/avatars/alpha/old-missing.webp"
+    );
+    expect(state.sponsors.find((record: SponsorRecord) => record.id === "old-existing")?.avatarUrl).toBe(
+      "/avatars/alpha/existing.webp"
+    );
+    expect(state.sponsors.find((record: SponsorRecord) => record.id === "other-missing")?.avatarUrl).toBeUndefined();
+    expect(avatarStorage.saveAvatar).toHaveBeenCalledWith("alpha", "old-missing", "data:image/webp;base64,avatar");
+  });
+
   it("updates and clears a historical sponsor avatar without changing the amount", async () => {
     const avatarStorage = {
       clearAvatar: vi.fn(),

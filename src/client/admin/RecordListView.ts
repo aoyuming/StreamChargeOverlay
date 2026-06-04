@@ -153,7 +153,7 @@ export class RecordListView {
     pasteAvatarButton.type = "button";
     pasteAvatarButton.dataset.action = "paste-avatar";
     pasteAvatarButton.disabled = !this.canManage;
-    pasteAvatarButton.textContent = "剪切板导入头像";
+    pasteAvatarButton.textContent = "粘贴头像 Ctrl+V";
 
     const clearAvatarButton = document.createElement("button");
     clearAvatarButton.className = "ghost-button danger";

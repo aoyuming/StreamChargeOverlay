@@ -46,7 +46,7 @@ export const compressAvatarFile = async (file: Blob): Promise<string> => {
 
 export const readAvatarFromClipboard = async (): Promise<string> => {
   if (!navigator.clipboard?.read) {
-    throw new Error("当前浏览器不支持直接读取剪贴板图片，请复制图片后按 Ctrl+V");
+    throw new Error("公网模式不能直接读取剪贴板，请复制图片后点一下添加赞助区域，再按 Ctrl+V 导入头像");
   }
 
   const items = await navigator.clipboard.read();

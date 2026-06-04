@@ -48,6 +48,7 @@ export class DonationService {
     const avatarUrl = request.avatarDataUrl
       ? await this.options.avatarStorage?.saveAvatar(this.roomSlug(), sponsorId, request.avatarDataUrl)
       : undefined;
+    const sponsors = await this.backfillMissingBossAvatars(state.sponsors, bossName, request.avatarDataUrl);
     const nextRecord: SponsorRecord = {
       id: sponsorId,
       bossName,
@@ -61,7 +62,7 @@ export class DonationService {
 
     const nextState: AppState = {
       ...state,
-      sponsors: [...state.sponsors, nextRecord]
+      sponsors: [...sponsors, nextRecord]
     };
 
     await this.repository.save(nextState);
@@ -358,6 +359,34 @@ export class DonationService {
       }
       return right.latestAt - left.latestAt;
     });
+  }
+
+  private async backfillMissingBossAvatars(
+    records: SponsorRecord[],
+    bossName: string,
+    avatarDataUrl: string | undefined
+  ): Promise<SponsorRecord[]> {
+    if (!avatarDataUrl || !this.options.avatarStorage) {
+      return records;
+    }
+
+    const normalizedBossName = this.normalizedBossName(bossName);
+    return Promise.all(
+      records.map(async (record) => {
+        if (record.avatarUrl || this.normalizedBossName(record.bossName) !== normalizedBossName) {
+          return record;
+        }
+
+        return {
+          ...record,
+          avatarUrl: await this.options.avatarStorage?.saveAvatar(this.roomSlug(), record.id, avatarDataUrl)
+        };
+      })
+    );
+  }
+
+  private normalizedBossName(name: string): string {
+    return name.trim().toLocaleLowerCase("zh-CN");
   }
 
   private roomSlug(): string {
