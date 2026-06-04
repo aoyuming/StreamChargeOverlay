@@ -22,6 +22,7 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="avatarPreview"');
     expect(adminHtml).toContain('id="avatarFileInput"');
     expect(adminHtml).toContain('id="pasteAvatarButton"');
+    expect(adminHtml).toContain("剪切板导入头像");
     expect(adminHtml).toContain('id="clearAvatarButton"');
     expect(sponsorForm).toContain("avatarDataUrl");
     expect(sponsorForm).toContain("compressAvatarFile");
@@ -60,6 +61,10 @@ describe("admin layout", () => {
     expect(recordListView).toContain("record-amount-input");
     expect(recordListView).toContain("record-avatar");
     expect(recordListView).toContain("update-avatar");
+    expect(recordListView).toContain("paste-avatar");
+    expect(recordListView).toContain("剪切板导入头像");
+    expect(recordListView).toContain("readAvatarFromClipboard");
+    expect(recordListView).toContain("window.confirm");
     expect(recordListView).toContain("clear-avatar");
     expect(recordListView).toContain("移除今日榜单");
     expect(recordListView).toContain("加入今日榜单");

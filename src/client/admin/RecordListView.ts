@@ -1,7 +1,7 @@
 import type { SponsorRecord } from "../../shared/types";
 import { clearAndAppend } from "../common/dom";
 import { formatTime } from "../common/format";
-import { compressAvatarFile } from "./AvatarImageProcessor";
+import { compressAvatarFile, readAvatarFromClipboard } from "./AvatarImageProcessor";
 
 type RemoveFromTodayHandler = (id: string) => Promise<void>;
 type AddToTodayHandler = (id: string) => Promise<void>;
@@ -143,6 +143,13 @@ export class RecordListView {
     updateAvatarButton.disabled = !this.canManage;
     updateAvatarButton.textContent = "更换头像";
 
+    const pasteAvatarButton = document.createElement("button");
+    pasteAvatarButton.className = "ghost-button";
+    pasteAvatarButton.type = "button";
+    pasteAvatarButton.dataset.action = "paste-avatar";
+    pasteAvatarButton.disabled = !this.canManage;
+    pasteAvatarButton.textContent = "剪切板导入头像";
+
     const clearAvatarButton = document.createElement("button");
     clearAvatarButton.className = "ghost-button danger";
     clearAvatarButton.type = "button";
@@ -163,6 +170,7 @@ export class RecordListView {
       removeButton,
       addButton,
       updateAvatarButton,
+      pasteAvatarButton,
       clearAvatarButton,
       deleteButton,
       avatarInput
@@ -208,6 +216,20 @@ export class RecordListView {
 
     if (target.dataset.action === "update-avatar") {
       row.querySelector<HTMLInputElement>(".record-avatar-input")?.click();
+      return;
+    }
+
+    if (target.dataset.action === "paste-avatar" && this.updateAvatarHandler) {
+      try {
+        const avatarDataUrl = await readAvatarFromClipboard();
+        if (!window.confirm("确认用剪切板中的图片更换这条赞助记录的头像吗？")) {
+          return;
+        }
+
+        await this.updateAvatarHandler(id, avatarDataUrl);
+      } catch (error) {
+        window.alert(error instanceof Error ? error.message : "头像处理失败");
+      }
       return;
     }
 
