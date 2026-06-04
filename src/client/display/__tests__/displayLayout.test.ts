@@ -25,11 +25,15 @@ describe("display layout", () => {
     expect(displayApp).not.toContain("todayRanking");
   });
 
-  it("labels the current boss note and amount columns", () => {
+  it("labels all current boss columns", () => {
     expect(html).toContain('class="current-boss-header"');
+    expect(html).toContain('class="current-boss-header-name">大哥名字</span>');
+    expect(html).toContain('class="current-boss-header-program">点的节目</span>');
     expect(html).toContain('class="current-boss-header-note">备注</span>');
     expect(html).toContain('class="current-boss-header-amount">实力</span>');
     expect(css).toContain(".current-boss-header");
+    expect(css).toContain(".current-boss-header-name");
+    expect(css).toContain(".current-boss-header-program");
     expect(css).toContain(".current-boss-header-note");
     expect(css).toContain(".current-boss-header-amount");
   });
@@ -39,9 +43,16 @@ describe("display layout", () => {
     expect(css).toContain(".current-boss-amount");
     expect(css).toContain(".current-boss-note");
     expect(css).toContain(".current-boss-program");
-    expect(css).toContain("grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;");
+    expect(css).toContain("grid-template-columns: minmax(170px, 1.1fr) minmax(180px, 1fr) minmax(150px, 0.85fr) 120px;");
     expect(css).not.toContain(".current-boss-label");
     expect(css).not.toContain("font-size: 58px;");
+  });
+
+  it("adds amount-based current boss row tiers", () => {
+    expect(css).toContain(".current-boss-row.is-tier-base");
+    expect(css).toContain(".current-boss-row.is-tier-boosted");
+    expect(css).toContain(".current-boss-row.is-tier-strong");
+    expect(css).toContain(".current-boss-row.is-tier-legend");
   });
 
   it("gives ranking names more room than the previous narrow layout", () => {

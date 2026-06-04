@@ -151,16 +151,32 @@ describe("ProgressPanel", () => {
     ]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
-    expect(firstCard.className).toBe("current-boss-row");
+    expect(firstCard.className).toContain("current-boss-row");
+    expect(firstCard.className).toContain("is-tier-strong");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.28");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("note first");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("selected program");
-    expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-note");
-    expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-amount");
+    expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-program");
+    expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-note");
+    expect((firstCard.children[3] as FakeElement).className).toBe("current-boss-amount");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
     expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(true);
     expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(4);
+  });
+
+  it.each([
+    [100, "is-tier-base"],
+    [200, "is-tier-boosted"],
+    [500, "is-tier-strong"],
+    [1000, "is-tier-legend"]
+  ])("uses amount tier class for %s amount", (amount, className) => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor({ amount })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(firstCard.className).toContain(className);
   });
 
   it("keeps the program visible even when a current boss note is empty", () => {

@@ -75,7 +75,7 @@ export class ProgressPanel {
 
   private createBossCard(sponsor: SponsorRecord): HTMLElement {
     const item = this.currentBossListElement.ownerDocument.createElement("li");
-    item.className = "current-boss-row";
+    item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}`;
 
     const name = this.currentBossListElement.ownerDocument.createElement("strong");
     name.className = "current-boss-name";
@@ -93,8 +93,26 @@ export class ProgressPanel {
     program.className = "current-boss-program";
     program.textContent = neutralizePublicText(sponsor.programName || "等待节目");
 
-    item.append(name, note, amount, program);
+    item.append(name, program, note, amount);
     return item;
+  }
+
+  private amountTierClass(amount: number): string {
+    const safeAmount = Number.isFinite(amount) ? amount : 0;
+
+    if (safeAmount >= 1000) {
+      return "is-tier-legend";
+    }
+
+    if (safeAmount >= 500) {
+      return "is-tier-strong";
+    }
+
+    if (safeAmount >= 200) {
+      return "is-tier-boosted";
+    }
+
+    return "is-tier-base";
   }
 
   private createEmptyBossCard(): HTMLElement {

@@ -182,7 +182,7 @@ html.is-preview-fit .overlay-shell {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;
+  grid-template-columns: minmax(170px, 1.1fr) minmax(180px, 1fr) minmax(150px, 0.85fr) 120px;
   gap: 0 8px;
   align-items: center;
   height: 18px;
@@ -194,13 +194,21 @@ html.is-preview-fit .overlay-shell {
   text-shadow: 0 0 10px rgba(199, 154, 85, 0.32), 1px 1px 0 #080a0c;
 }
 
-.current-boss-header-note {
+.current-boss-header-name {
+  grid-column: 1;
+}
+
+.current-boss-header-program {
   grid-column: 2;
+}
+
+.current-boss-header-note {
+  grid-column: 3;
   text-align: right;
 }
 
 .current-boss-header-amount {
-  grid-column: 3;
+  grid-column: 4;
   text-align: right;
 }
 
@@ -219,18 +227,52 @@ html.is-preview-fit .overlay-shell {
 
 .current-boss-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(120px, 190px) 120px;
-  grid-template-rows: 24px 14px;
-  gap: 1px 8px;
+  grid-template-columns: minmax(170px, 1.1fr) minmax(180px, 1fr) minmax(150px, 0.85fr) 120px;
+  gap: 0 8px;
   align-items: center;
   height: 45px;
-  padding: 3px 8px;
+  padding: 4px 8px;
   min-width: 0;
   background:
     linear-gradient(90deg, rgba(8, 12, 16, 0.92), rgba(40, 34, 27, 0.86)),
     radial-gradient(circle at 0 50%, rgba(73, 235, 255, 0.12), transparent 34%);
   border: 1px solid rgba(122, 202, 192, 0.32);
   box-shadow: inset 3px 0 0 rgba(122, 202, 192, 0.78);
+}
+
+.current-boss-row.is-tier-base {
+  border-color: rgba(122, 202, 192, 0.28);
+  box-shadow: inset 3px 0 0 rgba(122, 202, 192, 0.62);
+}
+
+.current-boss-row.is-tier-boosted {
+  background:
+    linear-gradient(90deg, rgba(26, 20, 12, 0.96), rgba(54, 40, 20, 0.9)),
+    radial-gradient(circle at 0 50%, rgba(255, 203, 93, 0.16), transparent 38%);
+  border-color: rgba(230, 201, 137, 0.46);
+  box-shadow: inset 4px 0 0 rgba(230, 201, 137, 0.86), 0 0 14px rgba(199, 154, 85, 0.12);
+}
+
+.current-boss-row.is-tier-strong {
+  background:
+    linear-gradient(90deg, rgba(9, 20, 24, 0.96), rgba(50, 34, 20, 0.9)),
+    radial-gradient(circle at 0 50%, rgba(73, 235, 255, 0.22), transparent 38%),
+    radial-gradient(circle at 86% 50%, rgba(255, 214, 93, 0.16), transparent 32%);
+  border-color: rgba(126, 225, 216, 0.58);
+  box-shadow: inset 4px 0 0 rgba(126, 225, 216, 0.96), 0 0 18px rgba(73, 235, 255, 0.18);
+}
+
+.current-boss-row.is-tier-legend {
+  background:
+    linear-gradient(90deg, rgba(22, 5, 8, 0.98), rgba(64, 30, 12, 0.94)),
+    radial-gradient(circle at 12% 50%, rgba(255, 238, 138, 0.28), transparent 36%),
+    radial-gradient(circle at 88% 50%, rgba(255, 81, 98, 0.22), transparent 32%);
+  border-color: rgba(255, 238, 138, 0.78);
+  box-shadow:
+    inset 5px 0 0 rgba(255, 238, 138, 0.98),
+    0 0 20px rgba(255, 81, 98, 0.22),
+    0 0 28px rgba(255, 238, 138, 0.16);
+  animation: currentBossLegendGlow 1.6s ease-in-out infinite alternate;
 }
 
 .current-boss-row.is-empty {
@@ -266,7 +308,7 @@ html.is-preview-fit .overlay-shell {
   display: block;
   overflow: hidden;
   color: #d7bd82;
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1;
   text-align: right;
@@ -292,10 +334,9 @@ html.is-preview-fit .overlay-shell {
 .current-boss-program {
   position: relative;
   z-index: 1;
-  grid-column: 1 / 4;
   overflow: hidden;
-  color: #b9aa92;
-  font-size: 13px;
+  color: #d6c29b;
+  font-size: 15px;
   font-weight: 900;
   line-height: 1;
   text-overflow: ellipsis;
@@ -883,6 +924,15 @@ html.is-preview-fit .overlay-shell {
   }
   to {
     transform: translateY(-50%);
+  }
+}
+
+@keyframes currentBossLegendGlow {
+  from {
+    filter: brightness(1) saturate(1.08);
+  }
+  to {
+    filter: brightness(1.22) saturate(1.28);
   }
 }
 
