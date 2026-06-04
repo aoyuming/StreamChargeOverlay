@@ -38,8 +38,9 @@ describe("DisplayEffectCoordinator", () => {
 
   it("maps full-stage sponsor effects from the new sponsor amount", () => {
     expect(sponsorEffectForAmount(0)).toBe("ice");
-    expect(sponsorEffectForAmount(99.99)).toBe("ice");
-    expect(sponsorEffectForAmount(100)).toBe("fire");
+    expect(sponsorEffectForAmount(100)).toBe("ice");
+    expect(sponsorEffectForAmount(100.99)).toBe("ice");
+    expect(sponsorEffectForAmount(101)).toBe("fire");
     expect(sponsorEffectForAmount(199.99)).toBe("fire");
     expect(sponsorEffectForAmount(200)).toBe("inferno");
     expect(sponsorEffectForAmount(399.99)).toBe("inferno");

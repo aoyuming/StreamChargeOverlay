@@ -186,29 +186,105 @@ export class StageEffectLayer implements StageEffectPlayer {
   }
 
   private drawFire(width: number, height: number, progress: number, intensity: number): void {
-    const heatTop = height * (intensity > 1.2 ? 0.34 : 0.46);
-    const heat = this.context.createRadialGradient(width / 2, height, 1, width / 2, height, height * 0.9);
-    heat.addColorStop(0, `rgba(255, 232, 92, ${0.28 * intensity})`);
-    heat.addColorStop(0.28, `rgba(255, 84, 20, ${0.2 * intensity})`);
-    heat.addColorStop(1, "rgba(255, 32, 18, 0)");
-    this.context.fillStyle = heat;
-    this.context.fillRect(0, heatTop, width, height - heatTop);
+    this.drawEdgeHeat(width, height, intensity);
+    this.drawEdgeFlames(width, height, progress, intensity);
+  }
 
-    const flameCount = Math.round(18 * intensity);
+  private drawEdgeHeat(width: number, height: number, intensity: number): void {
+    const topHeight = height * (0.12 + intensity * 0.035);
+    const bottomHeight = height * (0.18 + intensity * 0.06);
+    const sideWidth = width * (0.07 + intensity * 0.025);
+
+    const top = this.context.createLinearGradient(0, 0, 0, topHeight);
+    top.addColorStop(0, `rgba(255, 178, 42, ${0.24 * intensity})`);
+    top.addColorStop(0.55, `rgba(255, 62, 20, ${0.13 * intensity})`);
+    top.addColorStop(1, "rgba(255, 32, 18, 0)");
+    this.context.fillStyle = top;
+    this.context.fillRect(0, 0, width, topHeight);
+
+    const bottom = this.context.createLinearGradient(0, height, 0, height - bottomHeight);
+    bottom.addColorStop(0, `rgba(255, 232, 92, ${0.28 * intensity})`);
+    bottom.addColorStop(0.46, `rgba(255, 84, 20, ${0.18 * intensity})`);
+    bottom.addColorStop(1, "rgba(255, 32, 18, 0)");
+    this.context.fillStyle = bottom;
+    this.context.fillRect(0, height - bottomHeight, width, bottomHeight);
+
+    const left = this.context.createLinearGradient(0, 0, sideWidth, 0);
+    left.addColorStop(0, `rgba(255, 96, 24, ${0.18 * intensity})`);
+    left.addColorStop(0.58, `rgba(255, 184, 60, ${0.1 * intensity})`);
+    left.addColorStop(1, "rgba(255, 32, 18, 0)");
+    this.context.fillStyle = left;
+    this.context.fillRect(0, 0, sideWidth, height);
+
+    const right = this.context.createLinearGradient(width, 0, width - sideWidth, 0);
+    right.addColorStop(0, `rgba(255, 96, 24, ${0.18 * intensity})`);
+    right.addColorStop(0.58, `rgba(255, 184, 60, ${0.1 * intensity})`);
+    right.addColorStop(1, "rgba(255, 32, 18, 0)");
+    this.context.fillStyle = right;
+    this.context.fillRect(width - sideWidth, 0, sideWidth, height);
+  }
+
+  private drawEdgeFlames(width: number, height: number, progress: number, intensity: number): void {
+    this.drawHorizontalEdgeFlames(width, height, progress, intensity, "bottom");
+    this.drawHorizontalEdgeFlames(width, height, progress, intensity * 0.72, "top");
+    this.drawVerticalEdgeFlames(width, height, progress, intensity * 0.68, "left");
+    this.drawVerticalEdgeFlames(width, height, progress, intensity * 0.68, "right");
+  }
+
+  private drawHorizontalEdgeFlames(
+    width: number,
+    height: number,
+    progress: number,
+    intensity: number,
+    edge: "top" | "bottom"
+  ): void {
+    const flameCount = Math.round((edge === "bottom" ? 18 : 13) * intensity);
+    const baseY = edge === "bottom" ? height : 0;
+    const direction = edge === "bottom" ? -1 : 1;
+
     for (let index = 0; index < flameCount; index += 1) {
       const left = (width / flameCount) * index;
       const center = left + width / flameCount / 2;
       const flicker = Math.sin(progress * 18 + index * 1.7) * 0.18 + 0.82;
-      const flameHeight = height * (0.22 + 0.18 * intensity) * flicker;
-      const flame = this.context.createRadialGradient(center, height, 2, center, height - flameHeight * 0.45, flameHeight);
-      flame.addColorStop(0, "rgba(255, 246, 160, 0.9)");
-      flame.addColorStop(0.36, `rgba(255, 120, 26, ${0.68 * intensity})`);
-      flame.addColorStop(0.78, `rgba(255, 25, 18, ${0.22 * intensity})`);
+      const flameHeight = height * (edge === "bottom" ? 0.18 : 0.11) * intensity * flicker;
+      const flame = this.context.createRadialGradient(center, baseY, 2, center, baseY + direction * flameHeight * 0.45, flameHeight);
+      flame.addColorStop(0, "rgba(255, 246, 160, 0.82)");
+      flame.addColorStop(0.36, `rgba(255, 120, 26, ${0.42 * intensity})`);
+      flame.addColorStop(0.78, `rgba(255, 25, 18, ${0.16 * intensity})`);
       flame.addColorStop(1, "rgba(255, 25, 18, 0)");
       this.context.fillStyle = flame;
       this.context.beginPath();
-      this.context.moveTo(left, height);
-      this.context.quadraticCurveTo(center, height - flameHeight, left + width / flameCount, height);
+      this.context.moveTo(left, baseY);
+      this.context.quadraticCurveTo(center, baseY + direction * flameHeight, left + width / flameCount, baseY);
+      this.context.closePath();
+      this.context.fill();
+    }
+  }
+
+  private drawVerticalEdgeFlames(
+    width: number,
+    height: number,
+    progress: number,
+    intensity: number,
+    edge: "left" | "right"
+  ): void {
+    const flameCount = Math.round(10 * intensity);
+    const baseX = edge === "left" ? 0 : width;
+    const direction = edge === "left" ? 1 : -1;
+
+    for (let index = 0; index < flameCount; index += 1) {
+      const top = (height / flameCount) * index;
+      const center = top + height / flameCount / 2;
+      const flicker = Math.sin(progress * 16 + index * 1.9) * 0.16 + 0.8;
+      const flameWidth = width * 0.055 * intensity * flicker;
+      const flame = this.context.createRadialGradient(baseX, center, 2, baseX + direction * flameWidth * 0.45, center, flameWidth);
+      flame.addColorStop(0, "rgba(255, 232, 128, 0.62)");
+      flame.addColorStop(0.46, `rgba(255, 86, 24, ${0.28 * intensity})`);
+      flame.addColorStop(1, "rgba(255, 25, 18, 0)");
+      this.context.fillStyle = flame;
+      this.context.beginPath();
+      this.context.moveTo(baseX, top);
+      this.context.quadraticCurveTo(baseX + direction * flameWidth, center, baseX, top + height / flameCount);
       this.context.closePath();
       this.context.fill();
     }

@@ -9,7 +9,7 @@ export interface DisplayEffectEvent {
 }
 
 export const sponsorEffectForAmount = (amount: number): ProgressEffect => {
-  if (!Number.isFinite(amount) || amount < 100) {
+  if (!Number.isFinite(amount) || amount < 101) {
     return "ice";
   }
 

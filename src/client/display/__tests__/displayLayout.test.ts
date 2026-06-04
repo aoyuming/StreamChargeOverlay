@@ -182,5 +182,7 @@ describe("display layout", () => {
     expect(css).toContain("height: 46px;");
     expect(css).not.toContain("0 0 70px rgba(180, 246, 255, 0.34)");
     expect(css).not.toContain("0 0 62px rgba(255, 180, 58, 0.3)");
+    expect(css).not.toContain("transform: translateX(-18px) skewX(-8deg);");
+    expect(css).not.toContain("transform: translateX(22px) skewX(8deg);");
   });
 });

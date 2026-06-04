@@ -168,7 +168,7 @@ describe("StageEffectLayer", () => {
     expect(uniqueXValues.size).toBeGreaterThan(7);
   });
 
-  it("keeps full-stage fire contained to the lower stage with transparent heat", () => {
+  it("keeps full-stage fire transparent instead of filling the center", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
       addEventListener: () => undefined,
@@ -190,12 +190,41 @@ describe("StageEffectLayer", () => {
     layer.playSponsorEffect("fire");
     callbacks[0]?.(100);
 
-    const heatFill = context.calls.find((call) => call[0] === "fillRect") as unknown[] | undefined;
+    const fillRects = context.calls.filter((call) => call[0] === "fillRect") as unknown[][];
     const colors = context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)).join("\n");
 
-    expect(heatFill?.[2]).toBeGreaterThan(0);
-    expect(heatFill?.[4]).toBeLessThan(1440);
+    expect(fillRects).not.toContainEqual(["fillRect", 0, 0, 1920, 1440]);
     expect(colors).toContain("rgba(255, 32, 18, 0)");
+  });
+
+  it("draws full-stage fire from the stage edges instead of filling the center", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("inferno");
+    callbacks[0]?.(100);
+
+    const fillRects = context.calls.filter((call) => call[0] === "fillRect") as unknown[][];
+    expect(fillRects).not.toContainEqual(["fillRect", 0, 0, 1920, 1440]);
+    expect(fillRects.some((call) => call[1] === 0 && call[2] === 0 && call[3] === 1920 && Number(call[4]) < 360)).toBe(true);
+    expect(fillRects.some((call) => call[1] === 0 && Number(call[2]) > 1000 && call[3] === 1920)).toBe(true);
+    expect(fillRects.some((call) => call[1] === 0 && call[2] === 0 && Number(call[3]) < 360 && call[4] === 1440)).toBe(true);
+    expect(fillRects.some((call) => Number(call[1]) > 1560 && call[2] === 0 && Number(call[3]) < 360 && call[4] === 1440)).toBe(true);
   });
 
   it("draws the dianjiang effect as lightning without canvas text", () => {

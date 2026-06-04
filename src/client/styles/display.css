@@ -1167,11 +1167,11 @@ html.is-preview-fit .overlay-shell {
 @keyframes infernoHeat {
   from {
     opacity: 0.46;
-    transform: translateX(-18px) skewX(-8deg);
+    transform: skewX(-8deg);
   }
   to {
     opacity: 0.9;
-    transform: translateX(22px) skewX(8deg);
+    transform: skewX(8deg);
   }
 }
 

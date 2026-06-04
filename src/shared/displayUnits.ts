@@ -6,10 +6,10 @@ const ROOT_UNIT_DIVISOR = 100;
 
 export const formatRootUnits = (amount: number): string => {
   const safeAmount = Number.isFinite(amount) ? amount : 0;
-  const rootUnits = Math.round((safeAmount / ROOT_UNIT_DIVISOR) * 100) / 100;
+  const rootUnits = Math.round((safeAmount / ROOT_UNIT_DIVISOR) * 10) / 10;
   const formatted = rootUnits.toLocaleString("zh-CN", {
-    minimumFractionDigits: Number.isInteger(rootUnits) ? 0 : 2,
-    maximumFractionDigits: 2
+    minimumFractionDigits: Number.isInteger(rootUnits) ? 0 : 1,
+    maximumFractionDigits: 1
   });
 
   return `${formatted}根`;

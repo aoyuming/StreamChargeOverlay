@@ -165,7 +165,7 @@ describe("ProgressPanel", () => {
     expect(firstCard.className).toContain("is-tier-strong");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-avatar")?.className).toContain("has-image");
-    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.28");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.3");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("note first");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("selected program");
     expect((firstCard.children[0] as FakeElement).className).toContain("current-boss-avatar");
@@ -253,7 +253,7 @@ describe("ProgressPanel", () => {
 
     view.panel.render(state(62.8, { totalAmount: 628, targetAmount: 1000 }), [sponsor()]);
 
-    expect(view.percentElement.textContent).toBe("6.28根（目标10根）");
+    expect(view.percentElement.textContent).toBe("6.3根（目标10根）");
     expect(view.percentElement.textContent).not.toContain("%");
   });
 
