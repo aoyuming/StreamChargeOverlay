@@ -3,6 +3,7 @@ import express from "express";
 import { afterEach, describe, expect, it } from "vitest";
 import type { DerivedAppState, SponsorRecord, StateRepository } from "../../shared/types";
 import { ApiController } from "../controllers/ApiController";
+import { AuthService } from "../services/AuthService";
 import { MemoryStateRepository } from "./MemoryStateRepository";
 
 class MemoryRoomRepositoryFactory {
@@ -170,5 +171,57 @@ describe("ApiController room routing", () => {
       "alpha",
       "alpha"
     ]);
+  });
+
+  it("allows viewer sessions to update settings and start dianjiang without edit/delete permissions", async () => {
+    const app = express();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "viewer-password"
+      })
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const loginResponse = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "viewer-password" })
+    });
+    const cookie = loginResponse.headers.get("set-cookie") ?? "";
+
+    const settingsResponse = await fetch(`${running.baseUrl}/api/settings`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ targetAmount: 300, slogan: "viewer slogan" })
+    });
+    const added = (await (await fetch(`${running.baseUrl}/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ bossName: "viewer boss", amount: 300, programName: "startup", countsTowardCharge: true })
+    })).json()) as DerivedAppState;
+    const startedResponse = await fetch(`${running.baseUrl}/api/charge/start`, {
+      method: "POST",
+      headers: { Cookie: cookie }
+    });
+    const editResponse = await fetch(`${running.baseUrl}/api/sponsors/${added.sponsors[0]?.id ?? ""}/amount`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ amount: 100 })
+    });
+    const started = (await startedResponse.json()) as DerivedAppState;
+
+    expect(settingsResponse.status).toBe(200);
+    expect(startedResponse.status).toBe(200);
+    expect(started.totalAmount).toBe(0);
+    expect(started.chargeConsumedAmount).toBe(300);
+    expect(editResponse.status).toBe(403);
   });
 });

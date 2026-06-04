@@ -111,26 +111,28 @@ html.is-preview-fit .overlay-shell {
   top: 12px;
   right: 12px;
   z-index: 3;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 7px 9px;
-  color: #e7cf94;
-  font-size: 13px;
-  font-weight: 900;
-  background: rgba(5, 7, 9, 0.72);
-  border: 1px solid rgba(199, 154, 85, 0.32);
-  border-radius: 4px;
 }
 
 .room-selector select {
-  width: 118px;
-  min-width: 0;
+  display: none;
+}
+
+.room-cycle-button {
+  min-width: 132px;
+  height: 34px;
+  padding: 0 10px;
+  overflow: hidden;
   color: #fff5d6;
   font: inherit;
-  background: #101315;
-  border: 1px solid rgba(199, 154, 85, 0.48);
-  border-radius: 3px;
+  font-size: 13px;
+  font-weight: 900;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+  background: rgba(5, 7, 9, 0.76);
+  border: 1px solid rgba(199, 154, 85, 0.42);
+  border-radius: 4px;
+  box-shadow: 0 0 14px rgba(5, 7, 9, 0.28);
 }
 
 .panel {
@@ -300,14 +302,6 @@ html.is-preview-fit .overlay-shell {
     0 0 20px rgba(255, 81, 98, 0.22),
     0 0 28px rgba(255, 238, 138, 0.16);
   animation: currentBossLegendGlow 1.6s ease-in-out infinite alternate;
-}
-
-.current-boss-row.is-program-only {
-  background:
-    linear-gradient(90deg, rgba(30, 5, 9, 0.98), rgba(48, 12, 16, 0.92)),
-    radial-gradient(circle at 0 50%, rgba(255, 58, 70, 0.24), transparent 38%);
-  border-color: rgba(255, 86, 95, 0.72);
-  box-shadow: inset 5px 0 0 rgba(255, 66, 78, 0.96), 0 0 18px rgba(255, 66, 78, 0.22);
 }
 
 .current-boss-row.is-program-only .current-boss-program {

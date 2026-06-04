@@ -20,7 +20,14 @@ export class RoomCatalogService {
         SELECT slug, name, created_at
         FROM rooms
         WHERE deleted_at IS NULL AND slug <> 'default'
-        ORDER BY created_at ASC
+        ORDER BY
+          CASE slug
+            WHEN 'wenrou' THEN 0
+            WHEN 'liyong' THEN 1
+            WHEN 'room-59' THEN 2
+            ELSE 3
+          END,
+          created_at ASC
       `
       )
       .all() as RoomRow[];

@@ -91,8 +91,10 @@ describe("display layout", () => {
 
   it("adds a camera-area room selector and red program-only row styling", () => {
     expect(html).toContain('id="roomSelect"');
+    expect(html).toContain('id="roomCycleButton"');
     expect(css).toContain(".room-selector");
-    expect(css).toContain(".current-boss-row.is-program-only");
+    expect(css).toContain(".room-cycle-button");
+    expect(css).not.toContain(".current-boss-row.is-program-only {\n  background:");
     expect(css).toContain(".current-boss-row.is-program-only .current-boss-program");
   });
 

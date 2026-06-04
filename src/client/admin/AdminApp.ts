@@ -3,7 +3,14 @@ import { ApiClient } from "../common/ApiClient";
 import { queryRequired } from "../common/dom";
 import { RealtimeClient } from "../common/RealtimeClient";
 import { RoomContext } from "../common/RoomContext";
-import { rememberRoomSlug, renderRoomOptions, roomPagePath, SELECTED_ROOM_STORAGE_KEY } from "../common/RoomSelection";
+import {
+  preferredRoomSlug,
+  rememberRoomSlug,
+  renderRoomOptions,
+  roomPagePath,
+  savedRoomSlug,
+  SELECTED_ROOM_STORAGE_KEY
+} from "../common/RoomSelection";
 import { AdminSummaryView } from "./AdminSummaryView";
 import { RecordListView } from "./RecordListView";
 import { SponsorFormController } from "./SponsorFormController";
@@ -100,7 +107,10 @@ export class AdminApp {
     });
 
     this.session = await this.apiClient.getAuthSession();
-    await this.loadRooms();
+    if (await this.loadRooms()) {
+      return;
+    }
+
     this.applyRole();
     this.realtimeClient.onStateUpdated((state) => this.render(state));
     this.render(await this.apiClient.getState());
@@ -110,8 +120,9 @@ export class AdminApp {
     this.latestState = state;
     this.summaryView.render(state);
     this.recordListView.render(state.sponsors, state.programQueue);
+    const canOperate = this.session?.role === "viewer" || this.session?.role === "admin";
     const canManage = this.session?.role === "admin";
-    this.startDianjiangButton.disabled = !canManage || state.totalAmount <= 0;
+    this.startDianjiangButton.disabled = !canOperate || state.totalAmount <= 0;
     this.startDianjiangButton.textContent = state.goalReached ? "开始点将" : "开始点将（当前不足）";
     this.removeTodaySponsorsButton.disabled = !canManage || state.programQueue.length === 0;
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
@@ -140,14 +151,20 @@ export class AdminApp {
     }
   }
 
-  private async loadRooms(): Promise<void> {
+  private async loadRooms(): Promise<boolean> {
     this.rooms = await this.apiClient.getRooms();
     const currentSlug = RoomContext.fromPath(window.location.pathname).slug;
-    if (currentSlug !== "default") {
-      rememberRoomSlug(window.localStorage, currentSlug);
+    const selectedSlug = preferredRoomSlug(this.rooms, currentSlug, savedRoomSlug(window.localStorage));
+
+    if (selectedSlug !== currentSlug && selectedSlug !== "default") {
+      rememberRoomSlug(window.localStorage, selectedSlug);
+      window.location.replace(roomPagePath(selectedSlug, "admin"));
+      return true;
     }
 
-    renderRoomOptions(this.roomSelect, this.rooms, currentSlug);
+    rememberRoomSlug(window.localStorage, selectedSlug);
+    renderRoomOptions(this.roomSelect, this.rooms, selectedSlug);
+    return false;
   }
 
   private changeRoom(): void {
@@ -182,9 +199,10 @@ export class AdminApp {
 
   private applyRole(): void {
     const canAdd = this.session?.role === "viewer" || this.session?.role === "admin";
+    const canOperate = canAdd;
     const canManage = this.session?.role === "admin";
     this.sponsorForm.setEnabled(canAdd);
-    this.targetForm.setEnabled(canManage);
+    this.targetForm.setEnabled(canOperate);
     this.recordListView.setCanManage(canManage);
     this.roomForm.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((element) => {
       element.disabled = !canManage;

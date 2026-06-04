@@ -217,7 +217,7 @@ export class ApiController {
   }
 
   private async startDianjiang(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 
@@ -228,7 +228,7 @@ export class ApiController {
   }
 
   private async updateTargetAmount(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 
@@ -240,7 +240,7 @@ export class ApiController {
   }
 
   private async updateSettings(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 

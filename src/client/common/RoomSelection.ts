@@ -13,6 +13,31 @@ export const savedRoomSlug = (storage: Storage): string => {
   return normalizeRoomSlug(storage.getItem(SELECTED_ROOM_STORAGE_KEY) ?? "", DEFAULT_ROOM_SLUG);
 };
 
+export const preferredRoomSlug = (rooms: RoomInfo[], currentSlug: string, storedSlug: string): string => {
+  if (rooms.some((room) => room.slug === currentSlug)) {
+    return currentSlug;
+  }
+
+  if (rooms.some((room) => room.slug === storedSlug)) {
+    return storedSlug;
+  }
+
+  return rooms[0]?.slug ?? DEFAULT_ROOM_SLUG;
+};
+
+export const nextRoomSlug = (rooms: RoomInfo[], currentSlug: string): string => {
+  if (rooms.length === 0) {
+    return DEFAULT_ROOM_SLUG;
+  }
+
+  const currentIndex = rooms.findIndex((room) => room.slug === currentSlug);
+  if (currentIndex < 0) {
+    return rooms[0]?.slug ?? DEFAULT_ROOM_SLUG;
+  }
+
+  return rooms[(currentIndex + 1) % rooms.length]?.slug ?? DEFAULT_ROOM_SLUG;
+};
+
 export const rememberRoomSlug = (storage: Storage, slug: string): void => {
   const normalizedSlug = normalizeRoomSlug(slug, DEFAULT_ROOM_SLUG);
   if (normalizedSlug === DEFAULT_ROOM_SLUG) {

@@ -36,6 +36,7 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="removeTodaySponsorsButton"');
     expect(adminApp).toContain("this.apiClient.startDianjiang()");
     expect(adminApp).toContain("this.apiClient.removeTodaySponsors()");
+    expect(adminApp).toContain("canOperate");
   });
 
   it("uses inline amount editing and soft remove actions in records", () => {
