@@ -77,4 +77,13 @@ describe("ApiClient", () => {
       expect.objectContaining({ method: "POST" })
     );
   });
+
+  it("adds a sponsor back to today's list through the room-scoped API", async () => {
+    await new ApiClient(new RoomContext("alpha")).addSponsorToToday("sponsor id");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/rooms/alpha/api/sponsors/sponsor%20id/add-to-today",
+      expect.objectContaining({ method: "POST" })
+    );
+  });
 });

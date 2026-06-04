@@ -27,8 +27,14 @@ describe("admin layout", () => {
   it("uses inline amount editing and soft remove actions in records", () => {
     expect(recordListView).toContain("onUpdateAmount");
     expect(recordListView).toContain("onRemoveFromToday");
+    expect(recordListView).toContain("onAddToToday");
+    expect(recordListView).toContain("onDeletePermanently");
     expect(recordListView).toContain("record-amount-input");
     expect(recordListView).toContain("移除今日榜单");
+    expect(recordListView).toContain("加入今日榜单");
+    expect(recordListView).toContain("永久删除");
+    expect(adminApp).toContain("this.apiClient.addSponsorToToday");
+    expect(adminApp).toContain("this.apiClient.deleteSponsor");
     expect(adminCss).toContain(".record-actions");
     expect(adminCss).toContain(".record-amount-input");
   });

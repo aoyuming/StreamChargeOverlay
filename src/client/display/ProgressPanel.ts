@@ -58,19 +58,26 @@ export class ProgressPanel {
 
   private renderCurrentSponsors(sponsors: SponsorRecord[]): void {
     const sortedSponsors = [...sponsors].sort((left, right) => right.createdAt - left.createdAt);
-    const loopSponsors = sortedSponsors.length > 1 ? [...sortedSponsors, ...sortedSponsors] : sortedSponsors;
-    this.currentBossListElement.classList.toggle("is-scrolling-slow", sortedSponsors.length > 1);
     this.currentBossListElement.style.setProperty(
       "--current-boss-scroll-duration",
       `${this.scrollDurationSeconds(sortedSponsors.length)}s`
     );
 
-    if (loopSponsors.length === 0) {
+    if (sortedSponsors.length === 0) {
+      this.currentBossListElement.classList.remove("is-scrolling-slow");
       this.currentBossListElement.replaceChildren(this.createEmptyBossCard());
       return;
     }
 
-    this.currentBossListElement.replaceChildren(...loopSponsors.map((sponsor) => this.createBossCard(sponsor)));
+    this.currentBossListElement.replaceChildren(...sortedSponsors.map((sponsor) => this.createBossCard(sponsor)));
+    const shouldScroll = sortedSponsors.length > 1 && this.currentBossListOverflows();
+    this.currentBossListElement.classList.toggle("is-scrolling-slow", shouldScroll);
+
+    if (shouldScroll) {
+      this.currentBossListElement.replaceChildren(
+        ...[...sortedSponsors, ...sortedSponsors].map((sponsor) => this.createBossCard(sponsor))
+      );
+    }
   }
 
   private createBossCard(sponsor: SponsorRecord): HTMLElement {
@@ -85,16 +92,21 @@ export class ProgressPanel {
     note.className = "current-boss-note";
     note.textContent = neutralizePublicText(sponsor.note);
 
-    const amount = this.currentBossListElement.ownerDocument.createElement("span");
-    amount.className = "current-boss-amount";
-    amount.textContent = formatRootUnits(sponsor.amount);
-
     const program = this.currentBossListElement.ownerDocument.createElement("span");
     program.className = "current-boss-program";
     program.textContent = neutralizePublicText(sponsor.programName || "等待节目");
 
+    const amount = this.currentBossListElement.ownerDocument.createElement("span");
+    amount.className = "current-boss-amount";
+    amount.textContent = formatRootUnits(sponsor.amount);
+
     item.append(name, program, note, amount);
     return item;
+  }
+
+  private currentBossListOverflows(): boolean {
+    const viewportHeight = this.currentBossListElement.parentElement?.clientHeight ?? this.currentBossListElement.clientHeight;
+    return viewportHeight > 0 && this.currentBossListElement.scrollHeight > viewportHeight;
   }
 
   private amountTierClass(amount: number): string {

@@ -31,7 +31,8 @@ describe("display layout", () => {
     expect(html).toContain('class="current-boss-header-name">大哥名字</span>');
     expect(html).toContain('class="current-boss-header-program">点的节目</span>');
     expect(html).toContain('class="current-boss-header-note">备注</span>');
-    expect(html).toContain('class="current-boss-header-amount">实力</span>');
+    expect(html).not.toContain("实力");
+    expect(html).toContain('class="current-boss-header-amount"');
     expect(css).toContain(".current-boss-header");
     expect(css).toContain(".current-boss-header-name");
     expect(css).toContain(".current-boss-header-program");

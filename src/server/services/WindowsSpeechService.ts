@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
-import { buildRootUnitSpeechText } from "../../shared/displayUnits";
+import { buildSponsorSpeechText } from "../../shared/displayUnits";
 import type { SpeechAlert, SponsorRecord } from "../../shared/types";
 
 const execFileAsync = promisify(execFile);
@@ -33,8 +33,7 @@ export class WindowsSpeechService {
   }
 
   private buildSpeechText(record: SponsorRecord): string {
-    const detail = record.note || record.programName;
-    return buildRootUnitSpeechText(record.bossName, record.amount, detail);
+    return buildSponsorSpeechText(record);
   }
 
   private async generateWave(text: string, filePath: string): Promise<void> {

@@ -139,6 +139,9 @@ describe("ApiController room routing", () => {
     const removed = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/remove-from-today`, {
       method: "POST"
     })).json()) as DerivedAppState;
+    const restored = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/add-to-today`, {
+      method: "POST"
+    })).json()) as DerivedAppState;
     await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -154,8 +157,11 @@ describe("ApiController room routing", () => {
     expect(started.chargeConsumedAmount).toBe(240);
     expect(removed.sponsors.find((record) => record.id === sponsorId)?.hiddenFromTodayAt).toEqual(expect.any(Number));
     expect(removed.programQueue).toEqual([]);
+    expect(restored.sponsors.find((record) => record.id === sponsorId)?.hiddenFromTodayAt).toBeUndefined();
+    expect(restored.programQueue.map((record) => record.id)).toEqual([sponsorId]);
     expect(bulkRemoved.programQueue).toEqual([]);
     expect(realtimeHub.updates.map((update) => update.roomSlug)).toEqual([
+      "alpha",
       "alpha",
       "alpha",
       "alpha",

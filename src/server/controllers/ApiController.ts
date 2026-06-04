@@ -49,6 +49,9 @@ export class ApiController {
     app.post("/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
     app.post("/rooms/:roomSlug/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
 
+    app.post("/api/sponsors/:id/add-to-today", this.wrap((request, response) => this.addSponsorToToday(request, response)));
+    app.post("/rooms/:roomSlug/api/sponsors/:id/add-to-today", this.wrap((request, response) => this.addSponsorToToday(request, response)));
+
     app.post("/api/sponsors/remove-from-today", this.wrap((request, response) => this.removeTodaySponsors(request, response)));
     app.post("/rooms/:roomSlug/api/sponsors/remove-from-today", this.wrap((request, response) => this.removeTodaySponsors(request, response)));
 
@@ -96,6 +99,13 @@ export class ApiController {
   private async removeSponsorFromToday(request: Request, response: Response): Promise<void> {
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).removeSponsorFromToday(String(request.params.id ?? ""));
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async addSponsorToToday(request: Request, response: Response): Promise<void> {
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).addSponsorToToday(String(request.params.id ?? ""));
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }

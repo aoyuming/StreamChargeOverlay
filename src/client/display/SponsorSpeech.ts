@@ -1,5 +1,5 @@
 import type { SponsorRecord } from "../../shared/types";
-import { buildRootUnitSpeechText } from "../../shared/displayUnits";
+import { buildSponsorSpeechText } from "../../shared/displayUnits";
 
 type BrowserWindowWithSpeech = Window & {
   speechSynthesis?: SpeechSynthesis;
@@ -30,7 +30,6 @@ export class SponsorSpeech {
   }
 
   private buildMessage(record: SponsorRecord): string {
-    const detail = record.note || record.programName;
-    return buildRootUnitSpeechText(record.bossName, record.amount, detail);
+    return buildSponsorSpeechText(record);
   }
 }

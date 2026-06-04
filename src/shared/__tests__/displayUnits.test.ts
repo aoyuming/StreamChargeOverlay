@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   buildRootUnitActionText,
   buildRootUnitSpeechText,
+  buildSponsorSpeechText,
   formatDisplayName,
   formatRootUnits,
   neutralizePublicText
 } from "../displayUnits";
+import type { SponsorRecord } from "../types";
 
 describe("displayUnits", () => {
   it("formats raw amount values as root units without money symbols", () => {
@@ -26,5 +28,23 @@ describe("displayUnits", () => {
     expect(buildRootUnitActionText("张三大哥", 100)).toBe("张三大哥 点亮 1根");
     expect(buildRootUnitSpeechText("张三", 188, "感谢老板安排")).toBe("张三大哥，点亮 1.88根，大哥安排");
     expect(neutralizePublicText("感谢老板赞助金额¥188")).toBe("大哥点亮进度188");
+  });
+
+  it("builds sponsor speech text with both selected program and note", () => {
+    const record: SponsorRecord = {
+      id: "speech-1",
+      bossName: "张三老板",
+      amount: 188,
+      programName: "红眼竞速",
+      note: "指定职业",
+      countsTowardCharge: true,
+      createdAt: 1
+    };
+
+    const text = buildSponsorSpeechText(record);
+
+    expect(text).toContain("红眼竞速");
+    expect(text).toContain("指定职业");
+    expect(text).toBe("张三大哥，点亮 1.88根，红眼竞速，指定职业");
   });
 });

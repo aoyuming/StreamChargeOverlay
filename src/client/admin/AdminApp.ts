@@ -60,8 +60,16 @@ export class AdminApp {
       await this.apiClient.removeSponsorFromToday(id);
     });
 
+    this.recordListView.onAddToToday(async (id) => {
+      await this.apiClient.addSponsorToToday(id);
+    });
+
     this.recordListView.onUpdateAmount(async (id, amount) => {
       await this.apiClient.updateSponsorAmount(id, amount);
+    });
+
+    this.recordListView.onDeletePermanently(async (id) => {
+      await this.apiClient.deleteSponsor(id);
     });
 
     this.realtimeClient.onStateUpdated((state) => this.render(state));

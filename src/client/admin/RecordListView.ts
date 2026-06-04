@@ -3,11 +3,15 @@ import { clearAndAppend } from "../common/dom";
 import { formatTime } from "../common/format";
 
 type RemoveFromTodayHandler = (id: string) => Promise<void>;
+type AddToTodayHandler = (id: string) => Promise<void>;
 type UpdateAmountHandler = (id: string, amount: number) => Promise<void>;
+type DeletePermanentlyHandler = (id: string) => Promise<void>;
 
 export class RecordListView {
   private removeFromTodayHandler: RemoveFromTodayHandler | null = null;
+  private addToTodayHandler: AddToTodayHandler | null = null;
   private updateAmountHandler: UpdateAmountHandler | null = null;
+  private deletePermanentlyHandler: DeletePermanentlyHandler | null = null;
   private visibleTodayIds = new Set<string>();
 
   public constructor(private readonly listElement: HTMLElement) {
@@ -18,8 +22,16 @@ export class RecordListView {
     this.removeFromTodayHandler = handler;
   }
 
+  public onAddToToday(handler: AddToTodayHandler): void {
+    this.addToTodayHandler = handler;
+  }
+
   public onUpdateAmount(handler: UpdateAmountHandler): void {
     this.updateAmountHandler = handler;
+  }
+
+  public onDeletePermanently(handler: DeletePermanentlyHandler): void {
+    this.deletePermanentlyHandler = handler;
   }
 
   public render(records: SponsorRecord[], visibleTodayRecords: SponsorRecord[] = records): void {
@@ -89,7 +101,20 @@ export class RecordListView {
     removeButton.disabled = !isVisibleToday;
     removeButton.textContent = isVisibleToday ? "移除今日榜单" : "已移除";
 
-    actions.append(amountInput, saveButton, removeButton);
+    const addButton = document.createElement("button");
+    addButton.className = "ghost-button";
+    addButton.type = "button";
+    addButton.dataset.action = "add-today";
+    addButton.disabled = isVisibleToday;
+    addButton.textContent = "加入今日榜单";
+
+    const deleteButton = document.createElement("button");
+    deleteButton.className = "ghost-button danger";
+    deleteButton.type = "button";
+    deleteButton.dataset.action = "delete-permanent";
+    deleteButton.textContent = "永久删除";
+
+    actions.append(amountInput, saveButton, removeButton, addButton, deleteButton);
     main.append(title, meta, note, flags);
     row.append(main, actions);
     return row;
@@ -116,6 +141,16 @@ export class RecordListView {
 
     if (target.dataset.action === "remove-today" && this.removeFromTodayHandler) {
       await this.removeFromTodayHandler(id);
+      return;
+    }
+
+    if (target.dataset.action === "add-today" && this.addToTodayHandler) {
+      await this.addToTodayHandler(id);
+      return;
+    }
+
+    if (target.dataset.action === "delete-permanent" && this.deletePermanentlyHandler) {
+      await this.deletePermanentlyHandler(id);
       return;
     }
 

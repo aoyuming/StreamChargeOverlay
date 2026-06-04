@@ -255,7 +255,7 @@ button:hover {
 
 .record-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 258px;
+  grid-template-columns: minmax(0, 1fr) 336px;
   gap: 12px;
   align-items: center;
   padding: 13px;
@@ -308,11 +308,11 @@ button:hover {
 
 .record-actions {
   display: grid;
-  grid-template-columns: 1fr 88px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
-.record-actions .danger {
+.record-actions [data-action="delete-permanent"] {
   grid-column: 1 / 3;
 }
 

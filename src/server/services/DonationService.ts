@@ -123,6 +123,27 @@ export class DonationService {
     return this.deriveState(nextState);
   }
 
+  public async addSponsorToToday(id: string): Promise<DerivedAppState> {
+    const state = this.normalizeState(await this.repository.load());
+    let found = false;
+    const sponsors = state.sponsors.map((record) => {
+      if (record.id !== id) {
+        return record;
+      }
+
+      found = true;
+      return { ...record, hiddenFromTodayAt: undefined };
+    });
+
+    if (!found) {
+      throw new Error("赞助记录不存在");
+    }
+
+    const nextState: AppState = { ...state, sponsors };
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
   public async removeTodaySponsors(): Promise<DerivedAppState> {
     const state = this.normalizeState(await this.repository.load());
     const now = Date.now();

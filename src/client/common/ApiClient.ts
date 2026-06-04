@@ -42,6 +42,12 @@ export class ApiClient {
     });
   }
 
+  public async addSponsorToToday(id: string): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/add-to-today`), {
+      method: "POST"
+    });
+  }
+
   public async removeTodaySponsors(): Promise<DerivedAppState> {
     return this.request<DerivedAppState>(this.apiPath("/sponsors/remove-from-today"), {
       method: "POST"

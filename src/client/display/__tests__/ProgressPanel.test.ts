@@ -43,10 +43,13 @@ class FakeClassList {
 class FakeElement {
   public textContent = "";
   public className = "";
+  public clientHeight = 0;
+  public scrollHeight = 0;
   public readonly style = new FakeStyle();
   public readonly classList = new FakeClassList();
   public readonly children: FakeElement[] = [];
   public ownerDocument: FakeDocument | undefined;
+  public parentElement: FakeElement | null = null;
 
   public append(...children: FakeElement[]): void {
     this.children.push(...children);
@@ -105,8 +108,12 @@ const state = (progressPercent: number, overrides: Partial<DerivedAppState> = {}
   ...overrides
 });
 
-const createPanel = () => {
+const createPanel = (metrics: { viewportHeight?: number; listScrollHeight?: number } = {}) => {
   const currentBossList = element();
+  const currentBossViewport = element();
+  (currentBossViewport as unknown as FakeElement).clientHeight = metrics.viewportHeight ?? 143;
+  (currentBossList as unknown as FakeElement).scrollHeight = metrics.listScrollHeight ?? 0;
+  (currentBossList as unknown as FakeElement).parentElement = currentBossViewport as unknown as FakeElement;
   const progressTrack = element();
   const progressFill = element();
   const sloganElement = element();
@@ -163,8 +170,8 @@ describe("ProgressPanel", () => {
     expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-note");
     expect((firstCard.children[3] as FakeElement).className).toBe("current-boss-amount");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
-    expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(true);
-    expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(4);
+    expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(false);
+    expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(2);
   });
 
   it.each([
@@ -192,7 +199,7 @@ describe("ProgressPanel", () => {
   });
 
   it("slows the current boss ticker as the list grows", () => {
-    const view = createPanel();
+    const view = createPanel({ listScrollHeight: 400 });
     const sponsors = Array.from({ length: 10 }, (_, index) =>
       sponsor({ id: `sponsor-${index}`, bossName: `Boss ${index}`, createdAt: index })
     );
@@ -200,6 +207,20 @@ describe("ProgressPanel", () => {
     view.panel.render(state(62.8), sponsors);
 
     expect((view.currentBossList.style as unknown as FakeStyle).get("--current-boss-scroll-duration")).toBe("40s");
+  });
+
+  it("scrolls the current boss ticker only when the list overflows the viewport", () => {
+    const view = createPanel({ viewportHeight: 143, listScrollHeight: 220 });
+    const sponsors = [
+      sponsor({ id: "one", bossName: "Boss 1", createdAt: 1 }),
+      sponsor({ id: "two", bossName: "Boss 2", createdAt: 2 }),
+      sponsor({ id: "three", bossName: "Boss 3", createdAt: 3 })
+    ];
+
+    view.panel.render(state(62.8), sponsors);
+
+    expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(true);
+    expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(6);
   });
 
   it("renders a waiting state when there is no current boss", () => {

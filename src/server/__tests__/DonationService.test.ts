@@ -143,6 +143,27 @@ describe("DonationService", () => {
     expect(state.programQueue).toEqual([]);
   });
 
+  it("adds a removed sponsor back to the today program list", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(Date.UTC(2026, 5, 4, 5, 0, 0)));
+    const repository = new MemoryStateRepository({
+      targetAmount: 1000,
+      sponsors: [
+        baseRecord({
+          id: "restore",
+          amount: 300,
+          createdAt: Date.UTC(2026, 5, 4, 4, 30, 0),
+          hiddenFromTodayAt: Date.UTC(2026, 5, 4, 4, 45, 0)
+        })
+      ]
+    });
+
+    const state = await new DonationService(repository).addSponsorToToday("restore");
+
+    expect(state.sponsors.find((record) => record.id === "restore")?.hiddenFromTodayAt).toBeUndefined();
+    expect(state.programQueue.map((record) => record.id)).toEqual(["restore"]);
+  });
+
   it("keeps the today program list on a Beijing noon-to-noon window", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(Date.UTC(2026, 5, 4, 3, 59, 0)));
