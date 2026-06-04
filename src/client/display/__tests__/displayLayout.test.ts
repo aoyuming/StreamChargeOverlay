@@ -126,6 +126,7 @@ describe("display layout", () => {
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {
     expect(html).toContain('<canvas id="stageEffectsCanvas" class="stage-effects-canvas" width="1920" height="1440"></canvas>');
+    expect(html).toContain('<canvas id="stageShaderEffectsCanvas" class="stage-effects-canvas shader-effects-canvas" width="1920" height="1440"></canvas>');
     expect(html).toContain('<canvas id="burstParticles" class="burst-particles" width="1920" height="1440"></canvas>');
     expect(css).toContain(".stage-effects-canvas {\n  position: absolute;\n  inset: 0;\n  z-index: 5;\n  width: 1920px;\n  height: 1440px;");
     expect(css).toContain("pointer-events: none;");
@@ -143,6 +144,9 @@ describe("display layout", () => {
   });
 
   it("includes stronger fire and enhanced lightning progress styles", () => {
+    expect(html).toContain('id="progressShaderEffectsCanvas"');
+    expect(displayApp).toContain("ShaderProgressEffectLayer");
+    expect(displayApp).toContain("ShaderStageEffectLayer");
     expect(css).toContain(".progress-track.is-inferno");
     expect(css).toContain(".progress-track.is-inferno .progress-fill");
     expect(css).toContain(".progress-track.is-inferno::before");

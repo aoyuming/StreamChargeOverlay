@@ -7,6 +7,8 @@ import { ProgressPanel } from "./ProgressPanel";
 import { RankingTicker } from "./RankingTicker";
 import { BurstParticles } from "./BurstParticles";
 import { DisplayEffectCoordinator } from "./DisplayEffectCoordinator";
+import { ShaderProgressEffectLayer } from "./ShaderProgressEffectLayer";
+import { ShaderStageEffectLayer } from "./ShaderStageEffectLayer";
 import { StageEffectLayer, type StageEffectPlayer } from "./StageEffectLayer";
 import { SponsorBurst } from "./SponsorBurst";
 import { SponsorSound } from "./SponsorSound";
@@ -34,7 +36,7 @@ export class DisplayApp {
       queryRequired("#progressFill"),
       queryRequired("#progressSlogan"),
       queryRequired("#progressPercent"),
-      new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
+      this.createProgressEffectLayer()
     );
     this.rankingTicker = new RankingTicker(queryRequired("#rankingPinned"), queryRequired("#rankingList"));
     this.sponsorBurst = new SponsorBurst(
@@ -44,7 +46,7 @@ export class DisplayApp {
       queryRequired("#burstNote"),
       new BurstParticles(queryRequired("#burstParticles"))
     );
-    this.stageEffects = stageEffects ?? new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
+    this.stageEffects = stageEffects ?? this.createStageEffectLayer();
   }
 
   public async start(): Promise<void> {
@@ -78,5 +80,16 @@ export class DisplayApp {
       document.body.classList.add("has-new-sponsor");
       window.setTimeout(() => document.body.classList.remove("has-new-sponsor"), 900);
     }
+  }
+
+  private createProgressEffectLayer() {
+    return (
+      ShaderProgressEffectLayer.create(queryRequired("#progressShaderEffectsCanvas")) ??
+      new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))
+    );
+  }
+
+  private createStageEffectLayer(): StageEffectPlayer {
+    return ShaderStageEffectLayer.create(queryRequired("#stageShaderEffectsCanvas")) ?? new StageEffectLayer(queryRequired("#stageEffectsCanvas"));
   }
 }
