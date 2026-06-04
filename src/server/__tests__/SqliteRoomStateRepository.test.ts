@@ -48,9 +48,10 @@ describe("SqliteRoomStateRepository", () => {
           programName: "alpha",
           note: "",
           countsTowardCharge: true,
+          avatarUrl: "/avatars/alpha/alpha-1.webp",
           hiddenFromTodayAt: 123,
           createdAt: 1
-        }
+        } as any
       ]
     });
     await beta.save({
@@ -76,7 +77,11 @@ describe("SqliteRoomStateRepository", () => {
     expect((await beta.load()).sponsors.map((record) => record.id)).toEqual(["beta-1"]);
     expect((await alpha.load()).chargeConsumedAmount).toBe(30);
     expect((await alpha.load()).lastDianjiangEffectAt).toBe(1717488000000);
-    expect((await alpha.load()).sponsors[0]).toMatchObject({ countsTowardCharge: true, hiddenFromTodayAt: 123 });
+    expect((await alpha.load()).sponsors[0]).toMatchObject({
+      countsTowardCharge: true,
+      avatarUrl: "/avatars/alpha/alpha-1.webp",
+      hiddenFromTodayAt: 123
+    });
     expect((await beta.load()).sponsors[0]).toMatchObject({ countsTowardCharge: false });
   });
 

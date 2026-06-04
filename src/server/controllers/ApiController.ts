@@ -10,11 +10,13 @@ import type {
   SpeechAlert,
   SponsorRecord,
   UpdateSponsorAmountRequest,
+  UpdateSponsorAvatarRequest,
   UpdateSettingsRequest,
   UpdateTargetRequest
 } from "../../shared/types";
 import type { RoomStateRepositoryFactory } from "../repositories/RoomStateRepositoryFactory";
 import { AuthService } from "../services/AuthService";
+import type { SponsorAvatarStorage } from "../services/AvatarService";
 import { DonationService } from "../services/DonationService";
 
 type AsyncRoute = (request: Request, response: Response) => Promise<void>;
@@ -42,7 +44,8 @@ export class ApiController {
     private readonly speechService: SponsorSpeechService,
     private readonly defaultRoomSlug: string,
     private readonly authService = AuthService.disabled(),
-    private readonly roomCatalog: RoomCatalog | null = null
+    private readonly roomCatalog: RoomCatalog | null = null,
+    private readonly avatarStorage?: SponsorAvatarStorage
   ) {}
 
   public register(app: Express): void {
@@ -65,6 +68,9 @@ export class ApiController {
 
     app.patch("/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
     app.patch("/rooms/:roomSlug/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
+
+    app.patch("/api/sponsors/:id/avatar", this.wrap((request, response) => this.updateSponsorAvatar(request, response)));
+    app.patch("/rooms/:roomSlug/api/sponsors/:id/avatar", this.wrap((request, response) => this.updateSponsorAvatar(request, response)));
 
     app.post("/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
     app.post("/rooms/:roomSlug/api/sponsors/:id/remove-from-today", this.wrap((request, response) => this.removeSponsorFromToday(request, response)));
@@ -183,6 +189,21 @@ export class ApiController {
     response.json(state);
   }
 
+  private async updateSponsorAvatar(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const body = request.body as UpdateSponsorAvatarRequest;
+    const state = await (await this.serviceFor(request)).updateSponsorAvatar(
+      String(request.params.id ?? ""),
+      body.avatarDataUrl
+    );
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
   private async removeSponsorFromToday(request: Request, response: Response): Promise<void> {
     if (!this.requireRole(request, response, "admin")) {
       return;
@@ -251,7 +272,11 @@ export class ApiController {
   }
 
   private async serviceFor(request: Request): Promise<DonationService> {
-    return new DonationService(await this.repositoryFactory.getRepository(this.roomSlugFrom(request)));
+    const roomSlug = this.roomSlugFrom(request);
+    return new DonationService(await this.repositoryFactory.getRepository(roomSlug), {
+      avatarStorage: this.avatarStorage,
+      roomSlug
+    });
   }
 
   private requireRole(request: Request, response: Response, role: AuthRole): boolean {

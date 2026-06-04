@@ -8,6 +8,7 @@ import { AppConfig } from "./config/AppConfig";
 import { ApiController } from "./controllers/ApiController";
 import { SqliteRoomStateRepositoryFactory } from "./repositories/RoomStateRepositoryFactory";
 import { AuthService } from "./services/AuthService";
+import { AvatarService } from "./services/AvatarService";
 import { DonationService } from "./services/DonationService";
 import { RealtimeHub } from "./services/RealtimeHub";
 import { RoomCatalogService } from "./services/RoomCatalogService";
@@ -24,6 +25,8 @@ const repositoryFactory = new SqliteRoomStateRepositoryFactory(config.databasePa
 const realtimeHub = new RealtimeHub(io);
 const speechDirectory = resolve(config.dataDirectory, "speech");
 const speechService = new WindowsSpeechService(speechDirectory);
+const avatarDirectory = resolve(config.dataDirectory, "avatars");
+const avatarService = new AvatarService(avatarDirectory);
 const authService = new AuthService({
   adminPassword: config.adminPassword,
   sessionSecret: config.sessionSecret,
@@ -36,11 +39,13 @@ const apiController = new ApiController(
   speechService,
   config.defaultRoomSlug,
   authService,
-  roomCatalog
+  roomCatalog,
+  avatarService
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 app.use("/speech", express.static(speechDirectory));
+app.use("/avatars", express.static(avatarDirectory));
 apiController.register(app);
 
 io.on("connection", async (socket) => {

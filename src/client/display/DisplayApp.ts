@@ -39,6 +39,7 @@ export class DisplayApp {
     this.rankingTicker = new RankingTicker(queryRequired("#rankingPinned"), queryRequired("#rankingList"));
     this.sponsorBurst = new SponsorBurst(
       queryRequired("#sponsorBurst"),
+      queryRequired("#burstAvatar"),
       queryRequired("#burstTitle"),
       queryRequired("#burstNote"),
       new BurstParticles(queryRequired("#burstParticles"))

@@ -60,6 +60,18 @@ describe("ApiClient", () => {
     );
   });
 
+  it("updates sponsor avatars through the room-scoped API", async () => {
+    await new ApiClient(new RoomContext("alpha")).updateSponsorAvatar("sponsor id", "data:image/webp;base64,next");
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/rooms/alpha/api/sponsors/sponsor%20id/avatar",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({ avatarDataUrl: "data:image/webp;base64,next" })
+      })
+    );
+  });
+
   it("soft-removes one sponsor and all current sponsors from today's list", async () => {
     const client = new ApiClient(new RoomContext("alpha"));
 

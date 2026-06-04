@@ -66,6 +66,15 @@
             <input name="countsTowardCharge" type="checkbox" checked />
             <span>加入启动资金充能</span>
           </label>
+          <div class="avatar-picker">
+            <span id="avatarPreview" class="avatar-preview" aria-label="老板头像预览">头像</span>
+            <input id="avatarFileInput" type="file" accept="image/*" hidden />
+            <div class="avatar-picker-actions">
+              <button id="chooseAvatarButton" class="ghost-button" type="button">选择图片</button>
+              <button id="pasteAvatarButton" class="ghost-button" type="button">粘贴头像</button>
+              <button id="clearAvatarButton" class="ghost-button" type="button">清除头像</button>
+            </div>
+          </div>
           <div id="formError" class="form-error" role="alert"></div>
           <button class="primary-button" type="submit">添加到榜单</button>
         </form>

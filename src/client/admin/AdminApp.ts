@@ -106,6 +106,10 @@ export class AdminApp {
       await this.apiClient.deleteSponsor(id);
     });
 
+    this.recordListView.onUpdateAvatar(async (id, avatarDataUrl) => {
+      await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
+    });
+
     this.session = await this.apiClient.getAuthSession();
     if (await this.loadRooms()) {
       return;

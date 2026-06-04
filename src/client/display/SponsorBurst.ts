@@ -7,6 +7,7 @@ export class SponsorBurst {
 
   public constructor(
     private readonly rootElement: HTMLElement,
+    private readonly avatarElement: HTMLElement,
     private readonly titleElement: HTMLElement,
     private readonly noteElement: HTMLElement,
     private readonly particles: BurstParticles
@@ -14,6 +15,7 @@ export class SponsorBurst {
 
   public show(record: SponsorRecord): void {
     window.clearTimeout(this.hideTimer);
+    this.renderAvatar(record);
     this.titleElement.textContent = buildRootUnitActionText(record.bossName, record.amount);
     this.noteElement.textContent = neutralizePublicText(record.note || record.programName);
 
@@ -31,5 +33,15 @@ export class SponsorBurst {
       x: rect.left + rect.width / 2,
       y: rect.top + rect.height / 2
     };
+  }
+
+  private renderAvatar(record: SponsorRecord): void {
+    this.avatarElement.className = `burst-avatar${record.avatarUrl ? " has-image" : " is-placeholder"}`;
+    this.avatarElement.style.backgroundImage = record.avatarUrl ? `url("${record.avatarUrl}")` : "";
+    this.avatarElement.textContent = record.avatarUrl ? "" : this.avatarInitial(record.bossName);
+  }
+
+  private avatarInitial(name: string): string {
+    return name.trim().charAt(0).toUpperCase() || "B";
   }
 }

@@ -58,11 +58,16 @@ export class RankingTicker {
     name.className = "rank-name";
     name.textContent = formatDisplayName(item.bossName);
 
+    const avatar = document.createElement("span");
+    avatar.className = `rank-avatar${item.avatarUrl ? " has-image" : " is-placeholder"}`;
+    avatar.style.backgroundImage = item.avatarUrl ? `url("${item.avatarUrl}")` : "";
+    avatar.textContent = item.avatarUrl ? "" : this.avatarInitial(item.bossName);
+
     const amount = document.createElement("span");
     amount.className = "rank-amount";
     amount.textContent = formatRootUnits(item.totalAmount);
 
-    row.append(badge, name, amount);
+    row.append(badge, avatar, name, amount);
     return row;
   }
 
@@ -71,5 +76,9 @@ export class RankingTicker {
     row.className = "rank-row is-empty";
     row.textContent = text;
     return row;
+  }
+
+  private avatarInitial(name: string): string {
+    return formatDisplayName(name).charAt(0).toUpperCase() || "B";
   }
 }

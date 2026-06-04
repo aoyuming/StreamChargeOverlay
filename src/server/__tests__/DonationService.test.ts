@@ -37,6 +37,50 @@ describe("DonationService", () => {
     expect(state.programQueue[0]?.programName).toBe(STARTUP_FUNDING_PROGRAM_NAME);
   });
 
+  it("stores a compressed avatar for a new sponsor when avatar data is provided", async () => {
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn(async (roomSlug: string, sponsorId: string) => `/avatars/${roomSlug}/${sponsorId}.webp`)
+    };
+    const service = new (DonationService as any)(new MemoryStateRepository(), {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+
+    const state = await service.addSponsor({
+      bossName: "Avatar Boss",
+      amount: 260,
+      programName: "startup",
+      avatarDataUrl: "data:image/webp;base64,avatar"
+    });
+
+    const record = state.sponsors[0];
+    expect(avatarStorage.saveAvatar).toHaveBeenCalledWith("alpha", record?.id, "data:image/webp;base64,avatar");
+    expect(record?.avatarUrl).toBe(`/avatars/alpha/${record?.id}.webp`);
+  });
+
+  it("updates and clears a historical sponsor avatar without changing the amount", async () => {
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn(async (roomSlug: string, sponsorId: string) => `/avatars/${roomSlug}/${sponsorId}.png`)
+    };
+    const repository = new MemoryStateRepository({
+      sponsors: [baseRecord({ id: "avatar-record", amount: 520, avatarUrl: "/avatars/alpha/avatar-record.webp" } as any)]
+    });
+    const service = new (DonationService as any)(repository, {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+
+    const updated = await service.updateSponsorAvatar("avatar-record", "data:image/png;base64,next");
+    const cleared = await service.updateSponsorAvatar("avatar-record", null);
+
+    expect(updated.sponsors[0]?.avatarUrl).toBe("/avatars/alpha/avatar-record.png");
+    expect(cleared.sponsors[0]?.avatarUrl).toBeUndefined();
+    expect(cleared.sponsors[0]?.amount).toBe(520);
+    expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/avatar-record.png");
+  });
+
   it("keeps non-charge sponsors visible without increasing current charge", async () => {
     const service = new DonationService(new MemoryStateRepository());
 
@@ -85,6 +129,24 @@ describe("DonationService", () => {
       ["老板A", 400],
       ["老板B", 260]
     ]);
+  });
+
+  it("uses the latest available sponsor avatar in the total ranking", async () => {
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "a", bossName: "Boss A", amount: 100, avatarUrl: "/avatars/a-old.webp", createdAt: 1 } as any),
+        baseRecord({ id: "b", bossName: "Boss A", amount: 200, createdAt: 2 }),
+        baseRecord({ id: "c", bossName: "Boss A", amount: 300, avatarUrl: "/avatars/a-new.webp", createdAt: 3 } as any)
+      ]
+    });
+
+    const state = await new DonationService(repository).getState();
+
+    expect(state.ranking[0]).toMatchObject({
+      bossName: "Boss A",
+      totalAmount: 600,
+      avatarUrl: "/avatars/a-new.webp"
+    });
   });
 
   it("marks the goal as reached when total amount meets the target", async () => {

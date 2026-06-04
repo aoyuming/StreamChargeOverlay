@@ -18,6 +18,18 @@ describe("admin layout", () => {
     expect(sponsorForm).toContain("readOnly");
   });
 
+  it("adds avatar picker and clipboard controls to the sponsor form", () => {
+    expect(adminHtml).toContain('id="avatarPreview"');
+    expect(adminHtml).toContain('id="avatarFileInput"');
+    expect(adminHtml).toContain('id="pasteAvatarButton"');
+    expect(adminHtml).toContain('id="clearAvatarButton"');
+    expect(sponsorForm).toContain("avatarDataUrl");
+    expect(sponsorForm).toContain("compressAvatarFile");
+    expect(sponsorForm).toContain("readAvatarFromClipboard");
+    expect(adminCss).toContain(".avatar-picker");
+    expect(adminCss).toContain(".avatar-preview");
+  });
+
   it("includes room selection, room management, and password login controls", () => {
     expect(adminHtml).toContain('id="roomSelect"');
     expect(adminHtml).toContain('id="roomForm"');
@@ -44,13 +56,19 @@ describe("admin layout", () => {
     expect(recordListView).toContain("onRemoveFromToday");
     expect(recordListView).toContain("onAddToToday");
     expect(recordListView).toContain("onDeletePermanently");
+    expect(recordListView).toContain("onUpdateAvatar");
     expect(recordListView).toContain("record-amount-input");
+    expect(recordListView).toContain("record-avatar");
+    expect(recordListView).toContain("update-avatar");
+    expect(recordListView).toContain("clear-avatar");
     expect(recordListView).toContain("移除今日榜单");
     expect(recordListView).toContain("加入今日榜单");
     expect(recordListView).toContain("永久删除");
     expect(adminApp).toContain("this.apiClient.addSponsorToToday");
     expect(adminApp).toContain("this.apiClient.deleteSponsor");
+    expect(adminApp).toContain("this.apiClient.updateSponsorAvatar");
     expect(adminCss).toContain(".record-actions");
     expect(adminCss).toContain(".record-amount-input");
+    expect(adminCss).toContain(".record-avatar");
   });
 });

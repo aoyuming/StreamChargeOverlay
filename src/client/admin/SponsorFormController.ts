@@ -1,5 +1,6 @@
 import type { AddSponsorRequest } from "../../shared/types";
 import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
+import { compressAvatarFile, readAvatarFromClipboard } from "./AvatarImageProcessor";
 
 type SubmitHandler = (request: AddSponsorRequest) => Promise<void>;
 
@@ -7,7 +8,14 @@ export class SponsorFormController {
   private submitHandler: SubmitHandler | null = null;
   private readonly programNameInput: HTMLInputElement;
   private readonly countsTowardChargeInput: HTMLInputElement;
+  private readonly avatarPreview: HTMLElement;
+  private readonly avatarFileInput: HTMLInputElement;
+  private readonly chooseAvatarButton: HTMLButtonElement;
+  private readonly pasteAvatarButton: HTMLButtonElement;
+  private readonly clearAvatarButton: HTMLButtonElement;
   private editableProgramName = "";
+  private avatarDataUrl: string | undefined;
+  private formEnabled = true;
 
   public constructor(
     private readonly form: HTMLFormElement,
@@ -15,9 +23,20 @@ export class SponsorFormController {
   ) {
     this.programNameInput = this.requiredInput("programName");
     this.countsTowardChargeInput = this.requiredInput("countsTowardCharge");
+    this.avatarPreview = this.requiredElement("#avatarPreview", HTMLElement);
+    this.avatarFileInput = this.requiredElement("#avatarFileInput", HTMLInputElement);
+    this.chooseAvatarButton = this.requiredElement("#chooseAvatarButton", HTMLButtonElement);
+    this.pasteAvatarButton = this.requiredElement("#pasteAvatarButton", HTMLButtonElement);
+    this.clearAvatarButton = this.requiredElement("#clearAvatarButton", HTMLButtonElement);
     this.form.addEventListener("submit", (event) => void this.handleSubmit(event));
+    this.form.addEventListener("paste", (event) => void this.handlePaste(event));
     this.countsTowardChargeInput.addEventListener("change", () => this.syncStartupProgramLock());
+    this.avatarFileInput.addEventListener("change", () => void this.setAvatarFromSelectedFile());
+    this.chooseAvatarButton.addEventListener("click", () => this.avatarFileInput.click());
+    this.pasteAvatarButton.addEventListener("click", () => void this.setAvatarFromClipboard());
+    this.clearAvatarButton.addEventListener("click", () => this.clearAvatar());
     this.syncStartupProgramLock();
+    this.renderAvatarPreview();
   }
 
   public onSubmit(handler: SubmitHandler): void {
@@ -29,6 +48,7 @@ export class SponsorFormController {
   }
 
   public setEnabled(enabled: boolean): void {
+    this.formEnabled = enabled;
     this.form.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLButtonElement>(
       "input, textarea, button"
     ).forEach((element) => {
@@ -38,6 +58,7 @@ export class SponsorFormController {
     if (enabled) {
       this.syncStartupProgramLock();
     }
+    this.renderAvatarPreview();
   }
 
   private async handleSubmit(event: SubmitEvent): Promise<void> {
@@ -55,13 +76,67 @@ export class SponsorFormController {
       amount: Number(formData.get("amount") ?? 0),
       programName: countsTowardCharge ? STARTUP_FUNDING_PROGRAM_NAME : String(formData.get("programName") ?? ""),
       countsTowardCharge,
-      note: String(formData.get("note") ?? "")
+      note: String(formData.get("note") ?? ""),
+      avatarDataUrl: this.avatarDataUrl
     };
 
     await this.submitHandler(request);
     this.form.reset();
     this.editableProgramName = "";
+    this.clearAvatar();
     this.syncStartupProgramLock();
+  }
+
+  private async setAvatarFromSelectedFile(): Promise<void> {
+    const file = this.avatarFileInput.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    await this.setAvatarFromBlob(file);
+    this.avatarFileInput.value = "";
+  }
+
+  private async setAvatarFromClipboard(): Promise<void> {
+    try {
+      this.avatarDataUrl = await readAvatarFromClipboard();
+      this.renderAvatarPreview();
+      this.showError("");
+    } catch (error) {
+      this.showError(error instanceof Error ? error.message : "读取头像失败");
+    }
+  }
+
+  private async handlePaste(event: ClipboardEvent): Promise<void> {
+    const file = [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith("image/"));
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    await this.setAvatarFromBlob(file);
+  }
+
+  private async setAvatarFromBlob(file: Blob): Promise<void> {
+    try {
+      this.avatarDataUrl = await compressAvatarFile(file);
+      this.renderAvatarPreview();
+      this.showError("");
+    } catch (error) {
+      this.showError(error instanceof Error ? error.message : "头像处理失败");
+    }
+  }
+
+  private clearAvatar(): void {
+    this.avatarDataUrl = undefined;
+    this.renderAvatarPreview();
+  }
+
+  private renderAvatarPreview(): void {
+    this.avatarPreview.classList.toggle("has-image", Boolean(this.avatarDataUrl));
+    this.avatarPreview.style.backgroundImage = this.avatarDataUrl ? `url("${this.avatarDataUrl}")` : "";
+    this.avatarPreview.textContent = this.avatarDataUrl ? "" : "头像";
+    this.clearAvatarButton.disabled = !this.formEnabled || !this.avatarDataUrl;
   }
 
   private syncStartupProgramLock(): void {
@@ -87,6 +162,18 @@ export class SponsorFormController {
     const element = this.form.elements.namedItem(name);
     if (!(element instanceof HTMLInputElement)) {
       throw new Error(`Missing input: ${name}`);
+    }
+
+    return element;
+  }
+
+  private requiredElement<T extends HTMLElement>(
+    selector: string,
+    constructor: { new (...args: any[]): T }
+  ): T {
+    const element = this.form.querySelector(selector);
+    if (!(element instanceof constructor)) {
+      throw new Error(`Missing element: ${selector}`);
     }
 
     return element;

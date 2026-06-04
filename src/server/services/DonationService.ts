@@ -8,15 +8,24 @@ import type {
   UpdateSettingsRequest
 } from "../../shared/types";
 import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
+import type { SponsorAvatarStorage } from "./AvatarService";
 
 const DEFAULT_TARGET_AMOUNT = 1000;
 const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
 const SHANGHAI_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+type DonationServiceOptions = {
+  avatarStorage?: SponsorAvatarStorage;
+  roomSlug?: string;
+};
+
 // Business rules live here so HTTP, persistence, and pages only move state around.
 export class DonationService {
-  public constructor(private readonly repository: StateRepository) {}
+  public constructor(
+    private readonly repository: StateRepository,
+    private readonly options: DonationServiceOptions = {}
+  ) {}
 
   public async getState(): Promise<DerivedAppState> {
     const state = await this.repository.load();
@@ -35,13 +44,18 @@ export class DonationService {
     }
 
     const state = this.normalizeState(await this.repository.load());
+    const sponsorId = crypto.randomUUID();
+    const avatarUrl = request.avatarDataUrl
+      ? await this.options.avatarStorage?.saveAvatar(this.roomSlug(), sponsorId, request.avatarDataUrl)
+      : undefined;
     const nextRecord: SponsorRecord = {
-      id: crypto.randomUUID(),
+      id: sponsorId,
       bossName,
       amount: this.roundAmount(amount),
       programName,
       note: request.note?.trim() ?? "",
       countsTowardCharge,
+      avatarUrl,
       createdAt: Date.now()
     };
 
@@ -56,11 +70,13 @@ export class DonationService {
 
   public async deleteSponsor(id: string): Promise<DerivedAppState> {
     const state = this.normalizeState(await this.repository.load());
+    const removedRecords = state.sponsors.filter((record) => record.id === id);
     const nextState: AppState = {
       ...state,
       sponsors: state.sponsors.filter((record) => record.id !== id)
     };
 
+    await Promise.all(removedRecords.map((record) => this.options.avatarStorage?.clearAvatar(record.avatarUrl)));
     await this.repository.save(nextState);
     return this.deriveState(nextState);
   }
@@ -103,6 +119,44 @@ export class DonationService {
     if (!found) {
       throw new Error("赞助记录不存在");
     }
+
+    const nextState: AppState = { ...state, sponsors };
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
+  public async updateSponsorAvatar(id: string, avatarDataUrl: string | null): Promise<DerivedAppState> {
+    const state = this.normalizeState(await this.repository.load());
+    let foundRecord: SponsorRecord | undefined;
+
+    for (const record of state.sponsors) {
+      if (record.id === id) {
+        foundRecord = record;
+        break;
+      }
+    }
+
+    if (!foundRecord) {
+      throw new Error("璧炲姪璁板綍涓嶅瓨鍦?");
+    }
+
+    let nextAvatarUrl: string | undefined;
+    if (avatarDataUrl) {
+      nextAvatarUrl = await this.options.avatarStorage?.saveAvatar(this.roomSlug(), foundRecord.id, avatarDataUrl);
+      if (foundRecord.avatarUrl !== nextAvatarUrl) {
+        await this.options.avatarStorage?.clearAvatar(foundRecord.avatarUrl);
+      }
+    } else {
+      await this.options.avatarStorage?.clearAvatar(foundRecord.avatarUrl);
+    }
+
+    const sponsors = state.sponsors.map((record) => {
+      if (record.id !== id) {
+        return record;
+      }
+
+      return { ...record, avatarUrl: nextAvatarUrl };
+    });
 
     const nextState: AppState = { ...state, sponsors };
     await this.repository.save(nextState);
@@ -220,6 +274,7 @@ export class DonationService {
       amount: this.sanitizeAmount(record.amount),
       note: record.note ?? "",
       countsTowardCharge: record.countsTowardCharge !== false,
+      avatarUrl: typeof record.avatarUrl === "string" && record.avatarUrl.trim() ? record.avatarUrl : undefined,
       hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined
     };
   }
@@ -272,7 +327,7 @@ export class DonationService {
   }
 
   private buildRanking(records: SponsorRecord[]): SponsorRankingItem[] {
-    const rankingMap = new Map<string, SponsorRankingItem>();
+    const rankingMap = new Map<string, SponsorRankingItem & { avatarAt?: number }>();
 
     for (const record of records) {
       const current = rankingMap.get(record.bossName);
@@ -280,6 +335,10 @@ export class DonationService {
         current.totalAmount = this.roundAmount(current.totalAmount + record.amount);
         current.recordCount += 1;
         current.latestAt = Math.max(current.latestAt, record.createdAt);
+        if (record.avatarUrl && (!current.avatarAt || record.createdAt >= current.avatarAt)) {
+          current.avatarUrl = record.avatarUrl;
+          current.avatarAt = record.createdAt;
+        }
         continue;
       }
 
@@ -287,16 +346,22 @@ export class DonationService {
         bossName: record.bossName,
         totalAmount: record.amount,
         recordCount: 1,
-        latestAt: record.createdAt
+        latestAt: record.createdAt,
+        avatarUrl: record.avatarUrl,
+        avatarAt: record.avatarUrl ? record.createdAt : undefined
       });
     }
 
-    return [...rankingMap.values()].sort((left, right) => {
+    return [...rankingMap.values()].map(({ avatarAt: _avatarAt, ...item }) => item).sort((left, right) => {
       if (right.totalAmount !== left.totalAmount) {
         return right.totalAmount - left.totalAmount;
       }
       return right.latestAt - left.latestAt;
     });
+  }
+
+  private roomSlug(): string {
+    return this.options.roomSlug ?? "default";
   }
 
   private sanitizeAmount(amount: number | undefined): number {

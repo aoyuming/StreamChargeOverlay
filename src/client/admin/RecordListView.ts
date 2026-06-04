@@ -1,22 +1,26 @@
 import type { SponsorRecord } from "../../shared/types";
 import { clearAndAppend } from "../common/dom";
 import { formatTime } from "../common/format";
+import { compressAvatarFile } from "./AvatarImageProcessor";
 
 type RemoveFromTodayHandler = (id: string) => Promise<void>;
 type AddToTodayHandler = (id: string) => Promise<void>;
 type UpdateAmountHandler = (id: string, amount: number) => Promise<void>;
 type DeletePermanentlyHandler = (id: string) => Promise<void>;
+type UpdateAvatarHandler = (id: string, avatarDataUrl: string | null) => Promise<void>;
 
 export class RecordListView {
   private removeFromTodayHandler: RemoveFromTodayHandler | null = null;
   private addToTodayHandler: AddToTodayHandler | null = null;
   private updateAmountHandler: UpdateAmountHandler | null = null;
   private deletePermanentlyHandler: DeletePermanentlyHandler | null = null;
+  private updateAvatarHandler: UpdateAvatarHandler | null = null;
   private visibleTodayIds = new Set<string>();
   private canManage = true;
 
   public constructor(private readonly listElement: HTMLElement) {
     this.listElement.addEventListener("click", (event) => void this.handleClick(event));
+    this.listElement.addEventListener("change", (event) => void this.handleChange(event));
   }
 
   public onRemoveFromToday(handler: RemoveFromTodayHandler): void {
@@ -33,6 +37,10 @@ export class RecordListView {
 
   public onDeletePermanently(handler: DeletePermanentlyHandler): void {
     this.deletePermanentlyHandler = handler;
+  }
+
+  public onUpdateAvatar(handler: UpdateAvatarHandler): void {
+    this.updateAvatarHandler = handler;
   }
 
   public setCanManage(canManage: boolean): void {
@@ -63,6 +71,11 @@ export class RecordListView {
     const row = document.createElement("article");
     row.className = "record-row";
     row.dataset.id = record.id;
+
+    const avatar = document.createElement("span");
+    avatar.className = `record-avatar${record.avatarUrl ? " has-image" : " is-placeholder"}`;
+    avatar.style.backgroundImage = record.avatarUrl ? `url("${record.avatarUrl}")` : "";
+    avatar.textContent = record.avatarUrl ? "" : this.avatarInitial(record.bossName);
 
     const main = document.createElement("div");
     main.className = "record-main";
@@ -123,9 +136,39 @@ export class RecordListView {
     deleteButton.disabled = !this.canManage;
     deleteButton.textContent = "永久删除";
 
-    actions.append(amountInput, saveButton, removeButton, addButton, deleteButton);
+    const updateAvatarButton = document.createElement("button");
+    updateAvatarButton.className = "ghost-button";
+    updateAvatarButton.type = "button";
+    updateAvatarButton.dataset.action = "update-avatar";
+    updateAvatarButton.disabled = !this.canManage;
+    updateAvatarButton.textContent = "更换头像";
+
+    const clearAvatarButton = document.createElement("button");
+    clearAvatarButton.className = "ghost-button danger";
+    clearAvatarButton.type = "button";
+    clearAvatarButton.dataset.action = "clear-avatar";
+    clearAvatarButton.disabled = !this.canManage || !record.avatarUrl;
+    clearAvatarButton.textContent = "清除头像";
+
+    const avatarInput = document.createElement("input");
+    avatarInput.className = "record-avatar-input";
+    avatarInput.type = "file";
+    avatarInput.accept = "image/*";
+    avatarInput.hidden = true;
+    avatarInput.disabled = !this.canManage;
+
+    actions.append(
+      amountInput,
+      saveButton,
+      removeButton,
+      addButton,
+      updateAvatarButton,
+      clearAvatarButton,
+      deleteButton,
+      avatarInput
+    );
     main.append(title, meta, note, flags);
-    row.append(main, actions);
+    row.append(avatar, main, actions);
     return row;
   }
 
@@ -163,10 +206,46 @@ export class RecordListView {
       return;
     }
 
+    if (target.dataset.action === "update-avatar") {
+      row.querySelector<HTMLInputElement>(".record-avatar-input")?.click();
+      return;
+    }
+
+    if (target.dataset.action === "clear-avatar" && this.updateAvatarHandler) {
+      await this.updateAvatarHandler(id, null);
+      return;
+    }
+
     if (target.dataset.action === "save-amount" && this.updateAmountHandler) {
       const input = row.querySelector<HTMLInputElement>(".record-amount-input");
       const amount = Number(input?.value ?? 0);
       await this.updateAmountHandler(id, amount);
     }
+  }
+
+  private async handleChange(event: Event): Promise<void> {
+    const target = event.target;
+    if (!(target instanceof HTMLInputElement) || !target.classList.contains("record-avatar-input")) {
+      return;
+    }
+
+    const row = target.closest<HTMLElement>(".record-row");
+    const id = row?.dataset.id;
+    const file = target.files?.[0];
+    if (!id || !file || !this.updateAvatarHandler) {
+      return;
+    }
+
+    try {
+      await this.updateAvatarHandler(id, await compressAvatarFile(file));
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "头像处理失败");
+    } finally {
+      target.value = "";
+    }
+  }
+
+  private avatarInitial(name: string): string {
+    return name.trim().charAt(0).toUpperCase() || "B";
   }
 }

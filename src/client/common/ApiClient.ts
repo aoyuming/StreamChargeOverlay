@@ -5,6 +5,7 @@ import type {
   CreateRoomRequest,
   DerivedAppState,
   RoomInfo,
+  UpdateSponsorAvatarRequest,
   UpdateSettingsRequest
 } from "../../shared/types";
 import { RoomContext } from "./RoomContext";
@@ -80,6 +81,14 @@ export class ApiClient {
     return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/amount`), {
       method: "PATCH",
       body: JSON.stringify({ amount })
+    });
+  }
+
+  public async updateSponsorAvatar(id: string, avatarDataUrl: string | null): Promise<DerivedAppState> {
+    const request: UpdateSponsorAvatarRequest = { avatarDataUrl };
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/avatar`), {
+      method: "PATCH",
+      body: JSON.stringify(request)
     });
   }
 

@@ -140,7 +140,7 @@ const createPanel = (metrics: { viewportHeight?: number; listScrollHeight?: numb
 
 const childWithClass = (element: HTMLElement, className: string) => {
   const fakeElement = element as unknown as FakeElement;
-  return fakeElement.children.find((child) => child.className === className);
+  return fakeElement.children.find((child) => child.className.split(" ").includes(className));
 };
 
 describe("ProgressPanel", () => {
@@ -153,6 +153,7 @@ describe("ProgressPanel", () => {
         id: "new",
         bossName: "New Boss",
         amount: 628,
+        avatarUrl: "/avatars/alpha/new.webp",
         note: "note first",
         programName: "selected program",
         createdAt: 2
@@ -163,12 +164,15 @@ describe("ProgressPanel", () => {
     expect(firstCard.className).toContain("current-boss-row");
     expect(firstCard.className).toContain("is-tier-strong");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-avatar")?.className).toContain("has-image");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.28");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("note first");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("selected program");
-    expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-program");
-    expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-note");
-    expect((firstCard.children[3] as FakeElement).className).toBe("current-boss-amount");
+    expect((firstCard.children[0] as FakeElement).className).toContain("current-boss-avatar");
+    expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-name");
+    expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-program");
+    expect((firstCard.children[3] as FakeElement).className).toBe("current-boss-note");
+    expect((firstCard.children[4] as FakeElement).className).toBe("current-boss-amount");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
     expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(false);
     expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(2);
@@ -196,6 +200,17 @@ describe("ProgressPanel", () => {
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("visible program");
+  });
+
+  it("uses a placeholder current boss avatar when no avatar URL exists", () => {
+    const view = createPanel();
+
+    view.panel.render(state(30), [sponsor({ avatarUrl: undefined } as any)]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    const avatar = childWithClass(firstCard as unknown as HTMLElement, "current-boss-avatar");
+    expect(avatar?.className).toContain("is-placeholder");
+    expect(avatar?.textContent).toBe("A");
   });
 
   it("slows the current boss ticker as the list grows", () => {

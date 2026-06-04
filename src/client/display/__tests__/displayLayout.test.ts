@@ -42,10 +42,11 @@ describe("display layout", () => {
 
   it("uses compact current boss rows instead of clipped hero text", () => {
     expect(css).toContain(".current-boss-row");
+    expect(css).toContain(".current-boss-avatar");
     expect(css).toContain(".current-boss-amount");
     expect(css).toContain(".current-boss-note");
     expect(css).toContain(".current-boss-program");
-    expect(css).toContain("grid-template-columns: minmax(170px, 1.1fr) minmax(180px, 1fr) minmax(150px, 0.85fr) 120px;");
+    expect(css).toContain("grid-template-columns: 42px minmax(150px, 1.1fr) minmax(180px, 1fr) minmax(150px, 0.85fr) 120px;");
     expect(css).not.toContain(".current-boss-label");
     expect(css).not.toContain("font-size: 58px;");
   });
@@ -58,8 +59,9 @@ describe("display layout", () => {
   });
 
   it("gives ranking names more room than the previous narrow layout", () => {
-    expect(css).toContain("grid-template-columns: 42px minmax(0, 1fr) 112px;");
-    expect(css).toContain("grid-template-columns: 50px minmax(0, 1fr) 120px;");
+    expect(css).toContain("grid-template-columns: 42px 38px minmax(0, 1fr) 112px;");
+    expect(css).toContain("grid-template-columns: 50px 46px minmax(0, 1fr) 120px;");
+    expect(css).toContain(".rank-avatar");
   });
 
   it("scrolls the merged current boss ticker slowly", () => {
@@ -106,6 +108,18 @@ describe("display layout", () => {
     expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).not.toContain(
       "window.location.href = adminUrl"
     );
+  });
+
+  it("shows sponsor avatars in current rows, total ranking, and the new sponsor burst", () => {
+    const rankingTicker = readFileSync(resolve(process.cwd(), "src/client/display/RankingTicker.ts"), "utf8");
+    const progressPanel = readFileSync(resolve(process.cwd(), "src/client/display/ProgressPanel.ts"), "utf8");
+    const sponsorBurst = readFileSync(resolve(process.cwd(), "src/client/display/SponsorBurst.ts"), "utf8");
+
+    expect(html).toContain('id="burstAvatar"');
+    expect(css).toContain(".burst-avatar");
+    expect(progressPanel).toContain("current-boss-avatar");
+    expect(rankingTicker).toContain("rank-avatar");
+    expect(sponsorBurst).toContain("avatarElement");
   });
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {

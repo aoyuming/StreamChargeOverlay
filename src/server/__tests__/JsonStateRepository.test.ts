@@ -27,5 +27,31 @@ describe("JsonStateRepository", () => {
     expect(state.chargeConsumedAmount).toBe(0);
     expect(state.lastDianjiangEffectAt).toBeUndefined();
     expect(state.sponsors[0]).toMatchObject({ id: "legacy-1", countsTowardCharge: true });
+    expect(state.sponsors[0]?.avatarUrl).toBeUndefined();
+  });
+
+  it("preserves sponsor avatar urls when loading JSON state", async () => {
+    const filePath = await createJsonPath();
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        sponsors: [
+          {
+            id: "avatar-1",
+            bossName: "avatar boss",
+            amount: 300,
+            programName: "avatar program",
+            note: "",
+            createdAt: 3,
+            avatarUrl: "/avatars/default/avatar-1.webp"
+          }
+        ]
+      }),
+      "utf8"
+    );
+
+    const state = await new JsonStateRepository(filePath).load();
+
+    expect(state.sponsors[0]?.avatarUrl).toBe("/avatars/default/avatar-1.webp");
   });
 });

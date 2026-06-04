@@ -84,6 +84,8 @@ export class ProgressPanel {
     const item = this.currentBossListElement.ownerDocument.createElement("li");
     item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}${sponsor.countsTowardCharge ? "" : " is-program-only"}`;
 
+    const avatar = this.createAvatarElement(sponsor, "current-boss-avatar");
+
     const name = this.currentBossListElement.ownerDocument.createElement("strong");
     name.className = "current-boss-name";
     name.textContent = formatDisplayName(sponsor.bossName);
@@ -100,8 +102,16 @@ export class ProgressPanel {
     amount.className = "current-boss-amount";
     amount.textContent = formatRootUnits(sponsor.amount);
 
-    item.append(name, program, note, amount);
+    item.append(avatar, name, program, note, amount);
     return item;
+  }
+
+  private createAvatarElement(sponsor: SponsorRecord, className: string): HTMLElement {
+    const avatar = this.currentBossListElement.ownerDocument.createElement("span");
+    avatar.className = `${className}${sponsor.avatarUrl ? " has-image" : " is-placeholder"}`;
+    avatar.style.setProperty("background-image", sponsor.avatarUrl ? `url("${sponsor.avatarUrl}")` : "");
+    avatar.textContent = sponsor.avatarUrl ? "" : this.avatarInitial(sponsor.bossName);
+    return avatar;
   }
 
   private currentBossListOverflows(): boolean {
@@ -136,6 +146,10 @@ export class ProgressPanel {
 
   private scrollDurationSeconds(sponsorCount: number): number {
     return Math.min(MAX_SCROLL_SECONDS, Math.max(MIN_SCROLL_SECONDS, sponsorCount * SECONDS_PER_SPONSOR));
+  }
+
+  private avatarInitial(name: string): string {
+    return formatDisplayName(name).charAt(0).toUpperCase() || "B";
   }
 
   private applyEffect(effect: ProgressEffect): void {

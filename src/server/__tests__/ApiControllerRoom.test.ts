@@ -33,6 +33,20 @@ class FakeSpeechService {
   }
 }
 
+class FakeAvatarStorage {
+  public readonly saved: Array<{ roomSlug: string; sponsorId: string; dataUrl: string }> = [];
+  public readonly cleared: string[] = [];
+
+  public async saveAvatar(roomSlug: string, sponsorId: string, dataUrl: string): Promise<string> {
+    this.saved.push({ roomSlug, sponsorId, dataUrl });
+    return `/avatars/${roomSlug}/${sponsorId}.webp`;
+  }
+
+  public async clearAvatar(avatarUrl: string): Promise<void> {
+    this.cleared.push(avatarUrl);
+  }
+}
+
 const listen = async (app: express.Express) => {
   const server = createServer(app);
   await new Promise<void>((resolve) => server.listen(0, resolve));
@@ -171,6 +185,77 @@ describe("ApiController room routing", () => {
       "alpha",
       "alpha"
     ]);
+  });
+
+  it("accepts new sponsor avatars and exposes an admin-only avatar update route", async () => {
+    const app = express();
+    const avatarStorage = new FakeAvatarStorage();
+    app.use(express.json());
+    new (ApiController as any)(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "viewer-password"
+      }),
+      null,
+      avatarStorage
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const viewerLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "viewer-password" })
+    });
+    const viewerCookie = viewerLogin.headers.get("set-cookie") ?? "";
+    const added = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({
+        bossName: "avatar boss",
+        amount: 300,
+        programName: "startup",
+        avatarDataUrl: "data:image/webp;base64,first"
+      })
+    })).json()) as DerivedAppState;
+    const sponsorId = added.sponsors[0]?.id ?? "";
+
+    const viewerPatch = await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/avatar`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({ avatarDataUrl: "data:image/png;base64,next" })
+    });
+    const adminLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "admin-password" })
+    });
+    const adminCookie = adminLogin.headers.get("set-cookie") ?? "";
+    const patched = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/avatar`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({ avatarDataUrl: "data:image/png;base64,next" })
+    })).json()) as DerivedAppState;
+    const cleared = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/avatar`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({ avatarDataUrl: null })
+    })).json()) as DerivedAppState;
+
+    expect(added.sponsors[0]?.avatarUrl).toBe(`/avatars/alpha/${sponsorId}.webp`);
+    expect(viewerPatch.status).toBe(403);
+    expect(patched.sponsors[0]?.avatarUrl).toBe(`/avatars/alpha/${sponsorId}.webp`);
+    expect(cleared.sponsors[0]?.avatarUrl).toBeUndefined();
+    expect(avatarStorage.saved.map((item) => item.dataUrl)).toEqual([
+      "data:image/webp;base64,first",
+      "data:image/png;base64,next"
+    ]);
+    expect(avatarStorage.cleared).toContain(`/avatars/alpha/${sponsorId}.webp`);
   });
 
   it("allows viewer sessions to update settings and start dianjiang without edit/delete permissions", async () => {

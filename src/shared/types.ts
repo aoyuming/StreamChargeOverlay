@@ -5,6 +5,7 @@ export interface SponsorRecord {
   programName: string;
   note: string;
   countsTowardCharge: boolean;
+  avatarUrl?: string;
   hiddenFromTodayAt?: number;
   createdAt: number;
 }
@@ -22,6 +23,7 @@ export interface SponsorRankingItem {
   totalAmount: number;
   recordCount: number;
   latestAt: number;
+  avatarUrl?: string;
 }
 
 export interface DerivedAppState extends AppState {
@@ -62,10 +64,15 @@ export interface AddSponsorRequest {
   programName: string;
   countsTowardCharge?: boolean;
   note?: string;
+  avatarDataUrl?: string;
 }
 
 export interface UpdateSponsorAmountRequest {
   amount: number;
+}
+
+export interface UpdateSponsorAvatarRequest {
+  avatarDataUrl: string | null;
 }
 
 export interface UpdateTargetRequest {
