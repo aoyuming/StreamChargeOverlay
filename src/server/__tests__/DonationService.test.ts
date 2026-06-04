@@ -366,6 +366,46 @@ describe("DonationService", () => {
     expect(state.sponsors.map((item) => item.id)).toEqual(["keep"]);
   });
 
+  it("does not keep deleted startup funding as hidden consumed debt", async () => {
+    const repository = new MemoryStateRepository({
+      targetAmount: 300,
+      chargeConsumedAmount: 300,
+      sponsors: [baseRecord({ id: "delete-me", amount: 300, countsTowardCharge: true })]
+    });
+    const service = new DonationService(repository);
+
+    const afterDelete = await service.deleteSponsor("delete-me");
+    const afterNewSponsor = await service.addSponsor({
+      bossName: "Fresh Boss",
+      amount: 100,
+      programName: "startup",
+      countsTowardCharge: true
+    });
+
+    expect(afterDelete.chargeConsumedAmount).toBe(0);
+    expect(afterNewSponsor.totalAmount).toBe(100);
+    expect(afterNewSponsor.chargeConsumedAmount).toBe(0);
+  });
+
+  it("normalizes old over-consumed charge state before adding new startup funding", async () => {
+    const service = new DonationService(
+      new MemoryStateRepository({
+        chargeConsumedAmount: 300,
+        sponsors: []
+      })
+    );
+
+    const state = await service.addSponsor({
+      bossName: "Fresh Boss",
+      amount: 100,
+      programName: "startup",
+      countsTowardCharge: true
+    });
+
+    expect(state.totalAmount).toBe(100);
+    expect(state.chargeConsumedAmount).toBe(0);
+  });
+
   it("rejects empty names and non-positive amounts", async () => {
     const service = new DonationService(new MemoryStateRepository());
 

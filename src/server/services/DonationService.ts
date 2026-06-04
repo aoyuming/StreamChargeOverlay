@@ -72,10 +72,10 @@ export class DonationService {
   public async deleteSponsor(id: string): Promise<DerivedAppState> {
     const state = this.normalizeState(await this.repository.load());
     const removedRecords = state.sponsors.filter((record) => record.id === id);
-    const nextState: AppState = {
+    const nextState = this.normalizeChargeConsumption({
       ...state,
       sponsors: state.sponsors.filter((record) => record.id !== id)
-    };
+    });
 
     await Promise.all(removedRecords.map((record) => this.options.avatarStorage?.clearAvatar(record.avatarUrl)));
     await this.repository.save(nextState);
@@ -121,7 +121,7 @@ export class DonationService {
       throw new Error("赞助记录不存在");
     }
 
-    const nextState: AppState = { ...state, sponsors };
+    const nextState = this.normalizeChargeConsumption({ ...state, sponsors });
     await this.repository.save(nextState);
     return this.deriveState(nextState);
   }
@@ -260,13 +260,14 @@ export class DonationService {
   }
 
   private normalizeState(state: AppState): AppState {
-    return {
+    const sponsors = Array.isArray(state.sponsors) ? state.sponsors.map((record) => this.normalizeRecord(record)) : [];
+    return this.normalizeChargeConsumption({
       targetAmount: state.targetAmount > 0 ? this.roundAmount(state.targetAmount) : DEFAULT_TARGET_AMOUNT,
       slogan: state.slogan?.trim() || DEFAULT_SLOGAN,
       chargeConsumedAmount: this.sanitizeAmount(state.chargeConsumedAmount),
       lastDianjiangEffectAt: Number.isFinite(state.lastDianjiangEffectAt) ? state.lastDianjiangEffectAt : undefined,
-      sponsors: Array.isArray(state.sponsors) ? state.sponsors.map((record) => this.normalizeRecord(record)) : []
-    };
+      sponsors
+    });
   }
 
   private normalizeRecord(record: SponsorRecord): SponsorRecord {
@@ -295,11 +296,24 @@ export class DonationService {
   }
 
   private currentChargeAmount(state: AppState): number {
-    const chargeAmount = state.sponsors.reduce((sum, record) => {
-      return record.countsTowardCharge ? sum + record.amount : sum;
-    }, 0);
+    const chargeAmount = this.chargeSponsorAmount(state.sponsors);
 
     return Math.max(0, this.roundAmount(chargeAmount - state.chargeConsumedAmount));
+  }
+
+  private normalizeChargeConsumption(state: AppState): AppState {
+    return {
+      ...state,
+      chargeConsumedAmount: Math.min(this.sanitizeAmount(state.chargeConsumedAmount), this.chargeSponsorAmount(state.sponsors))
+    };
+  }
+
+  private chargeSponsorAmount(records: SponsorRecord[]): number {
+    return this.roundAmount(
+      records.reduce((sum, record) => {
+        return record.countsTowardCharge ? sum + record.amount : sum;
+      }, 0)
+    );
   }
 
   private buildTodayProgramQueue(records: SponsorRecord[], now: number): SponsorRecord[] {
