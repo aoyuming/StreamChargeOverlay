@@ -93,13 +93,19 @@ describe("display layout", () => {
     expect(html).toContain('id="roomSelect"');
     expect(html).toContain('id="roomCycleButton"');
     expect(html).toContain('id="adminOpenButton"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noopener"');
     expect(css).toContain(".room-selector");
     expect(css).toContain(".room-cycle-button");
     expect(css).toContain(".admin-open-button");
     expect(css).not.toContain(".current-boss-row.is-program-only {\n  background:");
     expect(css).toContain(".current-boss-row.is-program-only .current-boss-program");
-    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain("window.open");
-    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain('roomPagePath(selectedSlug, "admin")');
+    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain(
+      'adminOpenButton.href = roomPagePath(selectedSlug, "admin")'
+    );
+    expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).not.toContain(
+      "window.location.href = adminUrl"
+    );
   });
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {

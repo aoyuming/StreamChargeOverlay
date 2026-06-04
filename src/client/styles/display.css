@@ -121,6 +121,8 @@ html.is-preview-fit .overlay-shell {
 
 .room-cycle-button,
 .admin-open-button {
+  display: grid;
+  place-items: center;
   min-width: 132px;
   height: 34px;
   padding: 0 10px;
@@ -130,6 +132,7 @@ html.is-preview-fit .overlay-shell {
   font-size: 13px;
   font-weight: 900;
   text-overflow: ellipsis;
+  text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
   background: rgba(5, 7, 9, 0.76);

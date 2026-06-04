@@ -20,7 +20,7 @@ const roomContext = RoomContext.fromPath(window.location.pathname);
 const apiClient = new ApiClient(roomContext);
 const roomSelect = queryRequired<HTMLSelectElement>("#roomSelect");
 const roomCycleButton = queryRequired<HTMLButtonElement>("#roomCycleButton");
-const adminOpenButton = queryRequired<HTMLButtonElement>("#adminOpenButton");
+const adminOpenButton = queryRequired<HTMLAnchorElement>("#adminOpenButton");
 const rooms = await apiClient.getRooms();
 const selectedSlug = preferredRoomSlug(rooms, roomContext.slug, savedRoomSlug(window.localStorage));
 
@@ -32,13 +32,7 @@ if (selectedSlug !== roomContext.slug && selectedSlug !== "default") {
   renderRoomOptions(roomSelect, rooms, selectedSlug);
   const selectedRoom = rooms.find((room) => room.slug === selectedSlug);
   roomCycleButton.textContent = selectedRoom ? `房间：${selectedRoom.name}` : "选择房间";
-  adminOpenButton.addEventListener("click", () => {
-    const adminUrl = roomPagePath(selectedSlug, "admin");
-    const openedWindow = window.open(adminUrl, "_blank", "noopener");
-    if (!openedWindow) {
-      window.location.href = adminUrl;
-    }
-  });
+  adminOpenButton.href = roomPagePath(selectedSlug, "admin");
 
   roomCycleButton.addEventListener("click", () => {
     const slug = nextRoomSlug(rooms, roomSelect.value || selectedSlug);
