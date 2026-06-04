@@ -53,6 +53,10 @@ class FakeContext {
     this.calls.push(["fillRect", ...args]);
   }
 
+  public fillText(...args: unknown[]): void {
+    this.calls.push(["fillText", ...args]);
+  }
+
   public lineTo(...args: unknown[]): void {
     this.calls.push(["lineTo", ...args]);
   }
@@ -175,5 +179,6 @@ describe("StageEffectLayer", () => {
 
     expect(context.calls.some((call) => call[0] === "arc")).toBe(true);
     expect(context.calls.some((call) => call[0] === "fillRect")).toBe(true);
+    expect(context.calls.some((call) => call[0] === "fillText" && call[1] === "现在开始点将")).toBe(true);
   });
 });

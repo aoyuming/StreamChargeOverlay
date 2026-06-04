@@ -324,7 +324,34 @@ export class StageEffectLayer implements StageEffectPlayer {
       this.context.lineTo(centerX + Math.cos(angle) * end, centerY + Math.sin(angle) * end);
       this.context.stroke();
     }
+    this.drawDianjiangText(centerX, height, progress);
     this.context.shadowBlur = 0;
+  }
+
+  private drawDianjiangText(centerX: number, height: number, progress: number): void {
+    const text = "现在开始点将";
+    const textY = height * 0.58;
+    const pulse = 1 + Math.sin(progress * Math.PI) * 0.08;
+    const fontSize = Math.round(clamp(height * 0.072 * pulse, 72, 118));
+    const backdropWidth = Math.min(980, fontSize * 7.8);
+    const backdropHeight = fontSize * 1.34;
+
+    this.context.save();
+    this.context.globalCompositeOperation = "source-over";
+    this.context.fillStyle = "rgba(3, 5, 7, 0.46)";
+    this.context.fillRect(centerX - backdropWidth / 2, textY - backdropHeight / 2, backdropWidth, backdropHeight);
+    this.context.font = `900 ${fontSize}px "Microsoft YaHei", "Segoe UI", system-ui, sans-serif`;
+    this.context.textAlign = "center";
+    this.context.textBaseline = "middle";
+    this.context.shadowBlur = 42;
+    this.context.shadowColor = "rgba(255, 213, 82, 0.96)";
+    this.context.fillStyle = "rgba(255, 244, 176, 0.98)";
+    this.context.fillText(text, centerX, textY);
+    this.context.shadowBlur = 18;
+    this.context.shadowColor = "rgba(110, 245, 255, 0.72)";
+    this.context.fillStyle = "rgba(255, 255, 255, 0.86)";
+    this.context.fillText(text, centerX, textY - 2);
+    this.context.restore();
   }
 
   private seedParticles(effect: StageEffect): void {
