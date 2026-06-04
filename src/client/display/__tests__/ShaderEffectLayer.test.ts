@@ -10,20 +10,30 @@ describe("ShaderEffectLayer", () => {
     expect(EFFECT_UNIFORM_VALUES).toEqual({
       ice: 0,
       energy: 1,
-      fire: 2,
-      inferno: 3,
-      lightning: 4,
-      dianjiang: 5
+      water: 2,
+      steam: 3,
+      fire: 4,
+      inferno: 5,
+      lightning: 6,
+      dianjiang: 7
     });
   });
 
   it("contains shader branches for progress stages and dianjiang lightning", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawIce");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawEnergy");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawWater");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawSteam");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawFire");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawLightning");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawDianjiangLightning");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("lightningField");
+  });
+
+  it("adds transparent water shader treatment for the new small-fire replacement stage", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("waterCaustics");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("vec3 deepWater");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("drawWater(v_uv)");
   });
 
   it("uses mist and branching cracks for ice instead of screen-wide stripe bars", () => {

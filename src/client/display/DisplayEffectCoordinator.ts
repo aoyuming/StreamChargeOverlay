@@ -14,11 +14,11 @@ export const sponsorEffectForAmount = (amount: number): ProgressEffect => {
   }
 
   if (amount < 200) {
-    return "fire";
+    return "water";
   }
 
   if (amount < 400) {
-    return "inferno";
+    return "fire";
   }
 
   return "lightning";
@@ -32,10 +32,11 @@ export class DisplayEffectCoordinator {
 
   public update(state: DerivedAppState): DisplayEffectEvent {
     const latestNewSponsor = this.findLatestNewSponsor(state);
+    const isRestoreState = typeof state.restoredSponsorId === "string";
     const shouldPlayDianjiangEffect = this.shouldPlayDianjiangEffect(state.lastDianjiangEffectAt);
     const event: DisplayEffectEvent = {
       latestNewSponsor,
-      shouldPulseProgress: state.totalAmount > this.lastTotalAmount,
+      shouldPulseProgress: !isRestoreState && state.totalAmount > this.lastTotalAmount,
       shouldPlayDianjiangEffect,
       sponsorEffect: latestNewSponsor ? sponsorEffectForAmount(latestNewSponsor.amount) : undefined
     };
@@ -55,6 +56,7 @@ export class DisplayEffectCoordinator {
 
     return state.sponsors
       .filter((record) => !this.knownSponsorIds.has(record.id))
+      .filter((record) => record.id !== state.restoredSponsorId)
       .sort((left, right) => right.createdAt - left.createdAt)[0];
   }
 

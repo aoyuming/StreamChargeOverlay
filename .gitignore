@@ -3,4 +3,5 @@ dist/
 dev-server.log
 dev-server.err.log
 data/speech/
+data/avatars/
 data/*.sqlite*

@@ -6,6 +6,7 @@ import type {
   DerivedAppState,
   LoginRequest,
   RoomInfo,
+  SponsorRecord,
   UpdateRoomViewerPasswordRequest,
   UpdateSponsorAvatarRequest,
   UpdateSettingsRequest
@@ -79,6 +80,16 @@ export class ApiClient {
   public async deleteSponsor(id: string): Promise<DerivedAppState> {
     return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}`), {
       method: "DELETE"
+    });
+  }
+
+  public async getSponsorTrash(): Promise<SponsorRecord[]> {
+    return this.request<SponsorRecord[]>(this.apiPath("/sponsors/trash"));
+  }
+
+  public async restoreSponsor(id: string): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/restore`), {
+      method: "POST"
     });
   }
 

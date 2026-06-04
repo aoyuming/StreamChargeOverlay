@@ -158,20 +158,38 @@ describe("display layout", () => {
     expect(css).toContain("animation: tickerScroll 32s linear infinite;");
   });
 
-  it("uses canvas effect layers by default for progress and full-stage effects", () => {
+  it("keeps progress canvas effects while using shader first for full-stage fire effects", () => {
     expect(html).toContain('id="progressShaderEffectsCanvas"');
-    expect(displayApp).toContain('new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))');
-    expect(displayApp).toContain('new StageEffectLayer(queryRequired("#stageEffectsCanvas"))');
     expect(displayApp).not.toContain("ShaderProgressEffectLayer");
-    expect(displayApp).not.toContain("ShaderStageEffectLayer");
+    expect(displayApp).toContain('new ProgressEffectLayer(queryRequired("#progressEffectsCanvas"))');
+    expect(displayApp).toContain('const canvasStageEffects = new StageEffectLayer(queryRequired("#stageEffectsCanvas"));');
+    expect(displayApp).toContain('ShaderStageEffectLayer.create(queryRequired("#stageShaderEffectsCanvas"), canvasStageEffects)');
+    expect(displayApp).toContain("?? canvasStageEffects");
   });
 
-  it("includes stronger fire and enhanced lightning progress styles", () => {
-    expect(css).toContain(".progress-track.is-inferno");
-    expect(css).toContain(".progress-track.is-inferno .progress-fill");
-    expect(css).toContain(".progress-track.is-inferno::before");
+  it("includes water, steam, high fire, and enhanced lightning progress styles", () => {
+    expect(css).toContain(".progress-track.is-water");
+    expect(css).toContain(".progress-track.is-steam");
+    expect(css).toContain(".progress-track.is-fire");
+    expect(css).toContain(".progress-track.is-fire .progress-fill");
+    expect(css).toContain(".progress-track.is-fire::before");
     expect(css).toContain(".progress-track.is-lightning::after");
     expect(css).toContain("animation: lightningFlash");
+  });
+
+  it("tones down the brightest white highlights in lightning and high fire progress styles", () => {
+    expect(css).not.toContain("rgba(255, 255, 255, 0.9)");
+    expect(css).not.toContain("rgba(255, 255, 255, 0.78)");
+    expect(css).not.toContain("rgba(255, 255, 230, 0.92)");
+  });
+
+  it("keeps high fire flicker controlled and shakes only the charged fill edge", () => {
+    expect(css).toContain("animation: highFireFlicker 720ms ease-in-out infinite alternate;");
+    expect(css).toContain("animation: highFireHeat 980ms linear infinite;");
+    expect(css).toContain("animation: flameRise 760ms ease-in-out infinite alternate;");
+    expect(css).toContain(".progress-track.is-fire .progress-fill::before");
+    expect(css).toContain("animation: highFireEdgeShake 680ms steps(3, end) infinite;");
+    expect(css).toContain("@keyframes highFireEdgeShake");
   });
 
   it("clips progress track pseudo effects to the charged width", () => {
@@ -184,5 +202,16 @@ describe("display layout", () => {
     expect(css).not.toContain("0 0 62px rgba(255, 180, 58, 0.3)");
     expect(css).not.toContain("transform: translateX(-18px) skewX(-8deg);");
     expect(css).not.toContain("transform: translateX(22px) skewX(8deg);");
+  });
+
+  it("does not animate the filled width when switching stages so old fire cannot spill into water", () => {
+    expect(css).not.toContain("transition: width 420ms ease;");
+    expect(css).toContain("transition: filter 220ms ease;");
+  });
+
+  it("keeps water caustic animation inside the charged width without horizontal transforms", () => {
+    expect(css).not.toContain("transform: translateX(-20px) skewX(-8deg);");
+    expect(css).not.toContain("transform: translateX(24px) skewX(8deg);");
+    expect(css).toContain("background-position: 42px 0;");
   });
 });

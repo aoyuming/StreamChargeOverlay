@@ -40,10 +40,10 @@ describe("DisplayEffectCoordinator", () => {
     expect(sponsorEffectForAmount(0)).toBe("ice");
     expect(sponsorEffectForAmount(100)).toBe("ice");
     expect(sponsorEffectForAmount(100.99)).toBe("ice");
-    expect(sponsorEffectForAmount(101)).toBe("fire");
-    expect(sponsorEffectForAmount(199.99)).toBe("fire");
-    expect(sponsorEffectForAmount(200)).toBe("inferno");
-    expect(sponsorEffectForAmount(399.99)).toBe("inferno");
+    expect(sponsorEffectForAmount(101)).toBe("water");
+    expect(sponsorEffectForAmount(199.99)).toBe("water");
+    expect(sponsorEffectForAmount(200)).toBe("fire");
+    expect(sponsorEffectForAmount(399.99)).toBe("fire");
     expect(sponsorEffectForAmount(400)).toBe("lightning");
   });
 
@@ -64,6 +64,24 @@ describe("DisplayEffectCoordinator", () => {
 
     expect(event.latestNewSponsor?.id).toBe("new");
     expect(event.sponsorEffect).toBe("ice");
+    expect(event.shouldPulseProgress).toBe(false);
+  });
+
+  it("does not play new-sponsor effects when a recycle-bin record is restored", () => {
+    const coordinator = new DisplayEffectCoordinator();
+    coordinator.update(state({ sponsors: [sponsor({ id: "known", amount: 100 })], totalAmount: 100 }));
+    coordinator.update(state({ sponsors: [], totalAmount: 0 }));
+
+    const event = coordinator.update(
+      state({
+        sponsors: [sponsor({ id: "known", amount: 100 })],
+        totalAmount: 100,
+        restoredSponsorId: "known"
+      })
+    );
+
+    expect(event.latestNewSponsor).toBeUndefined();
+    expect(event.sponsorEffect).toBeUndefined();
     expect(event.shouldPulseProgress).toBe(false);
   });
 

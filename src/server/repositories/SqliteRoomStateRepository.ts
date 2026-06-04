@@ -37,6 +37,7 @@ type SponsorRow = {
   counts_toward_charge: number;
   avatar_url: string | null;
   hidden_from_today_at: number | null;
+  deleted_at: number | null;
   created_at: number;
 };
 
@@ -87,7 +88,7 @@ export class SqliteRoomStateRepository implements StateRepository {
     const sponsors = this.database
       .prepare(
         `
-        SELECT id, boss_name, amount, program_name, note, counts_toward_charge, avatar_url, hidden_from_today_at, created_at
+        SELECT id, boss_name, amount, program_name, note, counts_toward_charge, avatar_url, hidden_from_today_at, deleted_at, created_at
         FROM sponsor_records
         WHERE room_id = ?
         ORDER BY created_at ASC
@@ -109,6 +110,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         countsTowardCharge: row.counts_toward_charge === 1,
         avatarUrl: row.avatar_url ?? undefined,
         hiddenFromTodayAt: row.hidden_from_today_at ?? undefined,
+        deletedAt: row.deleted_at ?? undefined,
         createdAt: row.created_at
       }))
     };
@@ -141,9 +143,9 @@ export class SqliteRoomStateRepository implements StateRepository {
       const insertSponsor = this.database.prepare(
         `
         INSERT INTO sponsor_records (
-          id, room_id, boss_name, amount, program_name, note, counts_toward_charge, avatar_url, hidden_from_today_at, created_at
+          id, room_id, boss_name, amount, program_name, note, counts_toward_charge, avatar_url, hidden_from_today_at, deleted_at, created_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
       );
 
@@ -158,6 +160,7 @@ export class SqliteRoomStateRepository implements StateRepository {
           record.countsTowardCharge === false ? 0 : 1,
           record.avatarUrl ?? null,
           record.hiddenFromTodayAt ?? null,
+          record.deletedAt ?? null,
           record.createdAt
         );
       }
@@ -210,6 +213,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         counts_toward_charge INTEGER NOT NULL DEFAULT 1,
         avatar_url TEXT,
         hidden_from_today_at INTEGER,
+        deleted_at INTEGER,
         created_at INTEGER NOT NULL,
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
       );
@@ -225,6 +229,7 @@ export class SqliteRoomStateRepository implements StateRepository {
     this.ensureColumn(database, "sponsor_records", "counts_toward_charge", "INTEGER NOT NULL DEFAULT 1");
     this.ensureColumn(database, "sponsor_records", "avatar_url", "TEXT");
     this.ensureColumn(database, "sponsor_records", "hidden_from_today_at", "INTEGER");
+    this.ensureColumn(database, "sponsor_records", "deleted_at", "INTEGER");
   }
 
   private static ensureColumn(database: Database.Database, tableName: string, columnName: string, definition: string): void {
@@ -330,7 +335,8 @@ export class SqliteRoomStateRepository implements StateRepository {
               ...record,
               countsTowardCharge: record.countsTowardCharge !== false,
               avatarUrl: typeof record.avatarUrl === "string" && record.avatarUrl.trim() ? record.avatarUrl : undefined,
-              hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined
+              hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined,
+              deletedAt: Number.isFinite(record.deletedAt) ? record.deletedAt : undefined
             }))
           : []
       };

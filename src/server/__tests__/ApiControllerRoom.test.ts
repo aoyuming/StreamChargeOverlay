@@ -288,6 +288,68 @@ describe("ApiController room routing", () => {
     expect(avatarStorage.cleared).toContain(`/avatars/alpha/${sponsorId}.webp`);
   });
 
+  it("exposes recycle-bin records to admins and lets admins restore them", async () => {
+    const app = express();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "viewer-password"
+      })
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const viewerLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "viewer-password", roomSlug: "alpha" })
+    });
+    const viewerCookie = viewerLogin.headers.get("set-cookie") ?? "";
+    const adminLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "admin-password", roomSlug: "alpha" })
+    });
+    const adminCookie = adminLogin.headers.get("set-cookie") ?? "";
+    const added = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({ bossName: "trash boss", amount: 220, programName: "trash program" })
+    })).json()) as DerivedAppState;
+    const sponsorId = added.sponsors[0]?.id ?? "";
+
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}`, {
+      method: "DELETE",
+      headers: { Cookie: adminCookie }
+    });
+    const viewerTrashResponse = await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      headers: { Cookie: viewerCookie }
+    });
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/amount`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({ amount: 330 })
+    });
+    const trash = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      headers: { Cookie: adminCookie }
+    })).json()) as SponsorRecord[];
+    const restored = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}/restore`, {
+      method: "POST",
+      headers: { Cookie: adminCookie }
+    })).json()) as DerivedAppState;
+
+    expect(viewerTrashResponse.status).toBe(403);
+    expect(trash.map((record) => [record.id, record.amount, typeof record.deletedAt])).toEqual([[sponsorId, 330, "number"]]);
+    expect(restored.sponsors.map((record) => [record.id, record.amount])).toEqual([[sponsorId, 330]]);
+    expect(restored.restoredSponsorId).toBe(sponsorId);
+  });
+
   it("allows viewer sessions to update settings and start dianjiang without edit/delete permissions", async () => {
     const app = express();
     app.use(express.json());

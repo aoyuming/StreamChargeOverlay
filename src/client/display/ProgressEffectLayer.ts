@@ -2,6 +2,10 @@ import type { ProgressEffect, ProgressEffectRenderer } from "./ProgressPanel";
 
 const MAX_EFFECT_DPR = 1.5;
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const flameNoise = (seed: number): number => {
+  const raw = Math.sin(seed * 12.9898) * 43758.5453;
+  return raw - Math.floor(raw);
+};
 
 interface Spark {
   x: number;
@@ -56,8 +60,12 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
 
     if (this.effect === "ice") {
       this.drawIce(width, height, time);
+    } else if (this.effect === "water") {
+      this.drawWater(width, height, time);
+    } else if (this.effect === "steam") {
+      this.drawSteam(width, height, time);
     } else if (this.effect === "fire") {
-      this.drawFire(width, height, time);
+      this.drawHighFire(width, height, time);
     } else if (this.effect === "inferno") {
       this.drawInferno(width, height, time);
     } else if (this.effect === "lightning") {
@@ -118,11 +126,100 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
     }
   }
 
-  private drawFire(width: number, height: number, time: number): void {
+  private drawWater(width: number, height: number, time: number): void {
     const progressWidth = this.progressWidth(width);
-    this.spawnFireSparks(progressWidth, height, 1);
-    this.drawFlames(progressWidth, height, time, 1);
-    this.drawSparks(1);
+    this.drawWaterBase(progressWidth, height, time, 1);
+    this.drawWaterWaves(progressWidth, height, time, 1);
+    this.drawWaterBubbles(progressWidth, height, time, 1);
+  }
+
+  private drawSteam(width: number, height: number, time: number): void {
+    const progressWidth = this.progressWidth(width);
+    this.drawWaterBase(progressWidth, height, time, 0.78);
+    this.drawWaterWaves(progressWidth, height, time, 0.9);
+
+    const warmEdge = this.context.createLinearGradient(0, 0, progressWidth, 0);
+    warmEdge.addColorStop(0, "rgba(54, 222, 255, 0.02)");
+    warmEdge.addColorStop(0.72, "rgba(105, 240, 255, 0.14)");
+    warmEdge.addColorStop(1, "rgba(255, 126, 54, 0.26)");
+    this.context.fillStyle = warmEdge;
+    this.context.fillRect(0, 0, Math.max(progressWidth, 4), height);
+
+    this.context.strokeStyle = "rgba(225, 252, 255, 0.32)";
+    this.context.lineWidth = 1.7;
+    this.context.shadowBlur = 8;
+    this.context.shadowColor = "rgba(140, 240, 255, 0.62)";
+    for (let index = 0; index < 12; index += 1) {
+      const x = ((index * 47 + time * 0.035) % Math.max(progressWidth + 60, 60)) - 30;
+      const y = height * (0.24 + (index % 5) * 0.12);
+      const drift = Math.sin(time / 540 + index) * 8;
+      this.context.beginPath();
+      this.context.arc(x + drift, y, 5 + (index % 4) * 2.2, Math.PI * 0.05, Math.PI * 1.45);
+      this.context.stroke();
+    }
+    this.context.shadowBlur = 0;
+
+    this.drawWaterBubbles(progressWidth, height, time + 180, 1.25);
+  }
+
+  private drawWaterBase(progressWidth: number, height: number, time: number, intensity: number): void {
+    const base = this.context.createLinearGradient(0, 0, Math.max(progressWidth, 4), height);
+    base.addColorStop(0, `rgba(2, 44, 74, ${0.16 * intensity})`);
+    base.addColorStop(0.42, `rgba(24, 180, 232, ${0.3 * intensity})`);
+    base.addColorStop(0.76, `rgba(65, 218, 255, ${0.4 * intensity})`);
+    base.addColorStop(1, `rgba(172, 250, 255, ${0.24 * intensity})`);
+    this.context.fillStyle = base;
+    this.context.fillRect(0, 0, Math.max(progressWidth, 4), height);
+
+    const causticX = ((time / 16) % 180) - 180;
+    const caustic = this.context.createLinearGradient(causticX, 0, causticX + 180, 0);
+    caustic.addColorStop(0, "rgba(65, 218, 255, 0)");
+    caustic.addColorStop(0.4, `rgba(190, 255, 255, ${0.34 * intensity})`);
+    caustic.addColorStop(0.56, `rgba(80, 232, 255, ${0.24 * intensity})`);
+    caustic.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = caustic;
+    this.context.fillRect(0, 0, Math.max(progressWidth, 4), height);
+  }
+
+  private drawWaterWaves(progressWidth: number, height: number, time: number, intensity: number): void {
+    this.context.lineWidth = 1.5 + intensity;
+    for (let line = 0; line < 8; line += 1) {
+      const y = height * (0.18 + line * 0.1) + Math.sin(time / 420 + line) * 2.6;
+      this.context.strokeStyle = line % 2 === 0 ? "rgba(173, 250, 255, 0.4)" : "rgba(65, 218, 255, 0.32)";
+      this.context.beginPath();
+      this.context.moveTo(0, y);
+      for (let x = 0; x <= progressWidth + 38; x += 38) {
+        const controlX = x + 19;
+        const controlY = y + Math.sin(time / 260 + x / 42 + line * 1.3) * (4.8 + line * 0.22) * intensity;
+        this.context.quadraticCurveTo(controlX, controlY, x + 38, y);
+      }
+      this.context.stroke();
+    }
+  }
+
+  private drawWaterBubbles(progressWidth: number, height: number, time: number, intensity: number): void {
+    this.context.fillStyle = "rgba(188, 252, 255, 0.34)";
+    this.context.strokeStyle = "rgba(101, 230, 255, 0.52)";
+    this.context.lineWidth = 1.2;
+    for (let index = 0; index < Math.round(10 * intensity); index += 1) {
+      const cycle = (time / (980 + index * 41) + index * 0.173) % 1;
+      const x = (index / Math.max(1, Math.round(10 * intensity))) * Math.max(progressWidth, 12);
+      const drift = Math.sin(time / 470 + index * 1.7) * 7;
+      const y = height - cycle * height * 0.92;
+      const radius = 2.2 + (index % 4) * 1.4;
+      this.context.beginPath();
+      this.context.arc(clamp(x + drift, 0, progressWidth), y, radius, 0, Math.PI * 2);
+      this.context.fill();
+      this.context.stroke();
+    }
+  }
+
+  private drawHighFire(width: number, height: number, time: number): void {
+    const progressWidth = this.progressWidth(width);
+    this.spawnFireSparks(progressWidth, height, 1.55);
+    this.drawInfernoHeat(progressWidth, height, time);
+    this.drawFlames(progressWidth, height, time, 1.45);
+    this.drawSparks(1.25);
   }
 
   private drawInferno(width: number, height: number, time: number): void {
@@ -134,42 +231,76 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
   }
 
   private drawFlames(progressWidth: number, height: number, time: number, intensity: number): void {
-    const segments = Math.round(12 * intensity);
-    for (let index = 0; index < segments; index += 1) {
-      const left = (progressWidth / segments) * index;
-      const center = left + progressWidth / segments / 2;
-      const flameHeight = Math.min(height * 0.95, height * (0.34 + 0.24 * Math.sin(time / 180 + index * 1.7)) * intensity);
-      const gradient = this.context.createRadialGradient(center, height, 1, center, height, flameHeight);
-      gradient.addColorStop(0, `rgba(255, 244, 156, ${0.62 + 0.13 * intensity})`);
-      gradient.addColorStop(0.36, `rgba(255, 105, 24, ${0.44 + 0.12 * intensity})`);
-      gradient.addColorStop(0.7, `rgba(255, 28, 16, ${0.2 + 0.16 * intensity})`);
-      gradient.addColorStop(1, "rgba(255, 36, 20, 0)");
+    this.drawFlameLayer(progressWidth, height, time, intensity, 0, "outer");
+    this.drawFlameLayer(progressWidth, height, time + 140, intensity * 0.82, 11, "middle");
+    this.drawFlameLayer(progressWidth, height, time + 260, intensity * 0.58, 23, "inner");
+  }
+
+  private drawFlameLayer(
+    progressWidth: number,
+    height: number,
+    time: number,
+    intensity: number,
+    seedOffset: number,
+    layer: "outer" | "middle" | "inner"
+  ): void {
+    const flameCount = Math.max(4, Math.round((layer === "outer" ? 12 : layer === "middle" ? 16 : 10) * intensity));
+    const baseSegment = progressWidth / flameCount;
+    const speed = layer === "inner" ? 250 : 390;
+
+    for (let index = 0; index < flameCount; index += 1) {
+      const seed = index * 17 + seedOffset;
+      const baseLeft = baseSegment * index + (flameNoise(seed) - 0.5) * baseSegment * 0.28;
+      const baseWidth = baseSegment * (0.74 + flameNoise(seed + 3) * 0.72);
+      const left = clamp(baseLeft, 0, progressWidth);
+      const right = clamp(baseLeft + baseWidth, 0, progressWidth);
+      const center = (left + right) / 2;
+      const sway = Math.sin(time / speed + index * 1.73) * baseSegment * (0.16 + 0.06 * intensity);
+      const curl = (flameNoise(seed + Math.floor(time / 180)) - 0.5) * baseSegment * 0.42;
+      const heightNoise = 0.58 + flameNoise(seed + 9) * 0.62;
+      const flicker = 0.72 + Math.sin(time / (speed * 0.74) + index * 2.2) * 0.22;
+      const flameHeight = Math.min(height * 1.04, height * (0.34 + 0.2 * heightNoise) * intensity * flicker);
+      const tipX = clamp(center + sway + curl, 0, progressWidth);
+      const tipY = height - flameHeight;
+      const leftControlX = left + baseWidth * (0.1 + flameNoise(seed + 5) * 0.22);
+      const rightControlX = right - baseWidth * (0.1 + flameNoise(seed + 7) * 0.24);
+      const leftShoulderY = height - flameHeight * (0.28 + flameNoise(seed + 12) * 0.28);
+      const rightShoulderY = height - flameHeight * (0.2 + flameNoise(seed + 14) * 0.32);
+      const alpha = layer === "outer" ? 0.24 * intensity : layer === "middle" ? 0.28 * intensity : 0.2 * intensity;
+      const warmCore = layer === "inner" ? 0.62 : 0.46;
+      const gradient = this.context.createRadialGradient(tipX, tipY + flameHeight * 0.68, 1, tipX, tipY + flameHeight * 0.38, flameHeight);
+      gradient.addColorStop(0, `rgba(255, 238, 126, ${Math.min(0.58, warmCore * intensity)})`);
+      gradient.addColorStop(0.34, `rgba(255, 126, 28, ${Math.min(0.48, alpha + 0.14)})`);
+      gradient.addColorStop(0.72, `rgba(212, 34, 18, ${Math.min(0.32, alpha)})`);
+      gradient.addColorStop(1, "rgba(255, 38, 18, 0)");
+
       this.context.fillStyle = gradient;
       this.context.beginPath();
       this.context.moveTo(left, height);
-      this.context.quadraticCurveTo(center, height - flameHeight, left + progressWidth / segments, height);
+      this.context.bezierCurveTo(leftControlX, leftShoulderY, tipX - baseWidth * 0.42, tipY + flameHeight * 0.16, tipX, tipY);
+      this.context.bezierCurveTo(tipX + baseWidth * 0.34, tipY + flameHeight * 0.2, rightControlX, rightShoulderY, right, height);
       this.context.closePath();
       this.context.fill();
     }
   }
 
   private drawInfernoHeat(progressWidth: number, height: number, time: number): void {
-    const heatX = ((time / 8) % 140) - 140;
+    const heatX = ((time / 18) % 140) - 140;
     const gradient = this.context.createLinearGradient(heatX, 0, heatX + 140, 0);
     gradient.addColorStop(0, "rgba(255, 54, 18, 0)");
-    gradient.addColorStop(0.34, "rgba(255, 223, 96, 0.52)");
-    gradient.addColorStop(0.62, "rgba(255, 84, 20, 0.42)");
+    gradient.addColorStop(0.34, "rgba(255, 223, 96, 0.36)");
+    gradient.addColorStop(0.62, "rgba(255, 84, 20, 0.32)");
     gradient.addColorStop(1, "rgba(255, 54, 18, 0)");
     this.context.fillStyle = gradient;
     this.context.fillRect(0, 0, Math.max(progressWidth, 4), height);
 
-    this.context.strokeStyle = "rgba(255, 188, 64, 0.36)";
+    this.context.strokeStyle = "rgba(255, 188, 64, 0.26)";
     this.context.lineWidth = 2.4;
     for (let line = 0; line < 5; line += 1) {
       const y = height * (0.18 + line * 0.16);
       this.context.beginPath();
       for (let x = 0; x <= progressWidth; x += 28) {
-        const waveY = y + Math.sin(time / 110 + x / 46 + line) * 4.5;
+        const waveY = y + Math.sin(time / 190 + x / 46 + line) * 4.5;
         if (x === 0) {
           this.context.moveTo(x, waveY);
         } else {
@@ -224,15 +355,15 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
 
   private drawLightning(width: number, height: number, time: number): void {
     this.drawEnergy(width, height, time);
-    this.context.fillStyle = `rgba(210, 252, 255, ${0.08 + Math.abs(Math.sin(time / 90)) * 0.11})`;
+    this.context.fillStyle = `rgba(210, 252, 255, ${0.04 + Math.abs(Math.sin(time / 90)) * 0.08})`;
     this.context.fillRect(0, 0, width, height);
 
     const flashes = 4 + Math.floor((time / 130) % 4);
     for (let index = 0; index < flashes; index += 1) {
       const startX = Math.random() * width;
-      this.context.strokeStyle = index === 0 ? "rgba(255, 255, 255, 0.95)" : "rgba(105, 243, 255, 0.74)";
+      this.context.strokeStyle = index === 0 ? "rgba(255, 255, 255, 0.78)" : "rgba(105, 243, 255, 0.62)";
       this.context.lineWidth = index === 0 ? 4 : 2.4;
-      this.context.shadowBlur = 26;
+      this.context.shadowBlur = 22;
       this.context.shadowColor = "rgba(105, 243, 255, 0.95)";
       this.context.beginPath();
       this.context.moveTo(startX, 0);

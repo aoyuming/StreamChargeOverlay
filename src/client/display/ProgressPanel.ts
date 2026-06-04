@@ -1,13 +1,13 @@
 import type { DerivedAppState, SponsorRecord } from "../../shared/types";
 import { formatDisplayName, formatRootUnits, neutralizePublicText } from "../../shared/displayUnits";
 
-export type ProgressEffect = "ice" | "energy" | "fire" | "inferno" | "lightning";
+export type ProgressEffect = "ice" | "energy" | "water" | "steam" | "fire" | "inferno" | "lightning";
 
 export interface ProgressEffectRenderer {
   setState(effect: ProgressEffect, progressPercent: number): void;
 }
 
-const EFFECT_CLASSES = ["is-ice", "is-energy", "is-fire", "is-inferno", "is-lightning"];
+const EFFECT_CLASSES = ["is-ice", "is-energy", "is-water", "is-steam", "is-fire", "is-inferno", "is-lightning"];
 const MIN_SCROLL_SECONDS = 36;
 const MAX_SCROLL_SECONDS = 160;
 const SECONDS_PER_SPONSOR = 4;
@@ -20,11 +20,15 @@ export const progressEffectFor = (progressPercent: number): ProgressEffect => {
   }
 
   if (percent >= 70) {
-    return "inferno";
+    return "fire";
+  }
+
+  if (percent >= 60) {
+    return "steam";
   }
 
   if (percent >= 30) {
-    return "fire";
+    return "water";
   }
 
   return "ice";

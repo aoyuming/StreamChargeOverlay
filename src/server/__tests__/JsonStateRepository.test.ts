@@ -54,4 +54,29 @@ describe("JsonStateRepository", () => {
 
     expect(state.sponsors[0]?.avatarUrl).toBe("/avatars/default/avatar-1.webp");
   });
+
+  it("preserves recycle-bin timestamps when loading JSON state", async () => {
+    const filePath = await createJsonPath();
+    await writeFile(
+      filePath,
+      JSON.stringify({
+        sponsors: [
+          {
+            id: "trash-1",
+            bossName: "trash boss",
+            amount: 300,
+            programName: "trash program",
+            note: "",
+            createdAt: 3,
+            deletedAt: 1717560000000
+          }
+        ]
+      }),
+      "utf8"
+    );
+
+    const state = await new JsonStateRepository(filePath).load();
+
+    expect(state.sponsors[0]?.deletedAt).toBe(1717560000000);
+  });
 });

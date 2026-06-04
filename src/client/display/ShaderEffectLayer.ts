@@ -5,10 +5,12 @@ export type ShaderDisplayEffect = ProgressEffect | "dianjiang";
 export const EFFECT_UNIFORM_VALUES: Record<ShaderDisplayEffect, number> = {
   ice: 0,
   energy: 1,
-  fire: 2,
-  inferno: 3,
-  lightning: 4,
-  dianjiang: 5
+  water: 2,
+  steam: 3,
+  fire: 4,
+  inferno: 5,
+  lightning: 6,
+  dianjiang: 7
 };
 
 const VERTEX_SHADER_SOURCE = `
@@ -164,6 +166,43 @@ vec4 drawEnergy(vec2 uv) {
   return vec4(color, clamp(0.12 + scan * 0.45 + lanes * 0.22, 0.0, 0.82));
 }
 
+float waterCaustics(vec2 uv) {
+  vec2 flow = uv + vec2(u_time * 0.12, sin(u_time * 0.38) * 0.04);
+  float waveA = sin((flow.x * 13.0 + fbm(flow * 5.2) * 3.2) - u_time * 1.8);
+  float waveB = sin((flow.x * 7.5 - flow.y * 9.0) + u_time * 1.15);
+  float ripples = smoothstep(0.72, 1.0, abs(waveA * 0.58 + waveB * 0.42));
+  float bubbles = smoothstep(0.82, 1.0, noise(uv * 28.0 + vec2(u_time * 0.18, -u_time * 0.42)));
+  return clamp(ripples * 0.56 + bubbles * 0.24 + fbm(uv * 8.0 + u_time * 0.2) * 0.22, 0.0, 1.0);
+}
+
+vec4 drawWater(vec2 uv) {
+  float depth = smoothstep(0.0, 1.0, uv.y);
+  float surface = smoothstep(0.052, 0.0, abs(fract(uv.y * 7.0 + sin(uv.x * 6.0 + u_time * 0.9) * 0.035) - 0.5));
+  float caustics = waterCaustics(uv);
+  float edgeWash = max(
+    max(1.0 - smoothstep(0.0, 0.2, uv.x), 1.0 - smoothstep(0.0, 0.2, 1.0 - uv.x)),
+    max(1.0 - smoothstep(0.0, 0.16, uv.y), 1.0 - smoothstep(0.0, 0.18, 1.0 - uv.y))
+  );
+  vec3 deepWater = vec3(0.015, 0.16, 0.34);
+  vec3 cyanWater = vec3(0.06, 0.68, 0.92);
+  vec3 foam = vec3(0.72, 1.0, 1.0);
+  vec3 color = mix(deepWater, cyanWater, 0.36 + depth * 0.24 + caustics * 0.44);
+  color = mix(color, foam, surface * 0.42 + caustics * 0.22);
+  float alpha = clamp(0.14 + caustics * 0.34 + surface * 0.24 + edgeWash * 0.18, 0.0, 0.72);
+  return vec4(color * 1.18, alpha);
+}
+
+vec4 drawSteam(vec2 uv) {
+  vec4 water = drawWater(uv);
+  float vapor = fbm(uv * 5.8 + vec2(u_time * 0.16, -u_time * 0.36));
+  float lift = smoothstep(1.0, 0.08, uv.y);
+  float warmEdge = smoothstep(0.82, 1.0, uv.x) * smoothstep(0.18, 0.95, uv.y);
+  vec3 steamTint = mix(vec3(0.72, 1.0, 1.0), vec3(1.0, 0.48, 0.18), warmEdge * 0.34);
+  vec3 color = mix(water.rgb, steamTint, vapor * lift * 0.46);
+  float alpha = clamp(water.a * 0.66 + vapor * lift * 0.26 + warmEdge * 0.08, 0.0, 0.68);
+  return vec4(color, alpha);
+}
+
 vec4 drawFire(vec2 uv, float intensity) {
   vec2 warped = uv + vec2(sin(uv.y * 12.0 + u_time * 3.4), sin(uv.x * 8.0 - u_time * 2.2)) * 0.025 * intensity;
   float heat = fbm(vec2(warped.x * (6.5 + intensity), warped.y * 5.4 - u_time * (2.6 + intensity * 0.65)));
@@ -228,10 +267,14 @@ void main() {
   } else if (u_effect < 1.5) {
     effectColor = drawEnergy(v_uv);
   } else if (u_effect < 2.5) {
-    effectColor = drawFire(v_uv, 1.18);
+    effectColor = drawWater(v_uv);
   } else if (u_effect < 3.5) {
-    effectColor = drawFire(v_uv, STAGE_INFERNO_INTENSITY);
+    effectColor = drawSteam(v_uv);
   } else if (u_effect < 4.5) {
+    effectColor = drawFire(v_uv, 1.58);
+  } else if (u_effect < 5.5) {
+    effectColor = drawFire(v_uv, STAGE_INFERNO_INTENSITY);
+  } else if (u_effect < 6.5) {
     effectColor = drawLightning(v_uv);
   } else {
     effectColor = drawDianjiangLightning(v_uv);
@@ -239,7 +282,8 @@ void main() {
 
   float rimGlow = chargedEdgeMask(v_uv) * (0.42 + 0.58 * pow(abs(sin(u_time * 9.0)), 3.0));
   float edgeSpark = rimGlow * (0.55 + 0.45 * fbm(v_uv * 34.0 + u_time * 1.7)) * PROGRESS_EFFECT_BOOST;
-  effectColor.rgb += mix(vec3(0.28, 0.9, 1.0), vec3(1.0, 0.28, 0.08), step(2.5, u_effect) * (1.0 - step(4.5, u_effect))) * edgeSpark * 0.72;
+  float warmEdgeMix = step(3.5, u_effect) * (1.0 - step(6.5, u_effect));
+  effectColor.rgb += mix(vec3(0.28, 0.9, 1.0), vec3(1.0, 0.28, 0.08), warmEdgeMix) * edgeSpark * 0.72;
   effectColor.a = clamp(effectColor.a + edgeSpark * 0.48, 0.0, 1.0);
 
   gl_FragColor = vec4(effectColor.rgb, effectColor.a * u_opacity);

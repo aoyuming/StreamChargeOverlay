@@ -5,6 +5,7 @@ import {
   buildSponsorSpeechText,
   formatDisplayName,
   formatRootUnits,
+  formatRootUnitsForSpeech,
   neutralizePublicText
 } from "../displayUnits";
 import type { SponsorRecord } from "../types";
@@ -27,8 +28,41 @@ describe("displayUnits", () => {
   it("neutralizes names and speech text for public output", () => {
     expect(formatDisplayName("赛丽亚老板")).toBe("赛丽亚大哥");
     expect(buildRootUnitActionText("张三大哥", 100)).toBe("张三大哥 点亮 1根");
-    expect(buildRootUnitSpeechText("张三", 188, "感谢老板安排")).toBe("张三大哥，点亮 1.9根，大哥安排");
+    expect(buildRootUnitSpeechText("张三", 188, "感谢老板安排")).toBe("张三大哥，点亮 一点九根，大哥安排");
     expect(neutralizePublicText("感谢老板赞助金额¥188")).toBe("大哥点亮进度188");
+  });
+
+  it("uses speech-friendly root units without decimal notation", () => {
+    const record: SponsorRecord = {
+      id: "speech-decimal",
+      bossName: "张三",
+      amount: 150,
+      programName: "红眼竞速",
+      note: "",
+      countsTowardCharge: false,
+      createdAt: 1
+    };
+
+    expect(formatRootUnits(record.amount)).toBe("1.5根");
+    expect(buildSponsorSpeechText(record)).toBe("张三大哥，点亮 一点五根，红眼竞速");
+    expect(buildSponsorSpeechText(record)).not.toContain("1.5根");
+    expect(buildSponsorSpeechText(record)).not.toContain("1.50根");
+  });
+
+  it("reads two root units as liang in speech text", () => {
+    const record: SponsorRecord = {
+      id: "speech-two",
+      bossName: "张三",
+      amount: 250,
+      programName: "红眼竞速",
+      note: "",
+      countsTowardCharge: false,
+      createdAt: 1
+    };
+
+    expect(formatRootUnitsForSpeech(200)).toBe("两根");
+    expect(formatRootUnitsForSpeech(record.amount)).toBe("两点五根");
+    expect(buildSponsorSpeechText(record)).toContain("两点五根");
   });
 
   it("builds sponsor speech text with both selected program and note", () => {
@@ -44,8 +78,11 @@ describe("displayUnits", () => {
 
     const text = buildSponsorSpeechText(record);
 
+    expect(text).toContain("一点九");
+    expect(text).not.toContain("1.88");
+
     expect(text).toContain("红眼竞速");
     expect(text).toContain("指定职业");
-    expect(text).toBe("张三大哥，点亮 1.9根，红眼竞速，指定职业");
+    expect(text).toBe("张三大哥，点亮 一点九根，红眼竞速，指定职业");
   });
 });

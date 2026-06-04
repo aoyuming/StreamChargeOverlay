@@ -15,6 +15,7 @@ const DEFAULT_SLOGAN = "赞助点将，名场面马上开演";
 const SHANGHAI_UTC_OFFSET_MS = 8 * 60 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_RANKING_WINDOW_MS = 60 * DAY_MS;
+const TRASH_RETENTION_MS = 7 * DAY_MS;
 
 type DonationServiceOptions = {
   avatarStorage?: SponsorAvatarStorage;
@@ -29,8 +30,7 @@ export class DonationService {
   ) {}
 
   public async getState(): Promise<DerivedAppState> {
-    const state = await this.repository.load();
-    return this.deriveState(this.normalizeState(state));
+    return this.deriveState(await this.loadState());
   }
 
   public async addSponsor(request: AddSponsorRequest): Promise<DerivedAppState> {
@@ -44,7 +44,7 @@ export class DonationService {
       throw new Error("老板名、节目名和赞助金额都必须填写正确");
     }
 
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const sponsorId = crypto.randomUUID();
     const avatarUrl = request.avatarDataUrl
       ? await this.options.avatarStorage?.saveAvatar(this.roomSlug(), sponsorId, request.avatarDataUrl)
@@ -71,20 +71,59 @@ export class DonationService {
   }
 
   public async deleteSponsor(id: string): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
-    const removedRecords = state.sponsors.filter((record) => record.id === id);
+    const state = await this.loadState();
+    const deletedAt = Date.now();
+    let found = false;
     const nextState = this.normalizeChargeConsumption({
       ...state,
-      sponsors: state.sponsors.filter((record) => record.id !== id)
+      sponsors: state.sponsors.map((record) => {
+        if (record.id !== id || this.isDeleted(record)) {
+          return record;
+        }
+
+        found = true;
+        return { ...record, deletedAt };
+      })
     });
 
-    await Promise.all(removedRecords.map((record) => this.options.avatarStorage?.clearAvatar(record.avatarUrl)));
+    if (!found) {
+      return this.deriveState(nextState);
+    }
+
     await this.repository.save(nextState);
     return this.deriveState(nextState);
   }
 
+  public async listTrashSponsors(): Promise<SponsorRecord[]> {
+    const state = await this.loadState();
+    return state.sponsors
+      .filter((record) => this.isDeleted(record))
+      .sort((left, right) => (right.deletedAt ?? 0) - (left.deletedAt ?? 0));
+  }
+
+  public async restoreSponsor(id: string): Promise<DerivedAppState> {
+    const state = await this.loadState();
+    let found = false;
+    const sponsors = state.sponsors.map((record) => {
+      if (record.id !== id || !this.isDeleted(record)) {
+        return record;
+      }
+
+      found = true;
+      return { ...record, deletedAt: undefined };
+    });
+
+    if (!found) {
+      throw new Error("回收站记录不存在");
+    }
+
+    const nextState = this.normalizeChargeConsumption({ ...state, sponsors });
+    await this.repository.save(nextState);
+    return { ...this.deriveState(nextState), restoredSponsorId: id };
+  }
+
   public async startDianjiang(): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const currentChargeAmount = this.currentChargeAmount(state);
     const consumedNow = Math.min(currentChargeAmount, state.targetAmount);
     if (consumedNow <= 0) {
@@ -107,7 +146,7 @@ export class DonationService {
       throw new Error("赞助金额必须大于 0");
     }
 
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     let found = false;
     const sponsors = state.sponsors.map((record) => {
       if (record.id !== id) {
@@ -128,7 +167,7 @@ export class DonationService {
   }
 
   public async updateSponsorAvatar(id: string, avatarDataUrl: string | null): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     let foundRecord: SponsorRecord | undefined;
 
     for (const record of state.sponsors) {
@@ -166,11 +205,11 @@ export class DonationService {
   }
 
   public async removeSponsorFromToday(id: string): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const hiddenAt = Date.now();
     let found = false;
     const sponsors = state.sponsors.map((record) => {
-      if (record.id !== id) {
+      if (record.id !== id || this.isDeleted(record)) {
         return record;
       }
 
@@ -188,10 +227,10 @@ export class DonationService {
   }
 
   public async addSponsorToToday(id: string): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     let found = false;
     const sponsors = state.sponsors.map((record) => {
-      if (record.id !== id) {
+      if (record.id !== id || this.isDeleted(record)) {
         return record;
       }
 
@@ -209,7 +248,7 @@ export class DonationService {
   }
 
   public async removeTodaySponsors(): Promise<DerivedAppState> {
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const now = Date.now();
     const todayIds = new Set(this.buildTodayProgramQueue(state.sponsors, now).map((record) => record.id));
     const sponsors = state.sponsors.map((record) => {
@@ -231,7 +270,7 @@ export class DonationService {
       throw new Error("目标金额必须大于 0");
     }
 
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const nextState: AppState = {
       ...state,
       targetAmount: this.roundAmount(nextTargetAmount)
@@ -249,7 +288,7 @@ export class DonationService {
       throw new Error("目标金额必须大于 0");
     }
 
-    const state = this.normalizeState(await this.repository.load());
+    const state = await this.loadState();
     const nextState: AppState = {
       ...state,
       targetAmount: this.roundAmount(nextTargetAmount),
@@ -258,6 +297,31 @@ export class DonationService {
 
     await this.repository.save(nextState);
     return this.deriveState(nextState);
+  }
+
+  private async loadState(): Promise<AppState> {
+    const state = this.normalizeState(await this.repository.load());
+    return this.purgeExpiredTrash(state);
+  }
+
+  private async purgeExpiredTrash(state: AppState): Promise<AppState> {
+    const cutoff = Date.now() - TRASH_RETENTION_MS;
+    const expiredRecords = state.sponsors.filter((record) => Number.isFinite(record.deletedAt) && record.deletedAt! <= cutoff);
+    if (expiredRecords.length === 0) {
+      return state;
+    }
+
+    await Promise.all(
+      expiredRecords
+        .filter((record) => record.avatarUrl)
+        .map((record) => this.options.avatarStorage?.clearAvatar(record.avatarUrl))
+    );
+    const nextState = this.normalizeChargeConsumption({
+      ...state,
+      sponsors: state.sponsors.filter((record) => !expiredRecords.some((expired) => expired.id === record.id))
+    });
+    await this.repository.save(nextState);
+    return nextState;
   }
 
   private normalizeState(state: AppState): AppState {
@@ -278,22 +342,25 @@ export class DonationService {
       note: record.note ?? "",
       countsTowardCharge: record.countsTowardCharge !== false,
       avatarUrl: typeof record.avatarUrl === "string" && record.avatarUrl.trim() ? record.avatarUrl : undefined,
-      hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined
+      hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined,
+      deletedAt: Number.isFinite(record.deletedAt) ? record.deletedAt : undefined
     };
   }
 
   private deriveState(state: AppState): DerivedAppState {
-    const totalAmount = this.currentChargeAmount(state);
+    const activeSponsors = this.activeRecords(state.sponsors);
+    const activeState = { ...state, sponsors: activeSponsors };
+    const totalAmount = this.currentChargeAmount(activeState);
     const progressPercent = Math.min(100, Math.round((totalAmount / state.targetAmount) * 10000) / 100);
     const now = Date.now();
 
     return {
-      ...state,
+      ...activeState,
       totalAmount,
       progressPercent,
       goalReached: totalAmount >= state.targetAmount,
-      ranking: this.buildRanking(state.sponsors, now),
-      programQueue: this.buildTodayProgramQueue(state.sponsors, now)
+      ranking: this.buildRanking(activeSponsors, now),
+      programQueue: this.buildTodayProgramQueue(activeSponsors, now)
     };
   }
 
@@ -313,7 +380,7 @@ export class DonationService {
   private chargeSponsorAmount(records: SponsorRecord[]): number {
     return this.roundAmount(
       records.reduce((sum, record) => {
-        return record.countsTowardCharge ? sum + record.amount : sum;
+        return !this.isDeleted(record) && record.countsTowardCharge ? sum + record.amount : sum;
       }, 0)
     );
   }
@@ -323,6 +390,7 @@ export class DonationService {
     const windowEnd = windowStart + DAY_MS;
 
     return records
+      .filter((record) => !this.isDeleted(record))
       .filter((record) => !record.hiddenFromTodayAt)
       .filter((record) => record.createdAt >= windowStart && record.createdAt < windowEnd)
       .sort((left, right) => left.createdAt - right.createdAt);
@@ -348,7 +416,7 @@ export class DonationService {
     const cutoff = now - RECENT_RANKING_WINDOW_MS;
 
     for (const record of records) {
-      if (record.createdAt < cutoff) {
+      if (this.isDeleted(record) || record.createdAt < cutoff) {
         continue;
       }
 
@@ -394,7 +462,7 @@ export class DonationService {
     const normalizedBossName = this.normalizedBossName(bossName);
     return Promise.all(
       records.map(async (record) => {
-        if (record.avatarUrl || this.normalizedBossName(record.bossName) !== normalizedBossName) {
+        if (this.isDeleted(record) || record.avatarUrl || this.normalizedBossName(record.bossName) !== normalizedBossName) {
           return record;
         }
 
@@ -408,6 +476,14 @@ export class DonationService {
 
   private normalizedBossName(name: string): string {
     return name.trim().toLocaleLowerCase("zh-CN");
+  }
+
+  private activeRecords(records: SponsorRecord[]): SponsorRecord[] {
+    return records.filter((record) => !this.isDeleted(record));
+  }
+
+  private isDeleted(record: SponsorRecord): boolean {
+    return Number.isFinite(record.deletedAt);
   }
 
   private roomSlug(): string {

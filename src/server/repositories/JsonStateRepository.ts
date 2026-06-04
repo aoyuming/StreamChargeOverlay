@@ -52,7 +52,8 @@ export class JsonStateRepository implements StateRepository {
       note: record.note ?? "",
       countsTowardCharge: record.countsTowardCharge !== false,
       avatarUrl: typeof record.avatarUrl === "string" && record.avatarUrl.trim() ? record.avatarUrl : undefined,
-      hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined
+      hiddenFromTodayAt: Number.isFinite(record.hiddenFromTodayAt) ? record.hiddenFromTodayAt : undefined,
+      deletedAt: Number.isFinite(record.deletedAt) ? record.deletedAt : undefined
     };
   }
 

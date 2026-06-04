@@ -68,8 +68,14 @@ export class ApiController {
     app.post("/api/sponsors", this.wrap((request, response) => this.addSponsor(request, response)));
     app.post("/rooms/:roomSlug/api/sponsors", this.wrap((request, response) => this.addSponsor(request, response)));
 
+    app.get("/api/sponsors/trash", this.wrap((request, response) => this.listTrashSponsors(request, response)));
+    app.get("/rooms/:roomSlug/api/sponsors/trash", this.wrap((request, response) => this.listTrashSponsors(request, response)));
+
     app.delete("/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
     app.delete("/rooms/:roomSlug/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
+
+    app.post("/api/sponsors/:id/restore", this.wrap((request, response) => this.restoreSponsor(request, response)));
+    app.post("/rooms/:roomSlug/api/sponsors/:id/restore", this.wrap((request, response) => this.restoreSponsor(request, response)));
 
     app.patch("/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
     app.patch("/rooms/:roomSlug/api/sponsors/:id/amount", this.wrap((request, response) => this.updateSponsorAmount(request, response)));
@@ -200,6 +206,25 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteSponsor(String(request.params.id ?? ""));
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async listTrashSponsors(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    response.json(await (await this.serviceFor(request)).listTrashSponsors());
+  }
+
+  private async restoreSponsor(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).restoreSponsor(String(request.params.id ?? ""));
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }

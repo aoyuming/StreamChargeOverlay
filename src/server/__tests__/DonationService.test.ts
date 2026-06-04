@@ -17,6 +17,7 @@ const baseRecord = (overrides: Partial<SponsorRecord> = {}): SponsorRecord => ({
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const RECENT_RANKING_WINDOW_MS = 60 * DAY_MS;
+const TRASH_RETENTION_MS = 7 * DAY_MS;
 
 describe("DonationService", () => {
   afterEach(() => {
@@ -423,21 +424,91 @@ describe("DonationService", () => {
     expect(state.slogan).toBe("赞助点将，名场面马上开演");
   });
 
-  it("deletes a sponsor record and recomputes derived state", async () => {
+  it("moves a deleted sponsor record into the recycle bin and recomputes derived state", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-06-05T12:00:00+08:00").getTime();
+    vi.setSystemTime(now);
     const repository = new MemoryStateRepository({
       targetAmount: 300,
       sponsors: [
-        baseRecord({ id: "keep", amount: 120, createdAt: 1 }),
-        baseRecord({ id: "delete-me", amount: 220, createdAt: 2 })
+        baseRecord({ id: "keep", amount: 120, createdAt: now - 2 }),
+        baseRecord({ id: "delete-me", bossName: "Deleted Boss", amount: 220, createdAt: now - 1 })
       ]
     });
     const service = new DonationService(repository);
 
     const state = await service.deleteSponsor("delete-me");
+    const stored = await repository.load();
 
     expect(state.totalAmount).toBe(120);
     expect(state.goalReached).toBe(false);
     expect(state.sponsors.map((item) => item.id)).toEqual(["keep"]);
+    expect(state.ranking.map((item) => item.bossName)).toEqual(["赛丽亚老板"]);
+    expect(stored.sponsors.map((item) => item.id)).toEqual(["keep", "delete-me"]);
+    expect(stored.sponsors.find((item) => item.id === "delete-me")?.deletedAt).toBe(now);
+  });
+
+  it("purges recycle-bin sponsor records after seven days and clears their avatars", async () => {
+    const now = new Date("2026-06-12T12:00:00+08:00").getTime();
+    vi.useFakeTimers();
+    vi.setSystemTime(now);
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn()
+    };
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "keep", amount: 120, createdAt: 1 }),
+        baseRecord({
+          id: "expired-trash",
+          amount: 220,
+          avatarUrl: "/avatars/alpha/expired-trash.webp",
+          deletedAt: now - TRASH_RETENTION_MS - 1,
+          createdAt: 2
+        } as any),
+        baseRecord({ id: "fresh-trash", amount: 330, deletedAt: now - TRASH_RETENTION_MS + 1, createdAt: 3 } as any)
+      ]
+    });
+    const service = new (DonationService as any)(repository, {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+
+    const state = await service.getState();
+    const stored = await repository.load();
+
+    expect(state.sponsors.map((item: SponsorRecord) => item.id)).toEqual(["keep"]);
+    expect(state.totalAmount).toBe(120);
+    expect(stored.sponsors.map((item) => item.id)).toEqual(["keep", "fresh-trash"]);
+    expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/expired-trash.webp");
+    expect(avatarStorage.clearAvatar).not.toHaveBeenCalledWith(undefined);
+  });
+
+  it("lists, edits, and restores recycle-bin sponsor records", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-06-05T12:00:00+08:00").getTime();
+    vi.setSystemTime(now);
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "keep", amount: 120, createdAt: now - 2 }),
+        baseRecord({ id: "trash", bossName: "Trash Boss", amount: 220, deletedAt: now - 1, createdAt: now - 1 } as any)
+      ]
+    });
+    const service = new DonationService(repository);
+
+    const trashBeforeEdit = await service.listTrashSponsors();
+    const activeAfterEdit = await service.updateSponsorAmount("trash", 330);
+    const trashAfterEdit = await service.listTrashSponsors();
+    const activeAfterRestore = await service.restoreSponsor("trash");
+    const stored = await repository.load();
+
+    expect(trashBeforeEdit.map((record) => record.id)).toEqual(["trash"]);
+    expect(activeAfterEdit.sponsors.map((record) => record.id)).toEqual(["keep"]);
+    expect(trashAfterEdit[0]?.amount).toBe(330);
+    expect(activeAfterRestore.sponsors.map((record) => record.id)).toEqual(["keep", "trash"]);
+    expect(activeAfterRestore.totalAmount).toBe(450);
+    expect(activeAfterRestore.restoredSponsorId).toBe("trash");
+    expect(stored.sponsors.find((record) => record.id === "trash")?.deletedAt).toBeUndefined();
   });
 
   it("does not keep deleted startup funding as hidden consumed debt", async () => {

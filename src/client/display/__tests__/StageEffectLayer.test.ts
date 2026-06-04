@@ -114,7 +114,7 @@ describe("StageEffectLayer", () => {
   it("caps DPR and particle budget for full-stage effects", () => {
     expect(clampStageEffectDevicePixelRatio(3)).toBe(1.25);
     expect(clampStageEffectDevicePixelRatio(1)).toBe(1);
-    expect(MAX_STAGE_EFFECT_PARTICLES).toBeLessThanOrEqual(260);
+    expect(MAX_STAGE_EFFECT_PARTICLES).toBeLessThanOrEqual(200);
   });
 
   it("plays a sponsor effect and stops after the configured duration", () => {
@@ -197,6 +197,36 @@ describe("StageEffectLayer", () => {
     expect(colors).toContain("rgba(255, 32, 18, 0)");
   });
 
+  it("draws full-stage water fallback with translucent ripples instead of fire", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("water");
+    callbacks[0]?.(100);
+
+    const colors = context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)).join("\n");
+    const rippleCurves = context.calls.filter((call) => call[0] === "quadraticCurveTo");
+
+    expect(colors).toContain("rgba(65, 218, 255");
+    expect(colors).not.toContain("rgba(255, 126, 28");
+    expect(rippleCurves.length).toBeGreaterThan(12);
+  });
+
   it("draws full-stage fire from the stage edges instead of filling the center", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
@@ -225,6 +255,102 @@ describe("StageEffectLayer", () => {
     expect(fillRects.some((call) => call[1] === 0 && Number(call[2]) > 1000 && call[3] === 1920)).toBe(true);
     expect(fillRects.some((call) => call[1] === 0 && call[2] === 0 && Number(call[3]) < 360 && call[4] === 1440)).toBe(true);
     expect(fillRects.some((call) => Number(call[1]) > 1560 && call[2] === 0 && Number(call[3]) < 360 && call[4] === 1440)).toBe(true);
+  });
+
+  it("keeps inferno bright core warmer and softer while still drawing edge flames", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("inferno");
+    callbacks[0]?.(100);
+
+    const colors = [
+      ...context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)),
+      context.fillStyle,
+      context.strokeStyle,
+      context.shadowColor
+    ].join("\n");
+
+    expect(colors).toContain("rgba(255, 220, 116");
+    expect(colors).not.toContain("rgba(255, 246, 160, 0.68)");
+    expect(colors).not.toContain("rgba(255, 232, 128, 0.5)");
+  });
+
+  it("draws denser inferno flames that probe farther inward from the edges", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("inferno");
+    callbacks[0]?.(100);
+
+    const flameCurves = context.calls.filter((call) => call[0] === "bezierCurveTo") as unknown[][];
+    const leftOrBottomTips = flameCurves.map((call) => Number(call[5])).filter((x) => x > 0 && x < 360);
+    const rightOrTopTips = flameCurves.map((call) => Number(call[5])).filter((x) => x > 1560 && x < 1920);
+
+    expect(flameCurves.length).toBeGreaterThanOrEqual(220);
+    expect(Math.max(...leftOrBottomTips)).toBeGreaterThan(150);
+    expect(Math.min(...rightOrTopTips)).toBeLessThan(1770);
+  });
+
+  it("draws full-stage fire with irregular bezier tongues instead of cone spikes", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("inferno");
+    callbacks[0]?.(180);
+
+    const bezierCurves = context.calls.filter((call) => call[0] === "bezierCurveTo");
+    const quadraticCurves = context.calls.filter((call) => call[0] === "quadraticCurveTo");
+    const controlXValues = new Set(bezierCurves.map((call) => Math.round(Number(call[1]) / 10) * 10));
+
+    expect(bezierCurves.length).toBeGreaterThan(180);
+    expect(quadraticCurves).toHaveLength(0);
+    expect(controlXValues.size).toBeGreaterThan(30);
   });
 
   it("draws the dianjiang effect as lightning without canvas text", () => {
@@ -288,5 +414,39 @@ describe("StageEffectLayer", () => {
     expect(colors).not.toContain("rgba(255, 246");
     expect(colors).not.toContain("rgba(255, 184");
     expect(colors).not.toContain("rgba(255, 120");
+  });
+
+  it("keeps lightning whites restrained while still drawing cool electric flashes", () => {
+    const callbacks: FrameRequestCallback[] = [];
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        callbacks.push(callback);
+        return callbacks.length;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      getBoundingClientRect: () => ({ width: 1920, height: 1440 }),
+      getContext: () => context,
+      height: 1440,
+      width: 1920
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new StageEffectLayer(canvas);
+    layer.playSponsorEffect("lightning");
+    callbacks[0]?.(100);
+
+    const colors = [
+      ...context.gradients.flatMap((gradient) => gradient.stops.map(([, color]) => color)),
+      context.fillStyle,
+      context.strokeStyle,
+      context.shadowColor
+    ].join("\n");
+
+    expect(colors).toContain("rgba(255, 255, 255, 0.66)");
+    expect(colors).not.toContain("rgba(255, 255, 255, 0.96)");
+    expect(colors).not.toContain("rgba(255, 255, 255, 0.82)");
   });
 });

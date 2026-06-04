@@ -50,6 +50,7 @@ describe("SqliteRoomStateRepository", () => {
           countsTowardCharge: true,
           avatarUrl: "/avatars/alpha/alpha-1.webp",
           hiddenFromTodayAt: 123,
+          deletedAt: 456,
           createdAt: 1
         } as any
       ]
@@ -80,7 +81,8 @@ describe("SqliteRoomStateRepository", () => {
     expect((await alpha.load()).sponsors[0]).toMatchObject({
       countsTowardCharge: true,
       avatarUrl: "/avatars/alpha/alpha-1.webp",
-      hiddenFromTodayAt: 123
+      hiddenFromTodayAt: 123,
+      deletedAt: 456
     });
     expect((await beta.load()).sponsors[0]).toMatchObject({ countsTowardCharge: false });
   });

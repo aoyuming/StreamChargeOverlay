@@ -7,7 +7,9 @@ type RemoveFromTodayHandler = (id: string) => Promise<void>;
 type AddToTodayHandler = (id: string) => Promise<void>;
 type UpdateAmountHandler = (id: string, amount: number) => Promise<void>;
 type DeletePermanentlyHandler = (id: string) => Promise<void>;
+type RestoreSponsorHandler = (id: string) => Promise<void>;
 type UpdateAvatarHandler = (id: string, avatarDataUrl: string | null) => Promise<void>;
+type RecordMode = "active" | "trash";
 type RecordAvatarSnapshot = {
   backgroundImage: string;
   className: string;
@@ -19,6 +21,7 @@ export class RecordListView {
   private addToTodayHandler: AddToTodayHandler | null = null;
   private updateAmountHandler: UpdateAmountHandler | null = null;
   private deletePermanentlyHandler: DeletePermanentlyHandler | null = null;
+  private restoreSponsorHandler: RestoreSponsorHandler | null = null;
   private updateAvatarHandler: UpdateAvatarHandler | null = null;
   private visibleTodayIds = new Set<string>();
   private canManage = true;
@@ -42,6 +45,10 @@ export class RecordListView {
 
   public onDeletePermanently(handler: DeletePermanentlyHandler): void {
     this.deletePermanentlyHandler = handler;
+  }
+
+  public onRestoreSponsor(handler: RestoreSponsorHandler): void {
+    this.restoreSponsorHandler = handler;
   }
 
   public onUpdateAvatar(handler: UpdateAvatarHandler): void {
@@ -72,9 +79,28 @@ export class RecordListView {
     clearAndAppend(this.listElement, fragment);
   }
 
-  private createRecordRow(record: SponsorRecord, isVisibleToday: boolean): HTMLElement {
+  public renderTrash(records: SponsorRecord[]): void {
+    this.visibleTodayIds = new Set();
+    const fragment = document.createDocumentFragment();
+    const sortedRecords = [...records].sort((left, right) => (right.deletedAt ?? 0) - (left.deletedAt ?? 0));
+
+    for (const record of sortedRecords) {
+      fragment.append(this.createRecordRow(record, false, "trash"));
+    }
+
+    if (sortedRecords.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "record-empty";
+      empty.textContent = "回收站为空";
+      fragment.append(empty);
+    }
+
+    clearAndAppend(this.listElement, fragment);
+  }
+
+  private createRecordRow(record: SponsorRecord, isVisibleToday: boolean, mode: RecordMode = "active"): HTMLElement {
     const row = document.createElement("article");
-    row.className = "record-row";
+    row.className = `record-row${mode === "trash" ? " is-trash" : ""}`;
     row.dataset.id = record.id;
 
     const avatar = document.createElement("span");
@@ -96,10 +122,17 @@ export class RecordListView {
 
     const flags = document.createElement("div");
     flags.className = "record-flags";
-    flags.append(
-      this.createFlag(record.countsTowardCharge ? "加入启动资金" : "不加入启动资金"),
-      this.createFlag(isVisibleToday ? "今日榜单显示中" : "今日榜单已移除")
-    );
+    if (mode === "trash") {
+      flags.append(
+        this.createFlag(record.deletedAt ? `删除时间 ${formatTime(record.deletedAt)}` : "回收站"),
+        this.createFlag("7天后彻底删除")
+      );
+    } else {
+      flags.append(
+        this.createFlag(record.countsTowardCharge ? "加入启动资金" : "不加入启动资金"),
+        this.createFlag(isVisibleToday ? "今日榜单显示中" : "今日榜单已移除")
+      );
+    }
 
     const actions = document.createElement("div");
     actions.className = "record-actions";
@@ -134,12 +167,19 @@ export class RecordListView {
     addButton.disabled = !this.canManage || isVisibleToday;
     addButton.textContent = "加入今日榜单";
 
+    const restoreButton = document.createElement("button");
+    restoreButton.className = "ghost-button";
+    restoreButton.type = "button";
+    restoreButton.dataset.action = "restore-sponsor";
+    restoreButton.disabled = !this.canManage;
+    restoreButton.textContent = "还原";
+
     const deleteButton = document.createElement("button");
     deleteButton.className = "ghost-button danger";
     deleteButton.type = "button";
     deleteButton.dataset.action = "delete-permanent";
     deleteButton.disabled = !this.canManage;
-    deleteButton.textContent = "永久删除";
+    deleteButton.textContent = "删除";
 
     const updateAvatarButton = document.createElement("button");
     updateAvatarButton.className = "ghost-button";
@@ -169,17 +209,29 @@ export class RecordListView {
     avatarInput.hidden = true;
     avatarInput.disabled = !this.canManage;
 
-    actions.append(
-      amountInput,
-      saveButton,
-      removeButton,
-      addButton,
-      updateAvatarButton,
-      pasteAvatarButton,
-      clearAvatarButton,
-      deleteButton,
-      avatarInput
-    );
+    if (mode === "trash") {
+      actions.append(
+        amountInput,
+        saveButton,
+        restoreButton,
+        updateAvatarButton,
+        pasteAvatarButton,
+        clearAvatarButton,
+        avatarInput
+      );
+    } else {
+      actions.append(
+        amountInput,
+        saveButton,
+        removeButton,
+        addButton,
+        updateAvatarButton,
+        pasteAvatarButton,
+        clearAvatarButton,
+        deleteButton,
+        avatarInput
+      );
+    }
     main.append(title, meta, note, flags);
     row.append(avatar, main, actions);
     return row;
@@ -216,6 +268,11 @@ export class RecordListView {
 
     if (target.dataset.action === "delete-permanent" && this.deletePermanentlyHandler) {
       await this.deletePermanentlyHandler(id);
+      return;
+    }
+
+    if (target.dataset.action === "restore-sponsor" && this.restoreSponsorHandler) {
+      await this.restoreSponsorHandler(id);
       return;
     }
 

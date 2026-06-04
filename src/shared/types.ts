@@ -7,6 +7,7 @@ export interface SponsorRecord {
   countsTowardCharge: boolean;
   avatarUrl?: string;
   hiddenFromTodayAt?: number;
+  deletedAt?: number;
   createdAt: number;
 }
 
@@ -33,6 +34,7 @@ export interface DerivedAppState extends AppState {
   ranking: SponsorRankingItem[];
   programQueue: SponsorRecord[];
   speechAlert?: SpeechAlert;
+  restoredSponsorId?: string;
 }
 
 export interface SpeechAlert {

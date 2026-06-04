@@ -319,10 +319,12 @@ describe("ProgressPanel", () => {
   it.each([
     [0, "ice"],
     [29.99, "ice"],
-    [30, "fire"],
-    [69.99, "fire"],
-    [70, "inferno"],
-    [99, "inferno"],
+    [30, "water"],
+    [59.99, "water"],
+    [60, "steam"],
+    [69.99, "steam"],
+    [70, "fire"],
+    [99.99, "fire"],
     [100, "lightning"]
   ] as const)("uses the %s percent progress effect", (percent, effect) => {
     expect(progressEffectFor(percent)).toBe(effect);
@@ -337,12 +339,13 @@ describe("ProgressPanel", () => {
     expect((view.progressTrack.classList as unknown as FakeClassList).has("is-fire")).toBe(false);
   });
 
-  it("applies the stronger fire effect class without keeping the normal fire class", () => {
+  it("applies the water-fire transition effect class without keeping water or fire", () => {
     const view = createPanel();
 
-    view.panel.render(state(88.4), [sponsor()]);
+    view.panel.render(state(66.4), [sponsor()]);
 
-    expect((view.progressTrack.classList as unknown as FakeClassList).has("is-inferno")).toBe(true);
+    expect((view.progressTrack.classList as unknown as FakeClassList).has("is-steam")).toBe(true);
+    expect((view.progressTrack.classList as unknown as FakeClassList).has("is-water")).toBe(false);
     expect((view.progressTrack.classList as unknown as FakeClassList).has("is-fire")).toBe(false);
   });
 
@@ -351,6 +354,6 @@ describe("ProgressPanel", () => {
 
     view.panel.render(state(88.4), [sponsor()]);
 
-    expect(view.progressEffects.states).toEqual([{ effect: "inferno", progressPercent: 88.4 }]);
+    expect(view.progressEffects.states).toEqual([{ effect: "fire", progressPercent: 88.4 }]);
   });
 });

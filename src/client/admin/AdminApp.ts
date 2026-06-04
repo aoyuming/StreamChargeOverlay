@@ -21,6 +21,8 @@ export class AdminApp {
   private readonly targetForm: TargetFormController;
   private readonly summaryView: AdminSummaryView;
   private readonly recordListView: RecordListView;
+  private readonly trashListView: RecordListView;
+  private readonly trashPanel: HTMLElement;
   private readonly startDianjiangButton: HTMLButtonElement;
   private readonly removeTodaySponsorsButton: HTMLButtonElement;
   private readonly authForm: HTMLFormElement;
@@ -53,6 +55,8 @@ export class AdminApp {
       queryRequired("#adminStatus")
     );
     this.recordListView = new RecordListView(queryRequired("#recordList"));
+    this.trashListView = new RecordListView(queryRequired("#trashList"));
+    this.trashPanel = queryRequired("#trashPanel");
     this.startDianjiangButton = queryRequired("#startDianjiangButton");
     this.removeTodaySponsorsButton = queryRequired("#removeTodaySponsorsButton");
     this.authForm = queryRequired("#authForm");
@@ -106,13 +110,27 @@ export class AdminApp {
     this.recordListView.onUpdateAmount(async (id, amount) => {
       await this.apiClient.updateSponsorAmount(id, amount);
     });
+    this.trashListView.onUpdateAmount(async (id, amount) => {
+      await this.apiClient.updateSponsorAmount(id, amount);
+      await this.refreshTrash();
+    });
 
     this.recordListView.onDeletePermanently(async (id) => {
       await this.apiClient.deleteSponsor(id);
+      await this.refreshTrash();
+    });
+
+    this.trashListView.onRestoreSponsor(async (id) => {
+      await this.apiClient.restoreSponsor(id);
+      await this.refreshTrash();
     });
 
     this.recordListView.onUpdateAvatar(async (id, avatarDataUrl) => {
       await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
+    });
+    this.trashListView.onUpdateAvatar(async (id, avatarDataUrl) => {
+      await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
+      await this.refreshTrash();
     });
 
     this.session = await this.apiClient.getAuthSession();
@@ -138,6 +156,21 @@ export class AdminApp {
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
     this.roomViewerPasswordInput.disabled = !canManage;
     this.updateRoomViewerPasswordButton.disabled = !canManage || !this.roomSelect.value;
+    this.trashPanel.hidden = !canManage;
+    this.trashListView.setCanManage(canManage);
+    if (canManage) {
+      void this.refreshTrash();
+    } else {
+      this.trashListView.renderTrash([]);
+    }
+  }
+
+  private async refreshTrash(): Promise<void> {
+    if (this.session?.role !== "admin") {
+      return;
+    }
+
+    this.trashListView.renderTrash(await this.apiClient.getSponsorTrash());
   }
 
   private async login(event: SubmitEvent): Promise<void> {
@@ -229,6 +262,8 @@ export class AdminApp {
     this.sponsorForm.setEnabled(canAdd);
     this.targetForm.setEnabled(canOperate);
     this.recordListView.setCanManage(canManage);
+    this.trashListView.setCanManage(canManage);
+    this.trashPanel.hidden = !canManage;
     this.roomForm.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((element) => {
       element.disabled = !canManage;
     });

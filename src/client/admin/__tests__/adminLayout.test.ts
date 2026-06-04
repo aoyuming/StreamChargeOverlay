@@ -82,12 +82,36 @@ describe("admin layout", () => {
     expect(recordListView).toContain("clear-avatar");
     expect(recordListView).toContain("移除今日榜单");
     expect(recordListView).toContain("加入今日榜单");
-    expect(recordListView).toContain("永久删除");
+    expect(recordListView).toContain('deleteButton.textContent = "删除"');
+    expect(recordListView).not.toContain('deleteButton.textContent = "永久删除"');
     expect(adminApp).toContain("this.apiClient.addSponsorToToday");
     expect(adminApp).toContain("this.apiClient.deleteSponsor");
     expect(adminApp).toContain("this.apiClient.updateSponsorAvatar");
     expect(adminCss).toContain(".record-actions");
     expect(adminCss).toContain(".record-amount-input");
     expect(adminCss).toContain(".record-avatar");
+  });
+
+  it("adds an admin-only recycle bin list with restore support", () => {
+    expect(adminHtml).toContain('id="trashPanel"');
+    expect(adminHtml).toContain("回收站");
+    expect(adminHtml).toContain('id="trashList"');
+    expect(adminApp).toContain("trashListView");
+    expect(adminApp).toContain("this.apiClient.getSponsorTrash");
+    expect(adminApp).toContain("this.apiClient.restoreSponsor");
+    expect(recordListView).toContain("renderTrash");
+    expect(recordListView).toContain("restore-sponsor");
+    expect(recordListView).toContain("还原");
+  });
+
+  it("uses a full-width three-column workspace without page-level vertical scrolling", () => {
+    expect(adminHtml.indexOf('id="trashPanel"')).toBeGreaterThan(adminHtml.indexOf("</aside>"));
+    expect(adminCss).toContain("height: 100vh");
+    expect(adminCss).toContain("overflow: hidden");
+    expect(adminCss).toContain("width: calc(100vw - 40px)");
+    expect(adminCss).toContain('grid-template-areas: "sponsor main trash"');
+    expect(adminCss).toContain("grid-area: trash");
+    expect(adminCss).toContain("grid-template-rows: auto minmax(0, 1fr)");
+    expect(adminCss).toContain("max-height: none");
   });
 });

@@ -36,7 +36,7 @@ export interface StageEffectPlayer {
 
 export const STAGE_EFFECT_DURATION_MS = 2600;
 export const MAX_STAGE_EFFECT_DPR = 1.25;
-export const MAX_STAGE_EFFECT_PARTICLES = 240;
+export const MAX_STAGE_EFFECT_PARTICLES = 180;
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const seededNoise = (seed: number) => {
@@ -145,6 +145,8 @@ export class StageEffectLayer implements StageEffectPlayer {
 
     if (this.effect === "ice") {
       this.drawIce(width, height, progress);
+    } else if (this.effect === "water" || this.effect === "steam") {
+      this.drawWater(width, height, progress);
     } else if (this.effect === "fire") {
       this.drawFire(width, height, progress, 1);
     } else if (this.effect === "inferno") {
@@ -190,35 +192,104 @@ export class StageEffectLayer implements StageEffectPlayer {
     this.drawEdgeFlames(width, height, progress, intensity);
   }
 
+  private drawWater(width: number, height: number, progress: number): void {
+    this.drawWaterEdgeWash(width, height, progress);
+    this.drawWaterRipples(width, height, progress);
+  }
+
+  private drawWaterEdgeWash(width: number, height: number, progress: number): void {
+    const topHeight = height * 0.16;
+    const bottomHeight = height * 0.18;
+    const sideWidth = width * 0.08;
+
+    const top = this.context.createLinearGradient(0, 0, 0, topHeight);
+    top.addColorStop(0, "rgba(65, 218, 255, 0.18)");
+    top.addColorStop(0.58, "rgba(22, 142, 220, 0.1)");
+    top.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = top;
+    this.context.fillRect(0, 0, width, topHeight);
+
+    const bottom = this.context.createLinearGradient(0, height, 0, height - bottomHeight);
+    bottom.addColorStop(0, "rgba(148, 252, 255, 0.16)");
+    bottom.addColorStop(0.46, "rgba(65, 218, 255, 0.1)");
+    bottom.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = bottom;
+    this.context.fillRect(0, height - bottomHeight, width, bottomHeight);
+
+    const left = this.context.createLinearGradient(0, 0, sideWidth, 0);
+    left.addColorStop(0, "rgba(65, 218, 255, 0.14)");
+    left.addColorStop(0.6, "rgba(54, 180, 255, 0.08)");
+    left.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = left;
+    this.context.fillRect(0, 0, sideWidth, height);
+
+    const right = this.context.createLinearGradient(width, 0, width - sideWidth, 0);
+    right.addColorStop(0, "rgba(65, 218, 255, 0.14)");
+    right.addColorStop(0.6, "rgba(54, 180, 255, 0.08)");
+    right.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = right;
+    this.context.fillRect(width - sideWidth, 0, sideWidth, height);
+
+    const sweep = this.context.createLinearGradient(0, height * 0.18, width, height * 0.82);
+    const pulse = 0.5 + Math.sin(progress * Math.PI * 4) * 0.18;
+    sweep.addColorStop(0, "rgba(65, 218, 255, 0)");
+    sweep.addColorStop(0.42, `rgba(65, 218, 255, ${0.06 + pulse * 0.08})`);
+    sweep.addColorStop(0.52, `rgba(202, 255, 255, ${0.08 + pulse * 0.06})`);
+    sweep.addColorStop(0.62, `rgba(65, 218, 255, ${0.05 + pulse * 0.06})`);
+    sweep.addColorStop(1, "rgba(65, 218, 255, 0)");
+    this.context.fillStyle = sweep;
+    this.context.fillRect(0, 0, width, height);
+  }
+
+  private drawWaterRipples(width: number, height: number, progress: number): void {
+    this.context.lineWidth = 2.2;
+    this.context.shadowBlur = 14;
+    this.context.shadowColor = "rgba(65, 218, 255, 0.74)";
+    for (let line = 0; line < 18; line += 1) {
+      const y = height * (0.12 + (line / 17) * 0.78);
+      const phase = progress * 12 + line * 0.9;
+      this.context.strokeStyle = line % 2 === 0 ? "rgba(170, 252, 255, 0.28)" : "rgba(65, 218, 255, 0.22)";
+      this.context.beginPath();
+      this.context.moveTo(0, y);
+      for (let x = 0; x <= width + 96; x += 96) {
+        const controlX = x + 48;
+        const controlY = y + Math.sin(phase + x / 160) * (12 + line * 0.2);
+        this.context.quadraticCurveTo(controlX, controlY, x + 96, y);
+      }
+      this.context.stroke();
+    }
+    this.context.shadowBlur = 0;
+  }
+
   private drawEdgeHeat(width: number, height: number, intensity: number): void {
     const topHeight = height * (0.12 + intensity * 0.035);
     const bottomHeight = height * (0.18 + intensity * 0.06);
     const sideWidth = width * (0.07 + intensity * 0.025);
 
     const top = this.context.createLinearGradient(0, 0, 0, topHeight);
-    top.addColorStop(0, `rgba(255, 178, 42, ${0.24 * intensity})`);
-    top.addColorStop(0.55, `rgba(255, 62, 20, ${0.13 * intensity})`);
+    top.addColorStop(0, `rgba(255, 178, 42, ${0.18 * intensity})`);
+    top.addColorStop(0.55, `rgba(255, 62, 20, ${0.1 * intensity})`);
     top.addColorStop(1, "rgba(255, 32, 18, 0)");
     this.context.fillStyle = top;
     this.context.fillRect(0, 0, width, topHeight);
 
     const bottom = this.context.createLinearGradient(0, height, 0, height - bottomHeight);
-    bottom.addColorStop(0, `rgba(255, 232, 92, ${0.28 * intensity})`);
-    bottom.addColorStop(0.46, `rgba(255, 84, 20, ${0.18 * intensity})`);
+    bottom.addColorStop(0, `rgba(255, 232, 92, ${0.18 * intensity})`);
+    bottom.addColorStop(0.46, `rgba(255, 84, 20, ${0.14 * intensity})`);
     bottom.addColorStop(1, "rgba(255, 32, 18, 0)");
     this.context.fillStyle = bottom;
     this.context.fillRect(0, height - bottomHeight, width, bottomHeight);
 
     const left = this.context.createLinearGradient(0, 0, sideWidth, 0);
-    left.addColorStop(0, `rgba(255, 96, 24, ${0.18 * intensity})`);
-    left.addColorStop(0.58, `rgba(255, 184, 60, ${0.1 * intensity})`);
+    left.addColorStop(0, `rgba(255, 96, 24, ${0.14 * intensity})`);
+    left.addColorStop(0.58, `rgba(255, 184, 60, ${0.08 * intensity})`);
     left.addColorStop(1, "rgba(255, 32, 18, 0)");
     this.context.fillStyle = left;
     this.context.fillRect(0, 0, sideWidth, height);
 
     const right = this.context.createLinearGradient(width, 0, width - sideWidth, 0);
-    right.addColorStop(0, `rgba(255, 96, 24, ${0.18 * intensity})`);
-    right.addColorStop(0.58, `rgba(255, 184, 60, ${0.1 * intensity})`);
+    right.addColorStop(0, `rgba(255, 96, 24, ${0.14 * intensity})`);
+    right.addColorStop(0.58, `rgba(255, 184, 60, ${0.08 * intensity})`);
     right.addColorStop(1, "rgba(255, 32, 18, 0)");
     this.context.fillStyle = right;
     this.context.fillRect(width - sideWidth, 0, sideWidth, height);
@@ -238,24 +309,38 @@ export class StageEffectLayer implements StageEffectPlayer {
     intensity: number,
     edge: "top" | "bottom"
   ): void {
-    const flameCount = Math.round((edge === "bottom" ? 18 : 13) * intensity);
+    const flameCount = Math.round((edge === "bottom" ? 30 : 24) * intensity);
     const baseY = edge === "bottom" ? height : 0;
     const direction = edge === "bottom" ? -1 : 1;
 
     for (let index = 0; index < flameCount; index += 1) {
-      const left = (width / flameCount) * index;
-      const center = left + width / flameCount / 2;
-      const flicker = Math.sin(progress * 18 + index * 1.7) * 0.18 + 0.82;
-      const flameHeight = height * (edge === "bottom" ? 0.18 : 0.11) * intensity * flicker;
-      const flame = this.context.createRadialGradient(center, baseY, 2, center, baseY + direction * flameHeight * 0.45, flameHeight);
-      flame.addColorStop(0, "rgba(255, 246, 160, 0.82)");
-      flame.addColorStop(0.36, `rgba(255, 120, 26, ${0.42 * intensity})`);
-      flame.addColorStop(0.78, `rgba(255, 25, 18, ${0.16 * intensity})`);
+      const segment = width / flameCount;
+      const seed = index * 19 + (edge === "bottom" ? 100 : 200);
+      const baseLeft = segment * index + (seededNoise(seed) - 0.5) * segment * 0.34;
+      const baseWidth = segment * (0.7 + seededNoise(seed + 3) * 0.74);
+      const left = clamp(baseLeft, 0, width);
+      const right = clamp(baseLeft + baseWidth, 0, width);
+      const center = (left + right) / 2;
+      const flicker = Math.sin(progress * 12 + index * 1.7 + seededNoise(seed + 5) * 2) * 0.15 + 0.82;
+      const heightNoise = 0.62 + seededNoise(seed + 11) * 0.58;
+      const flameHeight = height * (edge === "bottom" ? 0.2 : 0.14) * intensity * flicker * heightNoise;
+      const curl = (seededNoise(seed + Math.floor(progress * 24)) - 0.5) * segment * 0.8;
+      const tipX = clamp(center + curl + Math.sin(progress * 9 + index * 0.9) * segment * 0.22, 0, width);
+      const tipY = baseY + direction * flameHeight;
+      const leftControlX = left + baseWidth * (0.06 + seededNoise(seed + 17) * 0.26);
+      const rightControlX = right - baseWidth * (0.06 + seededNoise(seed + 23) * 0.28);
+      const leftShoulderY = baseY + direction * flameHeight * (0.3 + seededNoise(seed + 31) * 0.24);
+      const rightShoulderY = baseY + direction * flameHeight * (0.2 + seededNoise(seed + 37) * 0.3);
+      const flame = this.context.createRadialGradient(tipX, tipY - direction * flameHeight * 0.3, 2, tipX, tipY, flameHeight);
+      flame.addColorStop(0, "rgba(255, 220, 116, 0.5)");
+      flame.addColorStop(0.34, `rgba(255, 126, 28, ${0.22 * intensity})`);
+      flame.addColorStop(0.78, `rgba(220, 36, 18, ${0.1 * intensity})`);
       flame.addColorStop(1, "rgba(255, 25, 18, 0)");
       this.context.fillStyle = flame;
       this.context.beginPath();
       this.context.moveTo(left, baseY);
-      this.context.quadraticCurveTo(center, baseY + direction * flameHeight, left + width / flameCount, baseY);
+      this.context.bezierCurveTo(leftControlX, leftShoulderY, tipX - baseWidth * 0.38, tipY - direction * flameHeight * 0.08, tipX, tipY);
+      this.context.bezierCurveTo(tipX + baseWidth * 0.34, tipY - direction * flameHeight * 0.12, rightControlX, rightShoulderY, right, baseY);
       this.context.closePath();
       this.context.fill();
     }
@@ -268,23 +353,36 @@ export class StageEffectLayer implements StageEffectPlayer {
     intensity: number,
     edge: "left" | "right"
   ): void {
-    const flameCount = Math.round(10 * intensity);
+    const flameCount = Math.round(16 * intensity);
     const baseX = edge === "left" ? 0 : width;
     const direction = edge === "left" ? 1 : -1;
 
     for (let index = 0; index < flameCount; index += 1) {
-      const top = (height / flameCount) * index;
-      const center = top + height / flameCount / 2;
-      const flicker = Math.sin(progress * 16 + index * 1.9) * 0.16 + 0.8;
-      const flameWidth = width * 0.055 * intensity * flicker;
-      const flame = this.context.createRadialGradient(baseX, center, 2, baseX + direction * flameWidth * 0.45, center, flameWidth);
-      flame.addColorStop(0, "rgba(255, 232, 128, 0.62)");
-      flame.addColorStop(0.46, `rgba(255, 86, 24, ${0.28 * intensity})`);
+      const segment = height / flameCount;
+      const seed = index * 23 + (edge === "left" ? 300 : 400);
+      const baseTop = segment * index + (seededNoise(seed) - 0.5) * segment * 0.3;
+      const baseHeight = segment * (0.72 + seededNoise(seed + 3) * 0.68);
+      const top = clamp(baseTop, 0, height);
+      const bottom = clamp(baseTop + baseHeight, 0, height);
+      const center = (top + bottom) / 2;
+      const flicker = Math.sin(progress * 11 + index * 1.9 + seededNoise(seed + 5) * 2) * 0.14 + 0.84;
+      const flameWidth = width * 0.078 * intensity * flicker * (0.76 + seededNoise(seed + 11) * 0.52);
+      const curl = (seededNoise(seed + Math.floor(progress * 22)) - 0.5) * segment * 0.8;
+      const tipX = baseX + direction * flameWidth;
+      const tipY = clamp(center + curl + Math.sin(progress * 8 + index) * segment * 0.16, 0, height);
+      const topControlY = top + baseHeight * (0.06 + seededNoise(seed + 17) * 0.28);
+      const bottomControlY = bottom - baseHeight * (0.06 + seededNoise(seed + 23) * 0.28);
+      const topShoulderX = baseX + direction * flameWidth * (0.28 + seededNoise(seed + 31) * 0.22);
+      const bottomShoulderX = baseX + direction * flameWidth * (0.2 + seededNoise(seed + 37) * 0.24);
+      const flame = this.context.createRadialGradient(baseX, center, 2, tipX, tipY, flameWidth);
+      flame.addColorStop(0, "rgba(255, 210, 112, 0.36)");
+      flame.addColorStop(0.46, `rgba(255, 92, 24, ${0.15 * intensity})`);
       flame.addColorStop(1, "rgba(255, 25, 18, 0)");
       this.context.fillStyle = flame;
       this.context.beginPath();
       this.context.moveTo(baseX, top);
-      this.context.quadraticCurveTo(baseX + direction * flameWidth, center, baseX, top + height / flameCount);
+      this.context.bezierCurveTo(topShoulderX, topControlY, tipX - direction * flameWidth * 0.1, tipY - baseHeight * 0.38, tipX, tipY);
+      this.context.bezierCurveTo(tipX - direction * flameWidth * 0.12, tipY + baseHeight * 0.34, bottomShoulderX, bottomControlY, baseX, bottom);
       this.context.closePath();
       this.context.fill();
     }
@@ -292,7 +390,7 @@ export class StageEffectLayer implements StageEffectPlayer {
 
   private drawLightning(width: number, height: number, progress: number): void {
     const flash = Math.max(0, Math.sin(progress * Math.PI * 10));
-    this.context.fillStyle = `rgba(210, 250, 255, ${0.08 + flash * 0.18})`;
+    this.context.fillStyle = `rgba(210, 250, 255, ${0.05 + flash * 0.12})`;
     this.context.fillRect(0, 0, width, height);
 
     const bolts = [
@@ -315,8 +413,8 @@ export class StageEffectLayer implements StageEffectPlayer {
         startY: bolt.startY
       });
 
-      this.drawLightningPath(points, "rgba(77, 225, 255, 0.46)", index === 2 ? 14 : 11, 46);
-      this.drawLightningPath(points, "rgba(255, 255, 255, 0.96)", index === 2 ? 4.4 : 3.4, 20);
+      this.drawLightningPath(points, "rgba(77, 225, 255, 0.42)", index === 2 ? 11 : 9, 34);
+      this.drawLightningPath(points, "rgba(255, 255, 255, 0.78)", index === 2 ? 3.6 : 2.8, 14);
       this.drawLightningBranches(points, progress, bolt.seed, width, height);
     }
 
@@ -347,8 +445,8 @@ export class StageEffectLayer implements StageEffectPlayer {
         startY: point.y
       });
 
-      this.drawLightningPath(branch, "rgba(75, 236, 255, 0.36)", 6, 24);
-      this.drawLightningPath(branch, "rgba(255, 255, 255, 0.82)", 2, 12);
+      this.drawLightningPath(branch, "rgba(75, 236, 255, 0.3)", 4.8, 18);
+      this.drawLightningPath(branch, "rgba(255, 255, 255, 0.66)", 1.7, 8);
     }
   }
 
@@ -420,7 +518,7 @@ export class StageEffectLayer implements StageEffectPlayer {
 
   private seedParticles(effect: StageEffect): void {
     const palette = this.paletteFor(effect);
-    const count = effect === "dianjiang" ? 170 : effect === "inferno" || effect === "lightning" ? 210 : 150;
+    const count = effect === "dianjiang" ? 150 : effect === "inferno" || effect === "lightning" ? 170 : 120;
     const width = this.canvas.width / this.devicePixelRatio;
     const height = this.canvas.height / this.devicePixelRatio;
 
@@ -430,12 +528,18 @@ export class StageEffectLayer implements StageEffectPlayer {
       const speed = fromCenter ? 4 + Math.random() * 11 : 1.8 + Math.random() * 6.8;
       this.particles.push({
         x: fromCenter ? width / 2 : Math.random() * width,
-        y: fromCenter ? height * 0.43 : effect === "ice" || effect === "lightning" ? Math.random() * height : height,
+        y: fromCenter
+          ? height * 0.43
+          : effect === "water" || effect === "steam"
+            ? height * (0.18 + Math.random() * 0.64)
+            : effect === "ice" || effect === "lightning"
+              ? Math.random() * height
+              : height,
         vx: Math.cos(angle) * speed,
         vy: fromCenter ? Math.sin(angle) * speed : -speed * (0.35 + Math.random()),
         life: 60 + Math.random() * 70,
         maxLife: 130,
-        size: 2 + Math.random() * (effect === "inferno" ? 8 : 5),
+        size: 1.6 + Math.random() * (effect === "inferno" ? 6.5 : 4.2),
         color: palette[index % palette.length]
       });
     }
@@ -454,7 +558,7 @@ export class StageEffectLayer implements StageEffectPlayer {
 
       const alpha = Math.max(0, (particle.life / particle.maxLife) * (1 - progress * 0.35));
       this.context.fillStyle = particle.color.replace("ALPHA", alpha.toFixed(3));
-      this.context.shadowBlur = 18;
+      this.context.shadowBlur = 12;
       this.context.shadowColor = this.context.fillStyle;
       this.context.beginPath();
       this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
@@ -473,11 +577,15 @@ export class StageEffectLayer implements StageEffectPlayer {
       return ["rgba(255, 255, 255, ALPHA)", "rgba(102, 244, 255, ALPHA)", "rgba(158, 178, 255, ALPHA)"];
     }
 
+    if (effect === "water" || effect === "steam") {
+      return ["rgba(65, 218, 255, ALPHA)", "rgba(166, 252, 255, ALPHA)", "rgba(54, 142, 255, ALPHA)"];
+    }
+
     if (effect === "dianjiang") {
       return ["rgba(46, 234, 255, ALPHA)", "rgba(123, 171, 255, ALPHA)", "rgba(237, 255, 255, ALPHA)"];
     }
 
-    return ["rgba(255, 238, 128, ALPHA)", "rgba(255, 107, 26, ALPHA)", "rgba(255, 32, 18, ALPHA)"];
+    return ["rgba(255, 230, 132, ALPHA)", "rgba(255, 107, 26, ALPHA)", "rgba(255, 32, 18, ALPHA)"];
   }
 
   private clear(width: number, height: number): void {
