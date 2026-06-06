@@ -1,6 +1,25 @@
 import type { ProgressEffect, ProgressEffectRenderer } from "./ProgressPanel";
 
 const MAX_EFFECT_DPR = 1.5;
+const OVERLAY_CHARGE_MASK = "overlay-charge";
+const OVERLAY_CHARGE_VIEWBOX_WIDTH = 620;
+const OVERLAY_CHARGE_VIEWBOX_HEIGHT = 38;
+const OVERLAY_CHARGE_MASK_POINTS = {
+  beveled: [
+    [22, 0],
+    [598, 0],
+    [620, 19],
+    [598, 38],
+    [22, 38],
+    [0, 19]
+  ],
+  trapezoid: [
+    [0, 0],
+    [620, 0],
+    [596, 38],
+    [24, 38]
+  ]
+};
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 const flameNoise = (seed: number): number => {
   const raw = Math.sin(seed * 12.9898) * 43758.5453;
@@ -53,6 +72,7 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
     const height = this.canvas.height / this.devicePixelRatio;
     this.context.clearRect(0, 0, width, height);
     this.context.save();
+    this.applyEffectMask(width, height);
     this.context.beginPath();
     this.context.rect(0, 0, this.progressWidth(width), height);
     this.context.clip();
@@ -80,6 +100,33 @@ export class ProgressEffectLayer implements ProgressEffectRenderer {
 
   private progressWidth(width: number): number {
     return width * (this.progressPercent / 100);
+  }
+
+  private applyEffectMask(width: number, height: number): void {
+    const dataset = (this.canvas as HTMLCanvasElement & { dataset?: DOMStringMap }).dataset;
+    if (dataset?.progressEffectMask !== OVERLAY_CHARGE_MASK) {
+      return;
+    }
+
+    if (dataset.progressEffectShape === "rectangle") {
+      return;
+    }
+
+    const shape = dataset.progressEffectShape === "beveled" ? "beveled" : "trapezoid";
+    const points = OVERLAY_CHARGE_MASK_POINTS[shape];
+    this.context.beginPath();
+    points.forEach(([x, y], index) => {
+      const scaledX = width * (x / OVERLAY_CHARGE_VIEWBOX_WIDTH);
+      const scaledY = height * (y / OVERLAY_CHARGE_VIEWBOX_HEIGHT);
+      if (index === 0) {
+        this.context.moveTo(scaledX, scaledY);
+        return;
+      }
+
+      this.context.lineTo(scaledX, scaledY);
+    });
+    this.context.closePath();
+    this.context.clip();
   }
 
   private drawIce(width: number, height: number, time: number): void {

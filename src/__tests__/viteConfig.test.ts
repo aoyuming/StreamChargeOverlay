@@ -9,10 +9,12 @@ describe("vite config", () => {
     expect(input).toEqual(
       expect.objectContaining({
         admin: expect.any(String),
-        display: expect.any(String)
+        display: expect.any(String),
+        overlay: expect.any(String)
       })
     );
     expect(isAbsolute((input as Record<string, string>).admin)).toBe(true);
     expect(isAbsolute((input as Record<string, string>).display)).toBe(true);
+    expect(isAbsolute((input as Record<string, string>).overlay)).toBe(true);
   });
 });

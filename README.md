@@ -34,33 +34,32 @@ npm.cmd run dev
 
 - 展示页：http://localhost:3000/display.html
 - 后台页：http://localhost:3000/admin.html
-- 温柔房展示页：http://localhost:3000/rooms/wenrou/display.html
-- 温柔房后台页：http://localhost:3000/rooms/wenrou/admin.html
+- OBS 叠加页：http://localhost:3000/overlay.html
 
 默认端口是 `3000`。可以通过环境变量 `PORT` 修改。
 
 ## OBS 配置
 
-在 OBS 中添加“浏览器”来源，并把 URL 设置为对应房间的展示页：
+在 OBS 中添加“浏览器”来源，并把 URL 设置为固定叠加页；房间在页面里选择，不需要把房间名写进链接：
 
 ```text
-http://localhost:3000/rooms/wenrou/display.html
+http://localhost:3000/overlay.html
 ```
 
 建议启用透明背景，按直播画面需要设置宽高。展示页本身已经按 OBS 透明背景场景设计。
 
-常用房间地址：
+常用页面地址：
 
-- 温柔房：`/rooms/wenrou/display.html`
-- 李永房：`/rooms/liyong/display.html`
-- 59 房：`/rooms/room-59/display.html`
+- OBS 叠加页：`/overlay.html`
+- 4:3 展示页：`/display.html`
+- 后台页：`/admin.html`
 
 ## 后台使用
 
 后台地址：
 
 ```text
-http://localhost:3000/rooms/wenrou/admin.html
+http://localhost:3000/admin.html
 ```
 
 默认普通权限密码：
@@ -180,4 +179,3 @@ npm.cmd run package:server
 - Vite
 - better-sqlite3
 - Vitest
-

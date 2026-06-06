@@ -105,7 +105,7 @@ describe("display layout", () => {
     expect(css).not.toContain(".current-boss-row.is-program-only {\n  background:");
     expect(css).toContain(".current-boss-row.is-program-only .current-boss-program");
     expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).toContain(
-      'adminOpenButton.href = roomPagePath(selectedSlug, "admin")'
+      'adminOpenButton.href = fixedPagePath("admin")'
     );
     expect(readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8")).not.toContain(
       "window.location.href = adminUrl"
@@ -165,6 +165,24 @@ describe("display layout", () => {
     expect(displayApp).toContain('const canvasStageEffects = new StageEffectLayer(queryRequired("#stageEffectsCanvas"));');
     expect(displayApp).toContain('ShaderStageEffectLayer.create(queryRequired("#stageShaderEffectsCanvas"), canvasStageEffects)');
     expect(displayApp).toContain("?? canvasStageEffects");
+  });
+
+  it("can switch overlay data sources without keeping the previous room effects alive", () => {
+    expect(displayApp).toContain("switchDataSource");
+    expect(displayApp).toContain("this.realtimeClient.disconnect();");
+    expect(displayApp).toContain("this.effectCoordinator = new DisplayEffectCoordinator();");
+    expect(displayApp).toContain("sourceId");
+  });
+
+  it("keeps room changes inside the fixed display page instead of navigating to room URLs", () => {
+    const displayMain = readFileSync(resolve(process.cwd(), "src/client/display-main.ts"), "utf8");
+
+    expect(displayMain).toContain("switchDisplayRoom");
+    expect(displayMain).toContain("app.switchDataSource(apiClientForRoom(slug), realtimeClientForRoom(slug))");
+    expect(displayMain).toContain('adminOpenButton.href = fixedPagePath("admin")');
+    expect(displayMain).not.toContain("window.location.replace(roomPagePath");
+    expect(displayMain).not.toContain("window.location.href = roomPagePath");
+    expect(displayMain).not.toContain('roomPagePath(selectedSlug, "admin")');
   });
 
   it("includes water, steam, high fire, and enhanced lightning progress styles", () => {

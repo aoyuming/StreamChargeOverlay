@@ -6,6 +6,8 @@ describe("SponsorSpeechAudio", () => {
   const originalWindow = (globalThis as { window?: Window }).window;
 
   afterEach(() => {
+    vi.restoreAllMocks();
+
     if (originalAudio) {
       globalThis.Audio = originalAudio;
     } else {
@@ -23,6 +25,7 @@ describe("SponsorSpeechAudio", () => {
     const speak = vi.fn();
     const cancel = vi.fn();
     const audioPlay = vi.fn(() => Promise.reject(new Error("blocked")));
+    const warning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
 
     class FakeAudio {
       public volume = 0;
@@ -62,6 +65,14 @@ describe("SponsorSpeechAudio", () => {
     });
 
     expect(audioPlay).toHaveBeenCalledTimes(1);
+    expect(warning).toHaveBeenCalledWith(
+      "[StreamChargeOverlay][Speech] Browser audio playback failed",
+      expect.objectContaining({
+        id: "speech-1",
+        url: "/speech/speech-1.wav",
+        errorMessage: "blocked"
+      })
+    );
     expect(cancel).toHaveBeenCalledTimes(1);
     expect(speak).toHaveBeenCalledTimes(1);
     expect((speak.mock.calls[0]?.[0] as FakeUtterance | undefined)?.text).toBe("点将 1.9根");

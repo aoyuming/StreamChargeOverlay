@@ -1,12 +1,16 @@
 import type { RoomInfo } from "../../shared/types";
 import { DEFAULT_ROOM_SLUG, normalizeRoomSlug } from "../../shared/RoomSlug";
 
-export type RoomPageKind = "display" | "admin";
+export type RoomPageKind = "display" | "overlay" | "admin";
 
 export const SELECTED_ROOM_STORAGE_KEY = "sponsorOverlaySelectedRoom";
 
 export const roomPagePath = (slug: string, pageKind: RoomPageKind): string => {
   return `/rooms/${encodeURIComponent(slug)}/${pageKind}.html`;
+};
+
+export const fixedPagePath = (pageKind: RoomPageKind): string => {
+  return `/${pageKind}.html`;
 };
 
 export const savedRoomSlug = (storage: Storage): string => {

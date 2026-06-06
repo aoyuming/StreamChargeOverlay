@@ -11,6 +11,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         display: resolve(projectRoot, "display.html"),
+        overlay: resolve(projectRoot, "overlay.html"),
         admin: resolve(projectRoot, "admin.html")
       }
     }

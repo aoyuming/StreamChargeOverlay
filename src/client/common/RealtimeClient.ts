@@ -3,7 +3,7 @@ import type { DerivedAppState } from "../../shared/types";
 import { RoomContext } from "./RoomContext";
 
 type StateListener = (state: DerivedAppState) => void;
-type SocketLike = Pick<Socket, "on">;
+type SocketLike = Pick<Socket, "disconnect" | "on">;
 type SocketFactory = (options: { query: { roomSlug: string } }) => SocketLike;
 
 // Receives server state updates for one room. Page classes decide how to render.
@@ -16,5 +16,9 @@ export class RealtimeClient {
 
   public onStateUpdated(listener: StateListener): void {
     this.socket.on("state:updated", listener);
+  }
+
+  public disconnect(): void {
+    this.socket.disconnect();
   }
 }

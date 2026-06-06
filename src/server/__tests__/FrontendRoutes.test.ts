@@ -21,6 +21,7 @@ describe("frontend routes", () => {
   it("serves built pages through room-scoped routes in production mode", async () => {
     const clientDirectory = await mkdtemp(join(tmpdir(), "sponsor-client-dist-"));
     await writeFile(join(clientDirectory, "display.html"), "<html><title>display production</title></html>");
+    await writeFile(join(clientDirectory, "overlay.html"), "<html><title>overlay production</title></html>");
     await writeFile(join(clientDirectory, "admin.html"), "<html><title>admin production</title></html>");
 
     const app = express();
@@ -40,6 +41,7 @@ describe("frontend routes", () => {
     const baseUrl = `http://127.0.0.1:${address.port}`;
 
     await expect((await fetch(`${baseUrl}/rooms/alpha/display.html`)).text()).resolves.toContain("display production");
+    await expect((await fetch(`${baseUrl}/rooms/alpha/overlay.html`)).text()).resolves.toContain("overlay production");
     await expect((await fetch(`${baseUrl}/rooms/alpha/admin.html`)).text()).resolves.toContain("admin production");
   });
 

@@ -179,7 +179,7 @@ export class RecordListView {
     deleteButton.type = "button";
     deleteButton.dataset.action = "delete-permanent";
     deleteButton.disabled = !this.canManage;
-    deleteButton.textContent = "删除";
+    deleteButton.textContent = mode === "trash" ? "彻底删除" : "删除";
 
     const updateAvatarButton = document.createElement("button");
     updateAvatarButton.className = "ghost-button";
@@ -214,6 +214,7 @@ export class RecordListView {
         amountInput,
         saveButton,
         restoreButton,
+        deleteButton,
         updateAvatarButton,
         pasteAvatarButton,
         clearAvatarButton,

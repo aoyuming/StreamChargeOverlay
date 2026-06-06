@@ -66,7 +66,7 @@ await registerFrontendRoutes({
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`Sponsor overlay server is running: http://localhost:${config.port}/display.html`);
+  console.log(`OBS overlay page: http://localhost:${config.port}/overlay.html`);
+  console.log(`Display page: http://localhost:${config.port}/display.html`);
   console.log(`Admin page: http://localhost:${config.port}/admin.html`);
-  console.log(`Room display example: http://localhost:${config.port}/rooms/${config.defaultRoomSlug}/display.html`);
 });

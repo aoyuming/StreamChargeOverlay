@@ -1,6 +1,7 @@
 import type { SponsorRankingItem } from "../../shared/types";
 import { formatDisplayName, formatRootUnits } from "../../shared/displayUnits";
 import { clearAndAppend } from "../common/dom";
+import { amountRarityClass } from "./amountRarity";
 import { splitPinnedRankingItems } from "./rankingSections";
 
 export class RankingTicker {
@@ -64,7 +65,7 @@ export class RankingTicker {
     avatar.textContent = item.avatarUrl ? "" : this.avatarInitial(item.bossName);
 
     const amount = document.createElement("span");
-    amount.className = "rank-amount";
+    amount.className = `rank-amount amount-rarity ${amountRarityClass(item.totalAmount)}`;
     amount.textContent = formatRootUnits(item.totalAmount);
 
     row.append(badge, avatar, name, amount);

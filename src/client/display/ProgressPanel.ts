@@ -1,5 +1,6 @@
 import type { DerivedAppState, SponsorRecord } from "../../shared/types";
 import { formatDisplayName, formatRootUnits, neutralizePublicText } from "../../shared/displayUnits";
+import { amountRarityClass } from "./amountRarity";
 
 export type ProgressEffect = "ice" | "energy" | "water" | "steam" | "fire" | "inferno" | "lightning";
 
@@ -38,7 +39,7 @@ export class ProgressPanel {
   public constructor(
     private readonly currentBossListElement: HTMLElement,
     private readonly progressTrack: HTMLElement,
-    private readonly progressFill: HTMLElement,
+    private readonly progressFill: HTMLElement | SVGElement,
     private readonly sloganElement: HTMLElement,
     private readonly percentElement: HTMLElement,
     private readonly progressEffects?: ProgressEffectRenderer
@@ -48,8 +49,10 @@ export class ProgressPanel {
     this.renderCurrentSponsors(sponsors);
     this.sloganElement.textContent = neutralizePublicText(state.slogan) || "充能进度";
     this.percentElement.textContent = this.formatChargeGoal(state);
-    this.progressTrack.style.setProperty("--progress", `${state.progressPercent}%`);
-    this.progressFill.style.setProperty("--progress", `${state.progressPercent}%`);
+    const progress = `${state.progressPercent}%`;
+    this.progressTrack.style.setProperty("--progress", progress);
+    this.progressFill.style.setProperty("--progress", progress);
+    this.progressFill.setAttribute("width", progress);
     const effect = progressEffectFor(state.progressPercent);
     this.applyEffect(effect);
     this.progressEffects?.setState(effect, state.progressPercent);
@@ -86,7 +89,10 @@ export class ProgressPanel {
 
   private createBossCard(sponsor: SponsorRecord): HTMLElement {
     const item = this.currentBossListElement.ownerDocument.createElement("li");
-    item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}${sponsor.countsTowardCharge ? "" : " is-program-only"}`;
+    const noteText = neutralizePublicText(sponsor.note);
+    item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}${sponsor.countsTowardCharge ? "" : " is-program-only"}${
+      noteText ? "" : " has-empty-note"
+    }`;
 
     const avatar = this.createAvatarElement(sponsor, "current-boss-avatar");
 
@@ -96,14 +102,14 @@ export class ProgressPanel {
 
     const note = this.currentBossListElement.ownerDocument.createElement("span");
     note.className = "current-boss-note";
-    note.textContent = neutralizePublicText(sponsor.note);
+    note.textContent = noteText;
 
     const program = this.currentBossListElement.ownerDocument.createElement("span");
     program.className = "current-boss-program";
     program.textContent = neutralizePublicText(sponsor.programName || "等待节目");
 
     const amount = this.currentBossListElement.ownerDocument.createElement("span");
-    amount.className = "current-boss-amount";
+    amount.className = `current-boss-amount amount-rarity ${amountRarityClass(sponsor.amount)}`;
     amount.textContent = formatRootUnits(sponsor.amount);
 
     item.append(avatar, name, program, note, amount);
@@ -162,10 +168,6 @@ export class ProgressPanel {
   }
 
   private formatChargeGoal(state: DerivedAppState): string {
-    if (state.goalReached) {
-      return `${formatRootUnits(state.totalAmount)}（已达成，可以开始）`;
-    }
-
-    return `${formatRootUnits(state.totalAmount)}（目标${formatRootUnits(state.targetAmount)}）`;
+    return `${formatRootUnits(state.totalAmount)}（${formatRootUnits(state.targetAmount)}）`;
   }
 }

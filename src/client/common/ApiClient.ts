@@ -83,8 +83,26 @@ export class ApiClient {
     });
   }
 
+  public async deleteAllSponsors(): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath("/sponsors"), {
+      method: "DELETE"
+    });
+  }
+
   public async getSponsorTrash(): Promise<SponsorRecord[]> {
     return this.request<SponsorRecord[]>(this.apiPath("/sponsors/trash"));
+  }
+
+  public async deleteSponsorPermanently(id: string): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/trash/${encodeURIComponent(id)}`), {
+      method: "DELETE"
+    });
+  }
+
+  public async clearSponsorTrash(): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath("/sponsors/trash"), {
+      method: "DELETE"
+    });
   }
 
   public async restoreSponsor(id: string): Promise<DerivedAppState> {

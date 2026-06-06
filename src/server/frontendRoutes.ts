@@ -20,6 +20,7 @@ export const registerFrontendRoutes = async ({
   isProduction
 }: FrontendRouteOptions): Promise<void> => {
   app.get("/rooms/:roomSlug/display.html", rewriteTo("/display.html"));
+  app.get("/rooms/:roomSlug/overlay.html", rewriteTo("/overlay.html"));
   app.get("/rooms/:roomSlug/admin.html", rewriteTo("/admin.html"));
 
   if (isProduction) {

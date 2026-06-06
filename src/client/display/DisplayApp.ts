@@ -19,15 +19,16 @@ export class DisplayApp {
   private readonly rankingTicker: RankingTicker;
   private readonly sponsorBurst: SponsorBurst;
   private readonly stageEffects: StageEffectPlayer;
-  private readonly effectCoordinator = new DisplayEffectCoordinator();
+  private effectCoordinator = new DisplayEffectCoordinator();
   private readonly sponsorSound = new SponsorSound();
   private readonly sponsorSpeech = new SponsorSpeech();
   private readonly sponsorSpeechAudio = new SponsorSpeechAudio();
+  private sourceId = 0;
   private dianjiangTextTimer = 0;
 
   public constructor(
-    private readonly apiClient: ApiClient,
-    private readonly realtimeClient: RealtimeClient,
+    private apiClient: ApiClient,
+    private realtimeClient: RealtimeClient,
     stageEffects?: StageEffectPlayer
   ) {
     this.progressPanel = new ProgressPanel(
@@ -50,8 +51,25 @@ export class DisplayApp {
   }
 
   public async start(): Promise<void> {
-    this.realtimeClient.onStateUpdated((state) => this.render(state));
-    this.render(await this.apiClient.getState());
+    const sourceId = ++this.sourceId;
+    this.realtimeClient.onStateUpdated((state) => {
+      if (sourceId === this.sourceId) {
+        this.render(state);
+      }
+    });
+
+    const state = await this.apiClient.getState();
+    if (sourceId === this.sourceId) {
+      this.render(state);
+    }
+  }
+
+  public async switchDataSource(apiClient: ApiClient, realtimeClient: RealtimeClient): Promise<void> {
+    this.realtimeClient.disconnect();
+    this.apiClient = apiClient;
+    this.realtimeClient = realtimeClient;
+    this.effectCoordinator = new DisplayEffectCoordinator();
+    await this.start();
   }
 
   private render(state: DerivedAppState): void {

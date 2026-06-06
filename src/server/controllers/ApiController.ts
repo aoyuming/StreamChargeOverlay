@@ -71,6 +71,15 @@ export class ApiController {
     app.get("/api/sponsors/trash", this.wrap((request, response) => this.listTrashSponsors(request, response)));
     app.get("/rooms/:roomSlug/api/sponsors/trash", this.wrap((request, response) => this.listTrashSponsors(request, response)));
 
+    app.delete("/api/sponsors/trash", this.wrap((request, response) => this.clearSponsorTrash(request, response)));
+    app.delete("/rooms/:roomSlug/api/sponsors/trash", this.wrap((request, response) => this.clearSponsorTrash(request, response)));
+
+    app.delete("/api/sponsors/trash/:id", this.wrap((request, response) => this.deleteSponsorPermanently(request, response)));
+    app.delete("/rooms/:roomSlug/api/sponsors/trash/:id", this.wrap((request, response) => this.deleteSponsorPermanently(request, response)));
+
+    app.delete("/api/sponsors", this.wrap((request, response) => this.deleteAllSponsors(request, response)));
+    app.delete("/rooms/:roomSlug/api/sponsors", this.wrap((request, response) => this.deleteAllSponsors(request, response)));
+
     app.delete("/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
     app.delete("/rooms/:roomSlug/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
 
@@ -216,6 +225,39 @@ export class ApiController {
     }
 
     response.json(await (await this.serviceFor(request)).listTrashSponsors());
+  }
+
+  private async deleteAllSponsors(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).deleteAllSponsors();
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async deleteSponsorPermanently(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).deleteSponsorPermanently(String(request.params.id ?? ""));
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async clearSponsorTrash(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const state = await (await this.serviceFor(request)).clearSponsorTrash();
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
   }
 
   private async restoreSponsor(request: Request, response: Response): Promise<void> {

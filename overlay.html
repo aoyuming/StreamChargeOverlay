@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="zh-CN" data-overlay-stage-width="1920" data-overlay-stage-height="1080">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080, initial-scale=1" />
+    <title>StreamCharge Overlay 直播叠加层</title>
+  </head>
+  <body>
+    <main class="stream-overlay-shell" aria-label="直播赞助叠加层">
+      <section class="overlay-widget overlay-current-programs" data-overlay-widget="todayPrograms" aria-label="当前大哥节目榜单">
+        <div class="overlay-widget-title">当前大哥节目榜单</div>
+        <div class="current-boss-card">
+          <div class="current-boss-viewport">
+            <ul id="currentBossList" class="current-boss-list"></ul>
+          </div>
+        </div>
+        <div class="overlay-widget-editor-controls">
+          <button type="button" data-overlay-scale-down>-</button>
+          <span data-overlay-scale-value>100%</span>
+          <button type="button" data-overlay-scale-up>+</button>
+        </div>
+        <button class="overlay-resize-handle" type="button" data-overlay-resize-handle aria-label="调整当前大哥节目榜单尺寸"></button>
+      </section>
+
+      <section class="overlay-widget overlay-recent-ranking" data-overlay-widget="recentRanking" aria-label="近两月大哥榜单">
+        <div class="overlay-widget-title">近两月大哥榜单</div>
+        <ol id="rankingPinned" class="ranking-pinned"></ol>
+        <div class="ticker-mask ranking-mask">
+          <ol id="rankingList" class="ranking-list"></ol>
+        </div>
+        <div class="overlay-widget-editor-controls">
+          <button type="button" data-overlay-scale-down>-</button>
+          <span data-overlay-scale-value>100%</span>
+          <button type="button" data-overlay-scale-up>+</button>
+        </div>
+        <button class="overlay-resize-handle" type="button" data-overlay-resize-handle aria-label="调整近两月大哥榜单尺寸"></button>
+      </section>
+
+      <section class="overlay-widget overlay-charge-bar" data-overlay-widget="chargeBar" aria-label="资金充能条">
+        <div id="progressTrack" class="progress-track overlay-progress-track">
+          <svg class="overlay-charge-svg" viewBox="0 0 620 38" preserveAspectRatio="none" aria-hidden="true">
+            <defs>
+            <clipPath id="overlayChargeShapeClip" clipPathUnits="userSpaceOnUse">
+              <polygon points="0 0 620 0 620 38 0 38"></polygon>
+              </clipPath>
+              <linearGradient id="overlayChargeShellGradient" x1="0" y1="0" x2="620" y2="38" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#e9fbff" stop-opacity="0.16"></stop>
+                <stop offset="0.48" stop-color="#ffffff" stop-opacity="0.08"></stop>
+                <stop offset="1" stop-color="#cfeeff" stop-opacity="0.14"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFrameGradient" x1="0" y1="0" x2="620" y2="38" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#8ae8ff"></stop>
+                <stop offset="0.48" stop-color="#fff2a0"></stop>
+                <stop offset="1" stop-color="#ff7040"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFillIce" x1="0" y1="0" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#0b4b86"></stop>
+                <stop offset="0.58" stop-color="#32c8ff"></stop>
+                <stop offset="1" stop-color="#e2fbff"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFillWater" x1="0" y1="0" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#063a66"></stop>
+                <stop offset="0.5" stop-color="#0ab6df"></stop>
+                <stop offset="1" stop-color="#b7fbff"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFillSteam" x1="0" y1="0" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#073a62"></stop>
+                <stop offset="0.56" stop-color="#69e8ff"></stop>
+                <stop offset="1" stop-color="#ff8a47"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFillFire" x1="0" y1="0" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#9a1b18"></stop>
+                <stop offset="0.48" stop-color="#ff5a1f"></stop>
+                <stop offset="0.78" stop-color="#ffbf35"></stop>
+                <stop offset="1" stop-color="#fff0a3"></stop>
+              </linearGradient>
+              <linearGradient id="overlayChargeFillLightning" x1="0" y1="0" x2="620" y2="0" gradientUnits="userSpaceOnUse">
+                <stop offset="0" stop-color="#082b36"></stop>
+                <stop offset="0.32" stop-color="#37eaff"></stop>
+                <stop offset="0.62" stop-color="#f4feff"></stop>
+                <stop offset="1" stop-color="#65dfff"></stop>
+              </linearGradient>
+            </defs>
+            <polygon class="overlay-charge-shell" points="0 0 620 0 620 38 0 38"></polygon>
+            <g clip-path="url(#overlayChargeShapeClip)">
+              <rect class="overlay-charge-trough" x="0" y="0" width="620" height="38"></rect>
+              <rect id="progressFill" class="overlay-charge-fill" x="0" y="0" width="0%" height="38"></rect>
+              <path class="overlay-charge-sheen" d="M6 3H614L600 13H12Z"></path>
+            </g>
+            <polyline class="overlay-charge-bottom-shadow" points="0 37 620 37"></polyline>
+            <polygon class="overlay-charge-frame" points="0 0 620 0 620 38 0 38"></polygon>
+          </svg>
+          <canvas
+            id="progressEffectsCanvas"
+            class="progress-effects-canvas"
+            width="620"
+            height="38"
+            data-progress-effect-mask="overlay-charge"
+            data-progress-effect-shape="rectangle"
+          ></canvas>
+          <span class="overlay-progress-copy">
+            <span id="progressSlogan" class="charge-progress-label">充能进度</span>
+            <strong id="progressPercent" class="charge-percent">0根（目标0根）</strong>
+          </span>
+        </div>
+        <div class="overlay-widget-editor-controls overlay-charge-inline-tools">
+          <div class="overlay-charge-text-actions" aria-label="调整充能条文字大小">
+            <span class="overlay-charge-tool-label">文字</span>
+            <button type="button" data-overlay-scale-down>-</button>
+            <span data-overlay-scale-value>100%</span>
+            <button type="button" data-overlay-scale-up>+</button>
+          </div>
+          <div class="overlay-charge-shape-actions" aria-label="选择充能条形状">
+            <button id="overlayChargeShapeBeveled" type="button" data-overlay-charge-shape="beveled">斜角</button>
+            <button id="overlayChargeShapeTrapezoid" type="button" data-overlay-charge-shape="trapezoid">梯形</button>
+            <button id="overlayChargeShapeRectangle" type="button" data-overlay-charge-shape="rectangle">矩形</button>
+          </div>
+          <div class="overlay-charge-size-actions" aria-label="调整充能条大小">
+            <button id="overlayChargeWidthDown" type="button">宽-</button>
+            <button id="overlayChargeWidthUp" type="button">宽+</button>
+            <button id="overlayChargeHeightDown" type="button">高-</button>
+            <button id="overlayChargeHeightUp" type="button">高+</button>
+          </div>
+          <span id="overlayChargeSizeLabel" class="overlay-charge-size-label">895 x 38</span>
+        </div>
+        <button class="overlay-resize-handle" type="button" data-overlay-resize-handle aria-label="调整充能条尺寸"></button>
+      </section>
+
+      <canvas id="stageEffectsCanvas" class="stage-effects-canvas" width="1920" height="1080"></canvas>
+      <canvas id="stageShaderEffectsCanvas" class="stage-effects-canvas shader-effects-canvas" width="1920" height="1080"></canvas>
+      <canvas id="burstParticles" class="burst-particles" width="1920" height="1080"></canvas>
+      <div id="stageEffectStartText" class="stage-effect-start-text" aria-hidden="true">开始</div>
+      <div id="sponsorBurst" class="sponsor-burst" aria-live="polite">
+        <span class="burst-kicker">新大哥入场</span>
+        <span id="burstAvatar" class="burst-avatar"></span>
+        <strong id="burstTitle"></strong>
+        <em id="burstNote"></em>
+      </div>
+
+      <div id="overlayRoomPanel" class="overlay-room-panel" aria-label="叠加层房间控制">
+        <button id="overlayRoomPanelToggle" class="overlay-room-panel-toggle" type="button" aria-expanded="false">
+          房间：<span id="overlayRoomPanelCurrent">选择房间</span>
+        </button>
+        <div id="overlayRoomList" class="overlay-room-list" role="listbox" aria-label="选择叠加层房间"></div>
+        <div class="overlay-layout-tools" aria-label="排列参数工具">
+          <div class="overlay-layout-actions">
+            <button id="overlayCopyLayoutParams" type="button">复制排列</button>
+            <button id="overlayImportLayoutApply" type="button">导入排列</button>
+            <button id="overlayResetLayoutParams" type="button">恢复默认</button>
+          </div>
+          <input
+            id="overlayImportLayoutInput"
+            class="overlay-layout-import-input"
+            type="text"
+            autocomplete="off"
+            placeholder="粘贴排列参数"
+          />
+          <span id="overlayLayoutPanelMessage" class="overlay-layout-panel-message"></span>
+        </div>
+      </div>
+
+      <div id="overlayEditorToolbar" class="overlay-editor-toolbar" aria-label="叠加层布局编辑工具">
+        <button id="overlaySaveLayout" type="button">保存布局</button>
+        <button id="overlayCopyLayout" type="button">复制 OBS 链接</button>
+        <button id="overlayResetLayout" type="button">重置默认</button>
+        <span id="overlayEditorMessage" class="overlay-editor-message"></span>
+      </div>
+    </main>
+    <script type="module" src="/src/client/overlay-main.ts"></script>
+  </body>
+</html>

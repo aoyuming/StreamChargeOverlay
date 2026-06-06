@@ -50,6 +50,7 @@ class FakeElement {
   public readonly children: FakeElement[] = [];
   public ownerDocument: FakeDocument | undefined;
   public parentElement: FakeElement | null = null;
+  private readonly attributes = new Map<string, string>();
 
   public append(...children: FakeElement[]): void {
     this.children.push(...children);
@@ -58,6 +59,14 @@ class FakeElement {
   public replaceChildren(...children: FakeElement[]): void {
     this.children.length = 0;
     this.children.push(...children);
+  }
+
+  public setAttribute(name: string, value: string): void {
+    this.attributes.set(name, value);
+  }
+
+  public getAttribute(name: string): string | undefined {
+    return this.attributes.get(name);
   }
 }
 
@@ -163,6 +172,7 @@ describe("ProgressPanel", () => {
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
     expect(firstCard.className).toContain("current-boss-row");
     expect(firstCard.className).toContain("is-tier-strong");
+    expect(firstCard.className).not.toContain("has-empty-note");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-name")?.textContent).toBe("New Boss");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-avatar")?.className).toContain("has-image");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.textContent).toContain("6.3");
@@ -172,7 +182,7 @@ describe("ProgressPanel", () => {
     expect((firstCard.children[1] as FakeElement).className).toBe("current-boss-name");
     expect((firstCard.children[2] as FakeElement).className).toBe("current-boss-program");
     expect((firstCard.children[3] as FakeElement).className).toBe("current-boss-note");
-    expect((firstCard.children[4] as FakeElement).className).toBe("current-boss-amount");
+    expect((firstCard.children[4] as FakeElement).className).toContain("current-boss-amount");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-label")).toBeUndefined();
     expect((view.currentBossList.classList as unknown as FakeClassList).has("is-scrolling-slow")).toBe(false);
     expect((view.currentBossList as unknown as FakeElement).children).toHaveLength(2);
@@ -198,8 +208,25 @@ describe("ProgressPanel", () => {
     view.panel.render(state(30), [sponsor({ programName: "visible program", note: "" })]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(firstCard.className).toContain("has-empty-note");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-note")?.textContent).toBe("");
     expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe("visible program");
+  });
+
+  it.each([
+    [0, "amount-rarity-common"],
+    [100, "amount-rarity-advanced"],
+    [200, "amount-rarity-rare"],
+    [300, "amount-rarity-artifact"],
+    [400, "amount-rarity-legendary"],
+    [500, "amount-rarity-epic"]
+  ])("uses DNF amount rarity class for %s current sponsor amount", (amount, className) => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor({ amount })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-amount")?.className).toContain(className);
   });
 
   it("uses a placeholder current boss avatar when no avatar URL exists", () => {
@@ -253,24 +280,27 @@ describe("ProgressPanel", () => {
 
     view.panel.render(state(62.8, { totalAmount: 628, targetAmount: 1000 }), [sponsor()]);
 
-    expect(view.percentElement.textContent).toBe("6.3根（目标10根）");
+    expect(view.percentElement.textContent).toBe("6.3根（10根）");
     expect(view.percentElement.textContent).not.toContain("%");
+    expect(view.percentElement.textContent).not.toContain("目标");
   });
 
-  it("renders a ready message instead of the target once charge reaches the goal", () => {
+  it("keeps the target root units in parentheses once charge reaches the goal", () => {
     const view = createPanel();
 
     view.panel.render(state(100, { totalAmount: 1000, targetAmount: 1000, goalReached: true }), [sponsor()]);
 
-    expect(view.percentElement.textContent).toBe("10根（已达成，可以开始）");
+    expect(view.percentElement.textContent).toBe("10根（10根）");
+    expect(view.percentElement.textContent).not.toContain("已达成目标");
   });
 
-  it("keeps the ready message when charge is above the goal", () => {
+  it("keeps showing only root units in parentheses when charge is above the goal", () => {
     const view = createPanel();
 
     view.panel.render(state(100, { totalAmount: 1200, targetAmount: 1000, goalReached: true }), [sponsor()]);
 
-    expect(view.percentElement.textContent).toBe("12根（已达成，可以开始）");
+    expect(view.percentElement.textContent).toBe("12根（10根）");
+    expect(view.percentElement.textContent).not.toContain("目标");
   });
 
   it("marks non-startup program rows for red display styling", () => {
@@ -298,6 +328,7 @@ describe("ProgressPanel", () => {
 
     expect((view.progressFill.style as unknown as FakeStyle).get("--progress")).toBe("62.8%");
     expect((view.progressTrack.style as unknown as FakeStyle).get("--progress")).toBe("62.8%");
+    expect((view.progressFill as unknown as FakeElement).getAttribute("width")).toBe("62.8%");
   });
 
   it("renders the campaign slogan to the left of the charge summary", () => {

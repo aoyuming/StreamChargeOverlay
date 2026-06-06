@@ -68,4 +68,15 @@ describe("DisplayStageScaler", () => {
     expect(root.style.get("--stage-scale")).toBe("1.0000");
     expect(root.style.get("--stage-offset-x")).toBe("0px");
   });
+
+  it("supports a 1920 by 1080 overlay stage without changing the legacy display default", () => {
+    const root = createRoot();
+    const viewport = createViewport(1280, 720);
+
+    new DisplayStageScaler(root, viewport, { width: 1920, height: 1080 }).start();
+
+    expect(root.classList.has("is-preview-fit")).toBe(true);
+    expect(root.style.get("--stage-scale")).toBe("0.6667");
+    expect(root.style.get("--stage-offset-x")).toBe("0px");
+  });
 });

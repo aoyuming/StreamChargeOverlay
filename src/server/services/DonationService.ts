@@ -94,11 +94,73 @@ export class DonationService {
     return this.deriveState(nextState);
   }
 
+  public async deleteAllSponsors(): Promise<DerivedAppState> {
+    const state = await this.loadState();
+    const deletedAt = Date.now();
+    let changed = false;
+    const nextState = this.normalizeChargeConsumption({
+      ...state,
+      sponsors: state.sponsors.map((record) => {
+        if (this.isDeleted(record)) {
+          return record;
+        }
+
+        changed = true;
+        return { ...record, deletedAt };
+      })
+    });
+
+    if (!changed) {
+      return this.deriveState(nextState);
+    }
+
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
   public async listTrashSponsors(): Promise<SponsorRecord[]> {
     const state = await this.loadState();
     return state.sponsors
       .filter((record) => this.isDeleted(record))
       .sort((left, right) => (right.deletedAt ?? 0) - (left.deletedAt ?? 0));
+  }
+
+  public async deleteSponsorPermanently(id: string): Promise<DerivedAppState> {
+    const state = await this.loadState();
+    const record = state.sponsors.find((item) => item.id === id && this.isDeleted(item));
+    if (!record) {
+      throw new Error("回收站记录不存在");
+    }
+
+    if (record.avatarUrl) {
+      await this.options.avatarStorage?.clearAvatar(record.avatarUrl);
+    }
+    const nextState = this.normalizeChargeConsumption({
+      ...state,
+      sponsors: state.sponsors.filter((item) => item.id !== id)
+    });
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
+  public async clearSponsorTrash(): Promise<DerivedAppState> {
+    const state = await this.loadState();
+    const trashRecords = state.sponsors.filter((record) => this.isDeleted(record));
+    if (trashRecords.length === 0) {
+      return this.deriveState(state);
+    }
+
+    await Promise.all(
+      trashRecords
+        .filter((record) => record.avatarUrl)
+        .map((record) => this.options.avatarStorage?.clearAvatar(record.avatarUrl))
+    );
+    const nextState = this.normalizeChargeConsumption({
+      ...state,
+      sponsors: state.sponsors.filter((record) => !this.isDeleted(record))
+    });
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
   }
 
   public async restoreSponsor(id: string): Promise<DerivedAppState> {

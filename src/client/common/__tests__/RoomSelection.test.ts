@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { nextRoomSlug, preferredRoomSlug } from "../RoomSelection";
+import { fixedPagePath, nextRoomSlug, preferredRoomSlug } from "../RoomSelection";
 
 const rooms = [
   { slug: "wenrou", name: "温柔房", createdAt: 1 },
@@ -20,5 +20,11 @@ describe("RoomSelection", () => {
     expect(nextRoomSlug(rooms, "wenrou")).toBe("liyong");
     expect(nextRoomSlug(rooms, "room-59")).toBe("wenrou");
     expect(nextRoomSlug(rooms, "default")).toBe("wenrou");
+  });
+
+  it("provides fixed public page paths that do not expose room slugs", () => {
+    expect(fixedPagePath("admin")).toBe("/admin.html");
+    expect(fixedPagePath("display")).toBe("/display.html");
+    expect(fixedPagePath("overlay")).toBe("/overlay.html");
   });
 });

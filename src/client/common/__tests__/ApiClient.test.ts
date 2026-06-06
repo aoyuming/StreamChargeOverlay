@@ -99,6 +99,30 @@ describe("ApiClient", () => {
     );
   });
 
+  it("uses admin deletion endpoints for bulk delete and recycle-bin cleanup", async () => {
+    const client = new ApiClient(new RoomContext("alpha"));
+
+    await client.deleteAllSponsors();
+    await client.deleteSponsorPermanently("trash id");
+    await client.clearSponsorTrash();
+
+    expect(fetch).toHaveBeenNthCalledWith(
+      1,
+      "/rooms/alpha/api/sponsors",
+      expect.objectContaining({ method: "DELETE" })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      2,
+      "/rooms/alpha/api/sponsors/trash/trash%20id",
+      expect.objectContaining({ method: "DELETE" })
+    );
+    expect(fetch).toHaveBeenNthCalledWith(
+      3,
+      "/rooms/alpha/api/sponsors/trash",
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
   it("uses global room and auth endpoints even on room-scoped pages", async () => {
     const client = new ApiClient(new RoomContext("alpha"));
 

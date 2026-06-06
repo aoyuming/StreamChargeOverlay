@@ -49,6 +49,15 @@ describe("ShaderEffectLayer", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("edgeSpark");
   });
 
+  it("parks edge-weighted full-stage masks and applies them only to fire stages", () => {
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("stageElementMask");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("stageGlassSweep");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("isFullStage");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("centerRelief");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("fireStageTreatment");
+    expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("step(3.5, u_effect) * (1.0 - step(5.5, u_effect))");
+  });
+
   it("boosts inferno, fire, ice, and lightning shader intensity markers", () => {
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("STAGE_INFERNO_INTENSITY");
     expect(DISPLAY_EFFECT_FRAGMENT_SHADER).toContain("PROGRESS_EFFECT_BOOST");

@@ -127,6 +127,131 @@ describe("ProgressEffectLayer", () => {
     expect(clipIndex).toBeGreaterThan(rectIndex);
   });
 
+  it("clips overlay charge effects to the same trapezoid as the SVG bar before charged width", () => {
+    let animationCallback: FrameRequestCallback | undefined;
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        animationCallback ??= callback;
+        return 1;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      dataset: { progressEffectMask: "overlay-charge" },
+      getBoundingClientRect: () => ({ width: 620, height: 38 }),
+      getContext: () => context,
+      height: 38,
+      width: 620
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new ProgressEffectLayer(canvas);
+    layer.setState("fire", 50);
+    animationCallback?.(100);
+
+    const trapezoidMoveIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["moveTo", 0, 0]));
+    const topRightIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 620, 0]));
+    const bottomRightIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 596, 38]));
+    const bottomLeftIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 24, 38]));
+    const rectIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["rect", 0, 0, 310, 38]));
+    const clipIndices = context.calls.reduce<number[]>((indices, call, index) => {
+      if (call[0] === "clip") {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+
+    expect(trapezoidMoveIndex).toBeGreaterThan(-1);
+    expect(topRightIndex).toBeGreaterThan(trapezoidMoveIndex);
+    expect(bottomRightIndex).toBeGreaterThan(topRightIndex);
+    expect(bottomLeftIndex).toBeGreaterThan(bottomRightIndex);
+    expect(clipIndices).toHaveLength(2);
+    expect(clipIndices[0]).toBeGreaterThan(bottomLeftIndex);
+    expect(clipIndices[0]).toBeLessThan(rectIndex);
+    expect(clipIndices[1]).toBeGreaterThan(rectIndex);
+  });
+
+  it("uses the normal charged-width clip when the overlay charge shape is rectangle", () => {
+    let animationCallback: FrameRequestCallback | undefined;
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        animationCallback ??= callback;
+        return 1;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      dataset: { progressEffectMask: "overlay-charge", progressEffectShape: "rectangle" },
+      getBoundingClientRect: () => ({ width: 620, height: 38 }),
+      getContext: () => context,
+      height: 38,
+      width: 620
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new ProgressEffectLayer(canvas);
+    layer.setState("fire", 50);
+    animationCallback?.(100);
+
+    const bottomRightIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 596, 38]));
+    const bottomLeftIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 24, 38]));
+    const rectIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["rect", 0, 0, 310, 38]));
+    const clipIndices = context.calls.reduce<number[]>((indices, call, index) => {
+      if (call[0] === "clip") {
+        indices.push(index);
+      }
+      return indices;
+    }, []);
+
+    expect(bottomRightIndex).toBe(-1);
+    expect(bottomLeftIndex).toBe(-1);
+    expect(rectIndex).toBeGreaterThan(-1);
+    expect(clipIndices).toHaveLength(1);
+    expect(clipIndices[0]).toBeGreaterThan(rectIndex);
+  });
+
+  it("clips overlay charge effects to the beveled six-sided bar shape", () => {
+    let animationCallback: FrameRequestCallback | undefined;
+    (globalThis as { window?: Partial<Window> }).window = {
+      addEventListener: () => undefined,
+      devicePixelRatio: 1,
+      requestAnimationFrame: (callback: FrameRequestCallback) => {
+        animationCallback ??= callback;
+        return 1;
+      }
+    };
+    const context = new FakeContext();
+    const canvas = {
+      dataset: { progressEffectMask: "overlay-charge", progressEffectShape: "beveled" },
+      getBoundingClientRect: () => ({ width: 620, height: 38 }),
+      getContext: () => context,
+      height: 38,
+      width: 620
+    } as unknown as HTMLCanvasElement;
+
+    const layer = new ProgressEffectLayer(canvas);
+    layer.setState("fire", 50);
+    animationCallback?.(100);
+
+    const topLeftIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["moveTo", 22, 0]));
+    const topRightIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 598, 0]));
+    const rightPointIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 620, 19]));
+    const bottomRightIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 598, 38]));
+    const bottomLeftIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 22, 38]));
+    const leftPointIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["lineTo", 0, 19]));
+    const rectIndex = context.calls.findIndex((call) => JSON.stringify(call) === JSON.stringify(["rect", 0, 0, 310, 38]));
+
+    expect(topLeftIndex).toBeGreaterThan(-1);
+    expect(topRightIndex).toBeGreaterThan(topLeftIndex);
+    expect(rightPointIndex).toBeGreaterThan(topRightIndex);
+    expect(bottomRightIndex).toBeGreaterThan(rightPointIndex);
+    expect(bottomLeftIndex).toBeGreaterThan(bottomRightIndex);
+    expect(leftPointIndex).toBeGreaterThan(bottomLeftIndex);
+    expect(rectIndex).toBeGreaterThan(leftPointIndex);
+  });
+
   it("keeps inferno flame motion slower between nearby frames", () => {
     const renderFrame = (time: number): unknown[][] => {
       let animationCallback: FrameRequestCallback | undefined;

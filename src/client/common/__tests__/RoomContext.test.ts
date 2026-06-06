@@ -9,6 +9,7 @@ describe("RoomContext", () => {
 
   it("extracts the room slug from room-scoped pages", () => {
     expect(RoomContext.fromPath("/rooms/alpha/display.html").slug).toBe("alpha");
+    expect(RoomContext.fromPath("/rooms/alpha/overlay.html").slug).toBe("alpha");
     expect(RoomContext.fromPath("/rooms/boss-room/admin.html").slug).toBe("boss-room");
   });
 

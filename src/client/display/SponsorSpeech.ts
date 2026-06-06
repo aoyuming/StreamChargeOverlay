@@ -12,15 +12,29 @@ export class SponsorSpeech {
 
   public speak(record: SponsorRecord): void {
     if (!this.canSpeak()) {
+      console.warn("[StreamChargeOverlay][Speech] Browser speech synthesis unavailable", {
+        sponsorId: record.id
+      });
       return;
     }
 
-    const utterance = new this.speechWindow.SpeechSynthesisUtterance!(this.buildMessage(record));
+    const message = this.buildMessage(record);
+    const utterance = new this.speechWindow.SpeechSynthesisUtterance!(message);
     utterance.lang = "zh-CN";
     utterance.rate = 1.08;
     utterance.pitch = 1.05;
     utterance.volume = 1;
+    utterance.onerror = (event) => {
+      console.warn("[StreamChargeOverlay][Speech] Browser speech synthesis failed", {
+        sponsorId: record.id,
+        error: event.error
+      });
+    };
 
+    console.info("[StreamChargeOverlay][Speech] Speaking with browser speech synthesis", {
+      sponsorId: record.id,
+      textLength: message.length
+    });
     this.speechWindow.speechSynthesis!.cancel();
     this.speechWindow.speechSynthesis!.speak(utterance);
   }

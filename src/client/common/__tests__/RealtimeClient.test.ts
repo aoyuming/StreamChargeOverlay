@@ -4,7 +4,7 @@ import { RoomContext } from "../RoomContext";
 
 describe("RealtimeClient", () => {
   it("connects default room clients without changing legacy behavior", () => {
-    const ioFactory = vi.fn(() => ({ on: vi.fn() }));
+    const ioFactory = vi.fn(() => ({ disconnect: vi.fn(), on: vi.fn() }));
 
     new RealtimeClient(new RoomContext("default"), ioFactory);
 
@@ -12,10 +12,19 @@ describe("RealtimeClient", () => {
   });
 
   it("connects room-scoped clients with the selected room slug", () => {
-    const ioFactory = vi.fn(() => ({ on: vi.fn() }));
+    const ioFactory = vi.fn(() => ({ disconnect: vi.fn(), on: vi.fn() }));
 
     new RealtimeClient(new RoomContext("alpha"), ioFactory);
 
     expect(ioFactory).toHaveBeenCalledWith({ query: { roomSlug: "alpha" } });
+  });
+
+  it("disconnects the active room socket before switching data sources", () => {
+    const socket = { disconnect: vi.fn(), on: vi.fn() };
+    const client = new RealtimeClient(new RoomContext("alpha"), () => socket);
+
+    client.disconnect();
+
+    expect(socket.disconnect).toHaveBeenCalledTimes(1);
   });
 });

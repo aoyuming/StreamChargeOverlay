@@ -7,9 +7,7 @@ import {
   preferredRoomSlug,
   rememberRoomSlug,
   renderRoomOptions,
-  roomPagePath,
-  savedRoomSlug,
-  SELECTED_ROOM_STORAGE_KEY
+  savedRoomSlug
 } from "../common/RoomSelection";
 import { AdminSummaryView } from "./AdminSummaryView";
 import { RecordListView } from "./RecordListView";
@@ -25,6 +23,8 @@ export class AdminApp {
   private readonly trashPanel: HTMLElement;
   private readonly startDianjiangButton: HTMLButtonElement;
   private readonly removeTodaySponsorsButton: HTMLButtonElement;
+  private readonly deleteAllSponsorsButton: HTMLButtonElement;
+  private readonly clearTrashButton: HTMLButtonElement;
   private readonly authForm: HTMLFormElement;
   private readonly authPasswordInput: HTMLInputElement;
   private readonly authStatus: HTMLElement;
@@ -38,10 +38,12 @@ export class AdminApp {
   private session: AuthSession | null = null;
   private rooms: RoomInfo[] = [];
   private latestState: DerivedAppState | null = null;
+  private trashCount = 0;
+  private sourceId = 0;
 
   public constructor(
-    private readonly apiClient: ApiClient,
-    private readonly realtimeClient: RealtimeClient
+    private apiClient: ApiClient,
+    private realtimeClient: RealtimeClient
   ) {
     this.sponsorForm = new SponsorFormController(
       queryRequired("#sponsorForm"),
@@ -59,6 +61,8 @@ export class AdminApp {
     this.trashPanel = queryRequired("#trashPanel");
     this.startDianjiangButton = queryRequired("#startDianjiangButton");
     this.removeTodaySponsorsButton = queryRequired("#removeTodaySponsorsButton");
+    this.deleteAllSponsorsButton = queryRequired("#deleteAllSponsorsButton");
+    this.clearTrashButton = queryRequired("#clearTrashButton");
     this.authForm = queryRequired("#authForm");
     this.authPasswordInput = queryRequired("#authPasswordInput");
     this.authStatus = queryRequired("#authStatus");
@@ -74,7 +78,7 @@ export class AdminApp {
   public async start(): Promise<void> {
     this.authForm.addEventListener("submit", (event) => void this.login(event));
     this.logoutButton.addEventListener("click", () => void this.logout());
-    this.roomSelect.addEventListener("change", () => this.changeRoom());
+    this.roomSelect.addEventListener("change", () => void this.changeRoom());
     this.roomForm.addEventListener("submit", (event) => void this.createRoom(event));
     this.deleteRoomButton.addEventListener("click", () => void this.deleteSelectedRoom());
     this.updateRoomViewerPasswordButton.addEventListener("click", () => void this.updateRoomViewerPassword());
@@ -99,6 +103,14 @@ export class AdminApp {
       void this.apiClient.removeTodaySponsors();
     });
 
+    this.deleteAllSponsorsButton.addEventListener("click", () => {
+      void this.deleteAllSponsors();
+    });
+
+    this.clearTrashButton.addEventListener("click", () => {
+      void this.clearSponsorTrash();
+    });
+
     this.recordListView.onRemoveFromToday(async (id) => {
       await this.apiClient.removeSponsorFromToday(id);
     });
@@ -116,8 +128,27 @@ export class AdminApp {
     });
 
     this.recordListView.onDeletePermanently(async (id) => {
-      await this.apiClient.deleteSponsor(id);
-      await this.refreshTrash();
+      try {
+        const state = await this.apiClient.deleteSponsor(id);
+        this.render(state);
+        await this.refreshTrash();
+      } catch (error) {
+        this.authStatus.textContent = error instanceof Error ? error.message : "删除失败";
+      }
+    });
+
+    this.trashListView.onDeletePermanently(async (id) => {
+      if (!window.confirm("确认彻底删除这条回收站记录吗？此操作不可恢复。")) {
+        return;
+      }
+
+      try {
+        const state = await this.apiClient.deleteSponsorPermanently(id);
+        this.render(state);
+        await this.refreshTrash();
+      } catch (error) {
+        this.authStatus.textContent = error instanceof Error ? error.message : "彻底删除失败";
+      }
     });
 
     this.trashListView.onRestoreSponsor(async (id) => {
@@ -134,43 +165,49 @@ export class AdminApp {
     });
 
     this.session = await this.apiClient.getAuthSession();
-    if (await this.loadRooms()) {
-      return;
-    }
-
-    this.applyRole();
-    this.realtimeClient.onStateUpdated((state) => this.render(state));
-    this.render(await this.apiClient.getState());
+    await this.loadRooms();
   }
 
   private render(state: DerivedAppState): void {
     this.latestState = state;
-    this.sponsorForm.setKnownSponsors(state.sponsors);
+    const canViewRecords = this.session !== null;
+    const visibleSponsors = canViewRecords ? state.sponsors : [];
+    const visibleProgramQueue = canViewRecords ? state.programQueue : [];
+    this.sponsorForm.setKnownSponsors(visibleSponsors);
     this.summaryView.render(state);
-    this.recordListView.render(state.sponsors, state.programQueue);
+    this.recordListView.render(visibleSponsors, visibleProgramQueue);
     const canOperate = this.sessionCanOperateCurrentRoom();
     const canManage = this.session?.role === "admin";
     this.startDianjiangButton.disabled = !canOperate || state.totalAmount <= 0;
     this.startDianjiangButton.textContent = state.goalReached ? "开始点将" : "开始点将（当前不足）";
     this.removeTodaySponsorsButton.disabled = !canManage || state.programQueue.length === 0;
+    this.deleteAllSponsorsButton.disabled = !canManage || visibleSponsors.length === 0;
+    this.clearTrashButton.disabled = !canManage || this.trashCount === 0;
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
     this.roomViewerPasswordInput.disabled = !canManage;
     this.updateRoomViewerPasswordButton.disabled = !canManage || !this.roomSelect.value;
     this.trashPanel.hidden = !canManage;
     this.trashListView.setCanManage(canManage);
     if (canManage) {
-      void this.refreshTrash();
+      void this.refreshTrash(this.sourceId);
     } else {
+      this.trashCount = 0;
+      this.clearTrashButton.disabled = true;
       this.trashListView.renderTrash([]);
     }
   }
 
-  private async refreshTrash(): Promise<void> {
+  private async refreshTrash(sourceId = this.sourceId): Promise<void> {
     if (this.session?.role !== "admin") {
       return;
     }
 
-    this.trashListView.renderTrash(await this.apiClient.getSponsorTrash());
+    const trash = await this.apiClient.getSponsorTrash();
+    if (sourceId === this.sourceId) {
+      this.trashCount = trash.length;
+      this.clearTrashButton.disabled = this.session?.role !== "admin" || trash.length === 0;
+      this.trashListView.renderTrash(trash);
+    }
   }
 
   private async login(event: SubmitEvent): Promise<void> {
@@ -196,30 +233,24 @@ export class AdminApp {
     }
   }
 
-  private async loadRooms(): Promise<boolean> {
+  private async loadRooms(): Promise<void> {
     this.rooms = await this.apiClient.getRooms();
     const currentSlug = RoomContext.fromPath(window.location.pathname).slug;
     const selectedSlug = preferredRoomSlug(this.rooms, currentSlug, savedRoomSlug(window.localStorage));
 
-    if (selectedSlug !== currentSlug && selectedSlug !== "default") {
-      rememberRoomSlug(window.localStorage, selectedSlug);
-      window.location.replace(roomPagePath(selectedSlug, "admin"));
-      return true;
-    }
-
     rememberRoomSlug(window.localStorage, selectedSlug);
     renderRoomOptions(this.roomSelect, this.rooms, selectedSlug);
-    return false;
+    await this.switchDataSource(selectedSlug);
   }
 
-  private changeRoom(): void {
+  private async changeRoom(): Promise<void> {
     const slug = this.roomSelect.value;
     if (!slug) {
       return;
     }
 
     rememberRoomSlug(window.localStorage, slug);
-    window.location.href = roomPagePath(slug, "admin");
+    await this.switchDataSource(slug);
   }
 
   private async createRoom(event: SubmitEvent): Promise<void> {
@@ -227,7 +258,9 @@ export class AdminApp {
     const room = await this.apiClient.createRoom(this.roomNameInput.value);
     this.roomNameInput.value = "";
     rememberRoomSlug(window.localStorage, room.slug);
-    window.location.href = roomPagePath(room.slug, "admin");
+    this.rooms = await this.apiClient.getRooms();
+    renderRoomOptions(this.roomSelect, this.rooms, room.slug);
+    await this.switchDataSource(room.slug);
   }
 
   private async deleteSelectedRoom(): Promise<void> {
@@ -237,9 +270,40 @@ export class AdminApp {
     }
 
     this.rooms = await this.apiClient.deleteRoom(slug);
-    window.localStorage.removeItem(SELECTED_ROOM_STORAGE_KEY);
     const nextRoom = this.rooms[0];
-    window.location.href = nextRoom ? roomPagePath(nextRoom.slug, "admin") : "/admin.html";
+    const nextSlug = nextRoom?.slug ?? "default";
+    rememberRoomSlug(window.localStorage, nextSlug);
+    renderRoomOptions(this.roomSelect, this.rooms, nextSlug);
+    await this.switchDataSource(nextSlug);
+  }
+
+  private async deleteAllSponsors(): Promise<void> {
+    const count = this.latestState?.sponsors.length ?? 0;
+    if (count === 0 || !window.confirm(`确认一键删除当前房间的 ${count} 条赞助记录吗？记录会先进入回收站。`)) {
+      return;
+    }
+
+    try {
+      const state = await this.apiClient.deleteAllSponsors();
+      this.render(state);
+      await this.refreshTrash();
+    } catch (error) {
+      this.authStatus.textContent = error instanceof Error ? error.message : "一键删除失败";
+    }
+  }
+
+  private async clearSponsorTrash(): Promise<void> {
+    if (this.trashCount === 0 || !window.confirm(`确认清空回收站的 ${this.trashCount} 条记录吗？此操作不可恢复。`)) {
+      return;
+    }
+
+    try {
+      const state = await this.apiClient.clearSponsorTrash();
+      this.render(state);
+      await this.refreshTrash();
+    } catch (error) {
+      this.authStatus.textContent = error instanceof Error ? error.message : "清空回收站失败";
+    }
   }
 
   private async updateRoomViewerPassword(): Promise<void> {
@@ -255,6 +319,38 @@ export class AdminApp {
     this.authStatus.textContent = "本房间普通密码已更新";
   }
 
+  private async switchDataSource(roomSlug: string): Promise<void> {
+    rememberRoomSlug(window.localStorage, roomSlug);
+    renderRoomOptions(this.roomSelect, this.rooms, roomSlug);
+    this.realtimeClient.disconnect();
+    this.apiClient = this.apiClientForRoom(roomSlug);
+    this.realtimeClient = this.realtimeClientForRoom(roomSlug);
+    this.latestState = null;
+    this.trashCount = 0;
+    this.clearTrashButton.disabled = true;
+    const sourceId = ++this.sourceId;
+
+    this.applyRole();
+    this.realtimeClient.onStateUpdated((state) => {
+      if (sourceId === this.sourceId) {
+        this.render(state);
+      }
+    });
+
+    const state = await this.apiClient.getState();
+    if (sourceId === this.sourceId) {
+      this.render(state);
+    }
+  }
+
+  private apiClientForRoom(roomSlug: string): ApiClient {
+    return new ApiClient(new RoomContext(roomSlug));
+  }
+
+  private realtimeClientForRoom(roomSlug: string): RealtimeClient {
+    return new RealtimeClient(new RoomContext(roomSlug));
+  }
+
   private applyRole(): void {
     const canAdd = this.sessionCanOperateCurrentRoom();
     const canOperate = canAdd;
@@ -264,6 +360,8 @@ export class AdminApp {
     this.recordListView.setCanManage(canManage);
     this.trashListView.setCanManage(canManage);
     this.trashPanel.hidden = !canManage;
+    this.deleteAllSponsorsButton.disabled = !canManage || !this.latestState?.sponsors.length;
+    this.clearTrashButton.disabled = !canManage || this.trashCount === 0;
     this.roomForm.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button").forEach((element) => {
       element.disabled = !canManage;
     });
@@ -289,6 +387,6 @@ export class AdminApp {
   }
 
   private currentRoomSlug(): string {
-    return this.roomSelect.value || RoomContext.fromPath(window.location.pathname).slug;
+    return this.roomSelect.value || savedRoomSlug(window.localStorage);
   }
 }

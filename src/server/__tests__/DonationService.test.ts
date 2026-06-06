@@ -448,6 +448,63 @@ describe("DonationService", () => {
     expect(stored.sponsors.find((item) => item.id === "delete-me")?.deletedAt).toBe(now);
   });
 
+  it("moves all active sponsor records into the recycle bin", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-06-05T12:05:00+08:00").getTime();
+    vi.setSystemTime(now);
+    const repository = new MemoryStateRepository({
+      targetAmount: 300,
+      sponsors: [
+        baseRecord({ id: "delete-a", amount: 120, createdAt: now - 3 }),
+        baseRecord({ id: "delete-b", amount: 220, createdAt: now - 2 }),
+        baseRecord({ id: "existing-trash", amount: 330, deletedAt: now - 100, createdAt: now - 1 } as any)
+      ]
+    });
+    const service = new DonationService(repository);
+
+    const state = await service.deleteAllSponsors();
+    const stored = await repository.load();
+
+    expect(state.sponsors).toEqual([]);
+    expect(state.totalAmount).toBe(0);
+    expect(stored.sponsors.map((record) => [record.id, record.deletedAt])).toEqual([
+      ["delete-a", now],
+      ["delete-b", now],
+      ["existing-trash", now - 100]
+    ]);
+  });
+
+  it("permanently deletes one recycle-bin record or clears the whole recycle bin", async () => {
+    vi.useFakeTimers();
+    const now = new Date("2026-06-05T12:10:00+08:00").getTime();
+    vi.setSystemTime(now);
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn()
+    };
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "keep", amount: 120, createdAt: 1 }),
+        baseRecord({ id: "trash-a", amount: 220, avatarUrl: "/avatars/alpha/trash-a.webp", deletedAt: now - 2, createdAt: 2 } as any),
+        baseRecord({ id: "trash-b", amount: 330, avatarUrl: "/avatars/alpha/trash-b.webp", deletedAt: now - 1, createdAt: 3 } as any)
+      ]
+    });
+    const service = new (DonationService as any)(repository, {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+
+    const afterOne = await service.deleteSponsorPermanently("trash-a");
+    const afterClear = await service.clearSponsorTrash();
+    const stored = await repository.load();
+
+    expect(afterOne.sponsors.map((record: SponsorRecord) => record.id)).toEqual(["keep"]);
+    expect(afterClear.sponsors.map((record: SponsorRecord) => record.id)).toEqual(["keep"]);
+    expect(stored.sponsors.map((record) => record.id)).toEqual(["keep"]);
+    expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/trash-a.webp");
+    expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/trash-b.webp");
+  });
+
   it("purges recycle-bin sponsor records after seven days and clears their avatars", async () => {
     const now = new Date("2026-06-12T12:00:00+08:00").getTime();
     vi.useFakeTimers();

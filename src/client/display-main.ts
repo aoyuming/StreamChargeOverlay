@@ -4,11 +4,11 @@ import { queryRequired } from "./common/dom";
 import { RealtimeClient } from "./common/RealtimeClient";
 import { RoomContext } from "./common/RoomContext";
 import {
+  fixedPagePath,
   nextRoomSlug,
   preferredRoomSlug,
   rememberRoomSlug,
   renderRoomOptions,
-  roomPagePath,
   savedRoomSlug
 } from "./common/RoomSelection";
 import { DisplayApp } from "./display/DisplayApp";
@@ -17,43 +17,60 @@ import { DisplayStageScaler } from "./display/DisplayStageScaler";
 new DisplayStageScaler(document.documentElement, window).start();
 
 const roomContext = RoomContext.fromPath(window.location.pathname);
-const apiClient = new ApiClient(roomContext);
 const roomSelect = queryRequired<HTMLSelectElement>("#roomSelect");
 const roomCycleButton = queryRequired<HTMLButtonElement>("#roomCycleButton");
 const adminOpenButton = queryRequired<HTMLAnchorElement>("#adminOpenButton");
-const rooms = await apiClient.getRooms();
+const rooms = await new ApiClient(roomContext).getRooms();
 const selectedSlug = preferredRoomSlug(rooms, roomContext.slug, savedRoomSlug(window.localStorage));
+let activeRoomSlug = selectedSlug;
 
-if (selectedSlug !== roomContext.slug && selectedSlug !== "default") {
-  rememberRoomSlug(window.localStorage, selectedSlug);
-  window.location.replace(roomPagePath(selectedSlug, "display"));
-} else {
-  rememberRoomSlug(window.localStorage, selectedSlug);
+rememberRoomSlug(window.localStorage, selectedSlug);
+renderDisplayRoomControls(selectedSlug);
+adminOpenButton.href = fixedPagePath("admin");
+
+const app = new DisplayApp(apiClientForRoom(selectedSlug), realtimeClientForRoom(selectedSlug));
+
+roomCycleButton.addEventListener("click", () => {
+  const slug = nextRoomSlug(rooms, activeRoomSlug);
+  if (slug === "default") {
+    return;
+  }
+
+  void switchDisplayRoom(slug);
+});
+
+roomSelect.addEventListener("change", () => {
+  const slug = roomSelect.value;
+  if (!slug) {
+    return;
+  }
+
+  void switchDisplayRoom(slug);
+});
+
+await app.start();
+
+function apiClientForRoom(roomSlug: string): ApiClient {
+  return new ApiClient(new RoomContext(roomSlug));
+}
+
+function realtimeClientForRoom(roomSlug: string): RealtimeClient {
+  return new RealtimeClient(new RoomContext(roomSlug));
+}
+
+function renderDisplayRoomControls(selectedSlug: string): void {
   renderRoomOptions(roomSelect, rooms, selectedSlug);
   const selectedRoom = rooms.find((room) => room.slug === selectedSlug);
   roomCycleButton.textContent = selectedRoom ? `房间：${selectedRoom.name}` : "选择房间";
-  adminOpenButton.href = roomPagePath(selectedSlug, "admin");
+}
 
-  roomCycleButton.addEventListener("click", () => {
-    const slug = nextRoomSlug(rooms, roomSelect.value || selectedSlug);
-    if (slug === "default") {
-      return;
-    }
+async function switchDisplayRoom(slug: string): Promise<void> {
+  if (!rooms.some((room) => room.slug === slug)) {
+    return;
+  }
 
-    rememberRoomSlug(window.localStorage, slug);
-    window.location.href = roomPagePath(slug, "display");
-  });
-
-  roomSelect.addEventListener("change", () => {
-    const slug = roomSelect.value;
-    if (!slug) {
-      return;
-    }
-
-    rememberRoomSlug(window.localStorage, slug);
-    window.location.href = roomPagePath(slug, "display");
-  });
-
-  const app = new DisplayApp(apiClient, new RealtimeClient(roomContext));
-  await app.start();
+  activeRoomSlug = slug;
+  rememberRoomSlug(window.localStorage, slug);
+  renderDisplayRoomControls(slug);
+  await app.switchDataSource(apiClientForRoom(slug), realtimeClientForRoom(slug));
 }

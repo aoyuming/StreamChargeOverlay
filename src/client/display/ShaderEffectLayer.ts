@@ -81,6 +81,30 @@ float chargedEdgeMask(vec2 uv) {
   return max(frontEdge, max(topEdge, bottomEdge) * 0.62);
 }
 
+float centerRelief(vec2 uv) {
+  vec2 centered = (uv - vec2(0.5, 0.52)) * vec2(1.0, 0.78);
+  return smoothstep(0.18, 0.62, length(centered));
+}
+
+float stageElementMask(vec2 uv) {
+  float leftEdge = 1.0 - smoothstep(0.0, 0.22, uv.x);
+  float rightEdge = 1.0 - smoothstep(0.0, 0.22, 1.0 - uv.x);
+  float topEdge = 1.0 - smoothstep(0.0, 0.18, uv.y);
+  float bottomEdge = 1.0 - smoothstep(0.0, 0.2, 1.0 - uv.y);
+  float edge = max(max(leftEdge, rightEdge), max(topEdge, bottomEdge));
+  float corner = max(leftEdge, rightEdge) * max(topEdge, bottomEdge);
+  float movingTexture = fbm(uv * 5.8 + vec2(u_time * 0.18, -u_time * 0.14));
+  return clamp(edge * (0.68 + movingTexture * 0.32) + corner * 0.34 + centerRelief(uv) * 0.18, 0.0, 1.0);
+}
+
+float stageGlassSweep(vec2 uv) {
+  float sweepLine = fract(u_time * 0.18) * 1.8 - 0.42;
+  float diagonal = uv.x * 0.74 + uv.y * 0.54;
+  float wideSweep = smoothstep(0.12, 0.0, abs(diagonal - sweepLine));
+  float fineScan = smoothstep(0.018, 0.0, abs(fract((uv.y + u_time * 0.08) * 7.0) - 0.5));
+  return clamp(wideSweep + fineScan * 0.18, 0.0, 1.0);
+}
+
 float lightningBolt(vec2 uv, vec2 start, vec2 end, float width, float seed) {
   float bolt = 0.0;
   vec2 previous = start;
@@ -285,6 +309,17 @@ void main() {
   float warmEdgeMix = step(3.5, u_effect) * (1.0 - step(6.5, u_effect));
   effectColor.rgb += mix(vec3(0.28, 0.9, 1.0), vec3(1.0, 0.28, 0.08), warmEdgeMix) * edgeSpark * 0.72;
   effectColor.a = clamp(effectColor.a + edgeSpark * 0.48, 0.0, 1.0);
+
+  float isFullStage = step(0.985, u_progress) * (1.0 - step(0.995, u_opacity));
+  float fireStageTreatment = isFullStage * step(3.5, u_effect) * (1.0 - step(5.5, u_effect));
+  if (fireStageTreatment > 0.5) {
+    float elementMask = stageElementMask(v_uv);
+    float relief = centerRelief(v_uv);
+    float glass = stageGlassSweep(v_uv);
+    vec3 glassTint = mix(vec3(0.16, 0.86, 1.0), vec3(1.0, 0.34, 0.08), warmEdgeMix);
+    effectColor.rgb += glassTint * (glass * 0.34 + elementMask * 0.16);
+    effectColor.a = clamp(effectColor.a * (0.38 + relief * 0.34 + elementMask * 0.42) + glass * 0.12, 0.0, 1.0);
+  }
 
   gl_FragColor = vec4(effectColor.rgb, effectColor.a * u_opacity);
 }

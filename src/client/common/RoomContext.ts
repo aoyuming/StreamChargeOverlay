@@ -1,6 +1,6 @@
 import { DEFAULT_ROOM_SLUG, normalizeRoomSlug } from "../../shared/RoomSlug";
 
-const ROOM_PAGE_PATTERN = /^\/rooms\/([^/]+)\/(?:display|admin)\.html$/;
+const ROOM_PAGE_PATTERN = /^\/rooms\/([^/]+)\/(?:display|overlay|admin)\.html$/;
 
 // Keeps room URL parsing in one place so display/admin clients can share it.
 // Legacy pages intentionally map to the default room for existing OBS links.

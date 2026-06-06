@@ -350,6 +350,82 @@ describe("ApiController room routing", () => {
     expect(restored.restoredSponsorId).toBe(sponsorId);
   });
 
+  it("lets admins bulk-delete active sponsors and permanently clean recycle-bin records", async () => {
+    const app = express();
+    app.use(express.json());
+    new ApiController(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechService(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "viewer-password"
+      })
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    const viewerLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "viewer-password", roomSlug: "alpha" })
+    });
+    const viewerCookie = viewerLogin.headers.get("set-cookie") ?? "";
+    const adminLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "admin-password", roomSlug: "alpha" })
+    });
+    const adminCookie = adminLogin.headers.get("set-cookie") ?? "";
+
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({ bossName: "trash boss a", amount: 220, programName: "trash program a" })
+    });
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({ bossName: "trash boss b", amount: 330, programName: "trash program b" })
+    });
+
+    const bulkDeleted = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors`, {
+      method: "DELETE",
+      headers: { Cookie: adminCookie }
+    })).json()) as DerivedAppState;
+    const trashAfterBulk = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      headers: { Cookie: adminCookie }
+    })).json()) as SponsorRecord[];
+    const viewerClearResponse = await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      method: "DELETE",
+      headers: { Cookie: viewerCookie }
+    });
+    const firstTrashId = trashAfterBulk[0]?.id ?? "";
+    await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash/${firstTrashId}`, {
+      method: "DELETE",
+      headers: { Cookie: adminCookie }
+    });
+    const trashAfterOnePermanentDelete = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      headers: { Cookie: adminCookie }
+    })).json()) as SponsorRecord[];
+    const cleared = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      method: "DELETE",
+      headers: { Cookie: adminCookie }
+    })).json()) as DerivedAppState;
+    const trashAfterClear = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/trash`, {
+      headers: { Cookie: adminCookie }
+    })).json()) as SponsorRecord[];
+
+    expect(bulkDeleted.sponsors).toEqual([]);
+    expect(trashAfterBulk).toHaveLength(2);
+    expect(viewerClearResponse.status).toBe(403);
+    expect(trashAfterOnePermanentDelete).toHaveLength(1);
+    expect(cleared.sponsors).toEqual([]);
+    expect(trashAfterClear).toEqual([]);
+  });
+
   it("allows viewer sessions to update settings and start dianjiang without edit/delete permissions", async () => {
     const app = express();
     app.use(express.json());

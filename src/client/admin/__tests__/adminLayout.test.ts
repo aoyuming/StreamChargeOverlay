@@ -31,7 +31,7 @@ describe("admin layout", () => {
     expect(sponsorForm).toContain("fetch(");
     expect(sponsorForm).toContain("compressAvatarFile");
     expect(sponsorForm).toContain("readAvatarFromClipboard");
-    expect(adminApp).toContain("this.sponsorForm.setKnownSponsors(state.sponsors)");
+    expect(adminApp).toContain("this.sponsorForm.setKnownSponsors(visibleSponsors)");
     expect(adminCss).toContain(".avatar-picker");
     expect(adminCss).toContain(".avatar-preview");
   });
@@ -56,9 +56,24 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="startDianjiangButton"');
     expect(adminHtml).toContain("开始点将");
     expect(adminHtml).toContain('id="removeTodaySponsorsButton"');
+    expect(adminHtml).toContain('id="deleteAllSponsorsButton"');
     expect(adminApp).toContain("this.apiClient.startDianjiang()");
     expect(adminApp).toContain("this.apiClient.removeTodaySponsors()");
+    expect(adminApp).toContain("this.apiClient.deleteAllSponsors()");
     expect(adminApp).toContain("canOperate");
+  });
+
+  it("renders returned state immediately after confirmed destructive sponsor actions", () => {
+    const expectImmediateRenderAfter = (call: string) => {
+      const callIndex = adminApp.indexOf(call);
+      expect(callIndex).toBeGreaterThanOrEqual(0);
+      expect(adminApp.slice(callIndex, callIndex + 180)).toContain("this.render(state);");
+    };
+
+    expectImmediateRenderAfter("const state = await this.apiClient.deleteSponsor(id);");
+    expectImmediateRenderAfter("const state = await this.apiClient.deleteSponsorPermanently(id);");
+    expectImmediateRenderAfter("const state = await this.apiClient.deleteAllSponsors();");
+    expectImmediateRenderAfter("const state = await this.apiClient.clearSponsorTrash();");
   });
 
   it("uses inline amount editing and soft remove actions in records", () => {
@@ -82,8 +97,7 @@ describe("admin layout", () => {
     expect(recordListView).toContain("clear-avatar");
     expect(recordListView).toContain("移除今日榜单");
     expect(recordListView).toContain("加入今日榜单");
-    expect(recordListView).toContain('deleteButton.textContent = "删除"');
-    expect(recordListView).not.toContain('deleteButton.textContent = "永久删除"');
+    expect(recordListView).toContain('deleteButton.textContent = mode === "trash" ? "彻底删除" : "删除"');
     expect(adminApp).toContain("this.apiClient.addSponsorToToday");
     expect(adminApp).toContain("this.apiClient.deleteSponsor");
     expect(adminApp).toContain("this.apiClient.updateSponsorAvatar");
@@ -96,11 +110,15 @@ describe("admin layout", () => {
     expect(adminHtml).toContain('id="trashPanel"');
     expect(adminHtml).toContain("回收站");
     expect(adminHtml).toContain('id="trashList"');
+    expect(adminHtml).toContain('id="clearTrashButton"');
     expect(adminApp).toContain("trashListView");
     expect(adminApp).toContain("this.apiClient.getSponsorTrash");
     expect(adminApp).toContain("this.apiClient.restoreSponsor");
+    expect(adminApp).toContain("this.apiClient.clearSponsorTrash");
+    expect(adminApp).toContain("this.apiClient.deleteSponsorPermanently");
     expect(recordListView).toContain("renderTrash");
     expect(recordListView).toContain("restore-sponsor");
+    expect(recordListView).toContain('deleteButton.textContent = mode === "trash" ? "彻底删除" : "删除"');
     expect(recordListView).toContain("还原");
   });
 
@@ -113,5 +131,24 @@ describe("admin layout", () => {
     expect(adminCss).toContain("grid-area: trash");
     expect(adminCss).toContain("grid-template-rows: auto minmax(0, 1fr)");
     expect(adminCss).toContain("max-height: none");
+  });
+
+  it("keeps room management inside the fixed admin page instead of navigating to room URLs", () => {
+    expect(adminApp).toContain("switchDataSource(room.slug)");
+    expect(adminApp).toContain("switchDataSource(slug)");
+    expect(adminApp).toContain("apiClientForRoom(roomSlug)");
+    expect(adminApp).toContain("realtimeClientForRoom(roomSlug)");
+    expect(adminApp).not.toContain("roomPagePath");
+    expect(adminApp).not.toContain("window.location.href");
+    expect(adminApp).not.toContain("window.location.replace");
+  });
+
+  it("does not render sponsor records before an admin or room login", () => {
+    expect(adminApp).toContain("const canViewRecords = this.session !== null;");
+    expect(adminApp).toContain("const visibleSponsors = canViewRecords ? state.sponsors : [];");
+    expect(adminApp).toContain("const visibleProgramQueue = canViewRecords ? state.programQueue : [];");
+    expect(adminApp).toContain("this.recordListView.render(visibleSponsors, visibleProgramQueue);");
+    expect(adminApp).toContain("this.sponsorForm.setKnownSponsors(visibleSponsors)");
+    expect(adminApp).not.toContain("this.recordListView.render(state.sponsors, state.programQueue)");
   });
 });

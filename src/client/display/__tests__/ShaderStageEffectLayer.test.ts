@@ -53,7 +53,7 @@ describe("ShaderStageEffectLayer", () => {
     delete (globalThis as { window?: Window }).window;
   });
 
-  it("renders full-stage water and fire effects through shader and delegates other stage effects", () => {
+  it("keeps water and fire on shader while restoring ice and lightning to canvas fallback", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
       cancelAnimationFrame: () => undefined,
@@ -77,13 +77,13 @@ describe("ShaderStageEffectLayer", () => {
     expect(fallback.sponsorEffects).toEqual(["ice", "lightning"]);
     expect(fallback.dianjiangCalls).toHaveLength(1);
     expect(shader.renders).toEqual([
-      { effect: "water", opacity: 0.64, progressPercent: 100 },
-      { effect: "fire", opacity: 0.52, progressPercent: 100 }
+      { effect: "water", opacity: 0.85, progressPercent: 100 },
+      { effect: "fire", opacity: 0.92, progressPercent: 100 }
     ]);
     expect(shader.cleared.length).toBeGreaterThan(0);
   });
 
-  it("renders full-stage fire shader with reduced opacity so the background stays visible", () => {
+  it("renders full-stage fire shader above 90 percent opacity while staying transparent", () => {
     const callbacks: FrameRequestCallback[] = [];
     (globalThis as { window?: Partial<Window> }).window = {
       requestAnimationFrame: (callback: FrameRequestCallback) => {
@@ -95,10 +95,16 @@ describe("ShaderStageEffectLayer", () => {
     const fallback = new FakeStageEffects();
     const layer = createLayer(shader, fallback);
 
-    layer.playSponsorEffect("inferno");
+    layer.playSponsorEffect("fire");
     callbacks[0]?.(100);
+    layer.playSponsorEffect("inferno");
+    callbacks[1]?.(220);
 
-    expect(shader.renders[0]?.effect).toBe("inferno");
-    expect(shader.renders[0]?.opacity).toBeLessThanOrEqual(0.58);
+    expect(shader.renders[0]?.effect).toBe("fire");
+    expect(shader.renders[0]?.opacity).toBeGreaterThan(0.9);
+    expect(shader.renders[0]?.opacity).toBeLessThan(1);
+    expect(shader.renders[1]?.effect).toBe("inferno");
+    expect(shader.renders[1]?.opacity).toBeGreaterThan(0.9);
+    expect(shader.renders[1]?.opacity).toBeLessThan(1);
   });
 });
