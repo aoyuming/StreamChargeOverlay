@@ -227,6 +227,22 @@ describe("admin layout", () => {
     expect(adminCss).toContain("max-height: none");
   });
 
+  it("adapts the admin page for phone portrait and landscape operation", () => {
+    expect(adminCss).toContain("@media (max-width: 900px)");
+    expect(adminCss).toContain("min-width: 0");
+    expect(adminCss).toContain("height: auto");
+    expect(adminCss).toContain("min-height: 100dvh");
+    expect(adminCss).toContain("overflow: auto");
+    expect(adminCss).toContain("grid-template-areas:\n      \"sponsor\"\n      \"main\"\n      \"side\"");
+    expect(adminCss).toContain("@media (max-width: 900px) and (orientation: landscape)");
+    expect(adminCss).toContain("grid-template-areas:\n      \"sponsor main\"\n      \"side side\"");
+    expect(adminCss).toContain("grid-template-columns: minmax(320px, 0.92fr) minmax(360px, 1fr)");
+    expect(adminCss).toContain("@media (max-width: 640px)");
+    expect(adminCss).toContain("min-height: 44px");
+    expect(adminCss).toContain(".record-row,\n  .record-row.is-trash");
+    expect(adminCss).toContain(".record-edit-form");
+  });
+
   it("keeps room management inside the fixed admin page instead of navigating to room URLs", () => {
     expect(adminApp).toContain("switchDataSource(room.slug)");
     expect(adminApp).toContain("switchDataSource(slug)");

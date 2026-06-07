@@ -660,3 +660,250 @@ input.is-readonly {
   border: 1px dashed rgba(240, 191, 91, 0.34);
   border-radius: 4px;
 }
+
+@media (max-width: 900px) {
+  body {
+    min-width: 0;
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+
+  .admin-shell {
+    width: min(100%, 820px);
+    height: auto;
+    min-height: 100dvh;
+    padding: 10px 10px 18px;
+    overflow: visible;
+  }
+
+  .admin-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  p {
+    font-size: 13px;
+  }
+
+  .summary-card {
+    min-width: 0;
+    padding: 10px 12px;
+    text-align: left;
+  }
+
+  .summary-card strong {
+    font-size: 26px;
+  }
+
+  .admin-top-controls {
+    min-width: 0;
+    max-width: none;
+  }
+
+  .auth-form,
+  .room-admin,
+  .room-form,
+  .room-password-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .auth-form label,
+  .room-admin label,
+  .room-password-form {
+    min-width: 0;
+  }
+
+  .auth-status {
+    min-width: 0;
+    text-align: left;
+  }
+
+  button,
+  .auth-form input,
+  .room-admin select,
+  .room-form input,
+  .room-password-form input {
+    min-height: 44px;
+  }
+
+  .auth-form button,
+  .room-form button,
+  .room-password-form button,
+  .room-admin > button {
+    width: 100%;
+    height: auto;
+  }
+
+  .workspace-grid {
+    grid-template-areas:
+      "sponsor"
+      "main"
+      "side";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .side-stack,
+  .right-stack {
+    grid-template-rows: none;
+    gap: 12px;
+  }
+
+  .tool-panel {
+    padding: 12px;
+  }
+
+  #sponsorForm,
+  .record-list,
+  .today-display-list {
+    overflow: visible;
+  }
+
+  .records-panel {
+    grid-template-rows: auto auto;
+  }
+
+  .record-list,
+  .today-display-list {
+    max-height: none;
+    padding-right: 0;
+  }
+
+  .compact-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .compact-panel h2,
+  .compact-panel .compact-input-field,
+  .compact-panel .wide-field,
+  .compact-panel > button[type="submit"],
+  .compact-panel .primary-button {
+    grid-column: 1;
+  }
+
+  .charge-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .records-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: stretch;
+  }
+
+  .records-header .ghost-button {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .today-display-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .record-row,
+  .record-row.is-trash {
+    grid-template-columns: 44px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .record-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .record-actions {
+    grid-column: 1 / -1;
+  }
+
+  .record-edit-form {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .record-edit-avatar-actions,
+  .record-edit-footer {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) and (orientation: landscape) {
+  .admin-shell {
+    width: 100%;
+  }
+
+  .admin-header {
+    grid-template-columns: minmax(0, 1fr) minmax(170px, 0.42fr);
+    align-items: stretch;
+  }
+
+  .admin-top-controls {
+    grid-column: 1 / -1;
+    gap: 8px;
+  }
+
+  .auth-form {
+    grid-template-columns: minmax(150px, 1fr) auto auto auto;
+    align-items: end;
+  }
+
+  .room-admin {
+    grid-template-columns: minmax(120px, 0.7fr) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+    align-items: end;
+  }
+
+  .workspace-grid {
+    grid-template-areas:
+      "sponsor main"
+      "side side";
+    grid-template-columns: minmax(320px, 0.92fr) minmax(360px, 1fr);
+  }
+
+  .right-stack {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-shell {
+    width: 100%;
+    padding: 7px 7px 18px;
+  }
+
+  p {
+    display: none;
+  }
+
+  .avatar-picker,
+  .avatar-picker-actions,
+  .record-edit-form,
+  .record-edit-avatar-actions,
+  .record-edit-footer {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .avatar-picker {
+    justify-items: stretch;
+  }
+
+  .avatar-preview {
+    justify-self: center;
+  }
+
+  .record-edit-field,
+  .record-edit-note-field {
+    grid-column: 1;
+  }
+
+  .record-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
