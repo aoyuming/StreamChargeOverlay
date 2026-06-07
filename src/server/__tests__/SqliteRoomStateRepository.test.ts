@@ -27,6 +27,7 @@ describe("SqliteRoomStateRepository", () => {
 
     expect(state.targetAmount).toBe(1000);
     expect(state.chargeConsumedAmount).toBe(0);
+    expect(state.chargeAdjustmentAmount).toBe(0);
     expect(state.sponsors).toEqual([]);
   });
 
@@ -39,6 +40,7 @@ describe("SqliteRoomStateRepository", () => {
       targetAmount: 1200,
       slogan: "alpha slogan",
       chargeConsumedAmount: 30,
+      chargeAdjustmentAmount: 120,
       lastDianjiangEffectAt: 1717488000000,
       sponsors: [
         {
@@ -59,6 +61,7 @@ describe("SqliteRoomStateRepository", () => {
       targetAmount: 800,
       slogan: "beta slogan",
       chargeConsumedAmount: 0,
+      chargeAdjustmentAmount: -20,
       sponsors: [
         {
           id: "beta-1",
@@ -77,6 +80,8 @@ describe("SqliteRoomStateRepository", () => {
     expect((await alpha.load()).sponsors.map((record) => record.id)).toEqual(["alpha-1"]);
     expect((await beta.load()).sponsors.map((record) => record.id)).toEqual(["beta-1"]);
     expect((await alpha.load()).chargeConsumedAmount).toBe(30);
+    expect((await alpha.load()).chargeAdjustmentAmount).toBe(120);
+    expect((await beta.load()).chargeAdjustmentAmount).toBe(-20);
     expect((await alpha.load()).lastDianjiangEffectAt).toBe(1717488000000);
     expect((await alpha.load()).sponsors[0]).toMatchObject({
       countsTowardCharge: true,
@@ -106,6 +111,7 @@ describe("SqliteRoomStateRepository", () => {
     expect(state.targetAmount).toBe(1500);
     expect(state.slogan).toBe("legacy slogan");
     expect(state.chargeConsumedAmount).toBe(0);
+    expect(state.chargeAdjustmentAmount).toBe(0);
     expect(state.lastDianjiangEffectAt).toBeUndefined();
     expect(state.sponsors.map((record) => record.id)).toEqual(["legacy-1"]);
     expect(state.sponsors[0]?.countsTowardCharge).toBe(true);

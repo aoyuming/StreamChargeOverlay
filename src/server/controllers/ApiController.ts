@@ -10,9 +10,11 @@ import type {
   RoomInfo,
   SpeechAlert,
   SponsorRecord,
+  UpdateCurrentChargeRequest,
   UpdateRoomViewerPasswordRequest,
   UpdateSponsorAmountRequest,
   UpdateSponsorAvatarRequest,
+  UpdateSponsorRequest,
   UpdateSettingsRequest,
   UpdateTargetRequest
 } from "../../shared/types";
@@ -83,6 +85,9 @@ export class ApiController {
     app.delete("/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
     app.delete("/rooms/:roomSlug/api/sponsors/:id", this.wrap((request, response) => this.deleteSponsor(request, response)));
 
+    app.patch("/api/sponsors/:id", this.wrap((request, response) => this.updateSponsor(request, response)));
+    app.patch("/rooms/:roomSlug/api/sponsors/:id", this.wrap((request, response) => this.updateSponsor(request, response)));
+
     app.post("/api/sponsors/:id/restore", this.wrap((request, response) => this.restoreSponsor(request, response)));
     app.post("/rooms/:roomSlug/api/sponsors/:id/restore", this.wrap((request, response) => this.restoreSponsor(request, response)));
 
@@ -103,6 +108,9 @@ export class ApiController {
 
     app.post("/api/charge/start", this.wrap((request, response) => this.startDianjiang(request, response)));
     app.post("/rooms/:roomSlug/api/charge/start", this.wrap((request, response) => this.startDianjiang(request, response)));
+
+    app.put("/api/charge/current", this.wrap((request, response) => this.updateCurrentChargeAmount(request, response)));
+    app.put("/rooms/:roomSlug/api/charge/current", this.wrap((request, response) => this.updateCurrentChargeAmount(request, response)));
 
     app.put("/api/settings/target", this.wrap((request, response) => this.updateTargetAmount(request, response)));
     app.put("/rooms/:roomSlug/api/settings/target", this.wrap((request, response) => this.updateTargetAmount(request, response)));
@@ -283,6 +291,18 @@ export class ApiController {
     response.json(state);
   }
 
+  private async updateSponsor(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "admin")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const body = request.body as UpdateSponsorRequest;
+    const state = await (await this.serviceFor(request)).updateSponsor(String(request.params.id ?? ""), body);
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
   private async updateSponsorAvatar(request: Request, response: Response): Promise<void> {
     if (!this.requireRole(request, response, "admin")) {
       return;
@@ -299,7 +319,7 @@ export class ApiController {
   }
 
   private async removeSponsorFromToday(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 
@@ -310,7 +330,7 @@ export class ApiController {
   }
 
   private async addSponsorToToday(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 
@@ -321,7 +341,7 @@ export class ApiController {
   }
 
   private async removeTodaySponsors(request: Request, response: Response): Promise<void> {
-    if (!this.requireRole(request, response, "admin")) {
+    if (!this.requireRole(request, response, "viewer")) {
       return;
     }
 
@@ -338,6 +358,18 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).startDianjiang();
+    this.realtimeHub.broadcastState(roomSlug, state);
+    response.json(state);
+  }
+
+  private async updateCurrentChargeAmount(request: Request, response: Response): Promise<void> {
+    if (!this.requireRole(request, response, "viewer")) {
+      return;
+    }
+
+    const roomSlug = this.roomSlugFrom(request);
+    const body = request.body as UpdateCurrentChargeRequest;
+    const state = await (await this.serviceFor(request)).updateCurrentChargeAmount(body.totalAmount);
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }

@@ -17,6 +17,7 @@ const state = (overrides: Partial<DerivedAppState> = {}): DerivedAppState => ({
   targetAmount: 1000,
   slogan: "",
   chargeConsumedAmount: 0,
+  chargeAdjustmentAmount: 0,
   sponsors: [],
   totalAmount: 0,
   progressPercent: 0,

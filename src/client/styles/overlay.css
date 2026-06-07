@@ -132,11 +132,11 @@ html.is-preview-fit .stream-overlay-shell {
 .overlay-current-programs .current-boss-row {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr) minmax(76px, auto);
-  grid-template-rows: 22px 20px;
+  grid-template-rows: 20px 18px 18px;
   gap: 2px 8px;
   align-items: center;
-  height: 52px;
-  min-height: 52px;
+  height: 64px;
+  min-height: 64px;
   padding: 4px 6px;
   background: rgba(0, 0, 0, 0.18);
   border: 0;
@@ -159,7 +159,8 @@ html.is-preview-fit .stream-overlay-shell {
 }
 
 .overlay-current-programs .current-boss-avatar {
-  grid-row: 1 / 3;
+  grid-row: 1 / 4;
+  align-self: center;
   width: 34px;
   height: 34px;
   font-size: 14px;
@@ -191,17 +192,47 @@ html.is-preview-fit .stream-overlay-shell {
 }
 
 .overlay-current-programs .current-boss-program {
-  grid-column: 2;
+  grid-column: 2 / 4;
   grid-row: 2;
+  overflow: hidden;
   color: #ffe8ad;
   font-size: 16px;
   font-weight: 900;
   line-height: 1;
+  text-overflow: ellipsis;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.82);
+  white-space: nowrap;
+}
+
+.overlay-current-programs .current-boss-program::before {
+  content: "节目:";
+  margin-right: 2px;
+  color: #ffe08a;
+}
+
+.overlay-current-programs .current-boss-row.is-startup-funding .current-boss-program::before {
+  content: "";
+  margin-right: 0;
+}
+
+.overlay-current-programs .current-boss-note::before {
+  content: "备注:";
+  margin-right: 2px;
+  color: #d8d2bf;
 }
 
 .overlay-current-programs .current-boss-row.has-empty-note .current-boss-program {
   grid-column: 2 / 4;
+}
+
+.overlay-current-programs .current-boss-row.has-empty-note {
+  grid-template-rows: 22px 20px;
+  height: 52px;
+  min-height: 52px;
+}
+
+.overlay-current-programs .current-boss-row.has-empty-note .current-boss-avatar {
+  grid-row: 1 / 3;
 }
 
 .overlay-current-programs .current-boss-row.has-empty-note .current-boss-note {
@@ -214,13 +245,16 @@ html.is-preview-fit .stream-overlay-shell {
 }
 
 .overlay-current-programs .current-boss-note {
-  grid-column: 3;
-  grid-row: 2;
-  max-width: 96px;
+  grid-column: 2 / 4;
+  grid-row: 3;
+  overflow: hidden;
   color: var(--overlay-muted);
   font-size: 14px;
   line-height: 1;
+  text-align: left;
+  text-overflow: ellipsis;
   text-shadow: 0 1px 4px rgba(0, 0, 0, 0.82);
+  white-space: nowrap;
 }
 
 .overlay-current-programs .current-boss-row.is-empty {
@@ -606,7 +640,8 @@ html.is-preview-fit .stream-overlay-shell {
 
 .sponsor-burst {
   top: 64px;
-  left: 580px;
+  left: 50%;
+  max-width: min(1500px, calc(100vw - 180px));
 }
 
 body:not(.is-overlay-editing) .overlay-editor-toolbar,

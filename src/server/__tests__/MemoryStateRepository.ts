@@ -8,6 +8,7 @@ export class MemoryStateRepository implements StateRepository {
       targetAmount: initialState?.targetAmount ?? 1000,
       slogan: initialState?.slogan ?? "赞助点将，名场面马上开演",
       chargeConsumedAmount: initialState?.chargeConsumedAmount ?? 0,
+      chargeAdjustmentAmount: initialState?.chargeAdjustmentAmount ?? 0,
       lastDianjiangEffectAt: initialState?.lastDianjiangEffectAt,
       sponsors: initialState?.sponsors ?? []
     };

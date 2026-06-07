@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { DerivedAppState, SponsorRecord } from "../../../shared/types";
+import { STARTUP_FUNDING_PROGRAM_NAME } from "../../../shared/displayUnits";
 import type { ProgressEffect } from "../ProgressPanel";
 import { ProgressPanel, progressEffectFor } from "../ProgressPanel";
 
@@ -109,6 +110,7 @@ const state = (progressPercent: number, overrides: Partial<DerivedAppState> = {}
   slogan: "",
   sponsors: [],
   chargeConsumedAmount: 0,
+  chargeAdjustmentAmount: 0,
   totalAmount: progressPercent * 10,
   progressPercent,
   goalReached: progressPercent >= 100,
@@ -315,10 +317,22 @@ describe("ProgressPanel", () => {
   it("does not mark startup funding rows as program-only", () => {
     const view = createPanel();
 
-    view.panel.render(state(40), [sponsor({ countsTowardCharge: true, programName: "启动资金" })]);
+    view.panel.render(state(40), [sponsor({ countsTowardCharge: true, programName: STARTUP_FUNDING_PROGRAM_NAME })]);
 
     const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
     expect(firstCard.className).not.toContain("is-program-only");
+  });
+
+  it("marks startup funding rows so overlay can suppress the program label", () => {
+    const view = createPanel();
+
+    view.panel.render(state(40), [sponsor({ countsTowardCharge: true, programName: STARTUP_FUNDING_PROGRAM_NAME })]);
+
+    const firstCard = (view.currentBossList as unknown as FakeElement).children[0];
+    expect(firstCard.className).toContain("is-startup-funding");
+    expect(childWithClass(firstCard as unknown as HTMLElement, "current-boss-program")?.textContent).toBe(
+      STARTUP_FUNDING_PROGRAM_NAME
+    );
   });
 
   it("sets the progress width on both the fill and effect track", () => {

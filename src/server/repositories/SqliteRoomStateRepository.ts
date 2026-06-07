@@ -25,6 +25,7 @@ type SettingsRow = {
   target_amount: number;
   slogan: string;
   charge_consumed_amount: number;
+  charge_adjustment_amount: number;
   last_dianjiang_effect_at: number | null;
 };
 
@@ -100,6 +101,7 @@ export class SqliteRoomStateRepository implements StateRepository {
       targetAmount: settings.target_amount,
       slogan: settings.slogan,
       chargeConsumedAmount: settings.charge_consumed_amount,
+      chargeAdjustmentAmount: settings.charge_adjustment_amount,
       lastDianjiangEffectAt: settings.last_dianjiang_effect_at ?? undefined,
       sponsors: sponsors.map((row) => ({
         id: row.id,
@@ -121,12 +123,13 @@ export class SqliteRoomStateRepository implements StateRepository {
       this.database
         .prepare(
           `
-          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount, last_dianjiang_effect_at)
-          VALUES (?, ?, ?, ?, ?)
+          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount, charge_adjustment_amount, last_dianjiang_effect_at)
+          VALUES (?, ?, ?, ?, ?, ?)
           ON CONFLICT(room_id) DO UPDATE SET
             target_amount = excluded.target_amount,
             slogan = excluded.slogan,
             charge_consumed_amount = excluded.charge_consumed_amount,
+            charge_adjustment_amount = excluded.charge_adjustment_amount,
             last_dianjiang_effect_at = excluded.last_dianjiang_effect_at
         `
         )
@@ -135,6 +138,7 @@ export class SqliteRoomStateRepository implements StateRepository {
           nextState.targetAmount,
           nextState.slogan,
           nextState.chargeConsumedAmount,
+          nextState.chargeAdjustmentAmount,
           nextState.lastDianjiangEffectAt ?? null
         );
 
@@ -199,6 +203,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         target_amount REAL NOT NULL,
         slogan TEXT NOT NULL,
         charge_consumed_amount REAL NOT NULL DEFAULT 0,
+        charge_adjustment_amount REAL NOT NULL DEFAULT 0,
         last_dianjiang_effect_at INTEGER,
         FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
       );
@@ -225,6 +230,7 @@ export class SqliteRoomStateRepository implements StateRepository {
     this.ensureColumn(database, "rooms", "viewer_password_hash", "TEXT");
     this.ensureColumn(database, "rooms", "viewer_password_salt", "TEXT");
     this.ensureColumn(database, "room_settings", "charge_consumed_amount", "REAL NOT NULL DEFAULT 0");
+    this.ensureColumn(database, "room_settings", "charge_adjustment_amount", "REAL NOT NULL DEFAULT 0");
     this.ensureColumn(database, "room_settings", "last_dianjiang_effect_at", "INTEGER");
     this.ensureColumn(database, "sponsor_records", "counts_toward_charge", "INTEGER NOT NULL DEFAULT 1");
     this.ensureColumn(database, "sponsor_records", "avatar_url", "TEXT");
@@ -267,8 +273,8 @@ export class SqliteRoomStateRepository implements StateRepository {
     database
       .prepare(
         `
-          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount)
-          VALUES (?, ?, ?, 0)
+          INSERT INTO room_settings (room_id, target_amount, slogan, charge_consumed_amount, charge_adjustment_amount)
+          VALUES (?, ?, ?, 0, 0)
           ON CONFLICT(room_id) DO NOTHING
       `
       )
@@ -280,7 +286,7 @@ export class SqliteRoomStateRepository implements StateRepository {
   private loadSettings(): SettingsRow {
     const settings = this.database
       .prepare(
-        "SELECT target_amount, slogan, charge_consumed_amount, last_dianjiang_effect_at FROM room_settings WHERE room_id = ?"
+        "SELECT target_amount, slogan, charge_consumed_amount, charge_adjustment_amount, last_dianjiang_effect_at FROM room_settings WHERE room_id = ?"
       )
       .get(this.roomId) as SettingsRow | undefined;
 
@@ -289,6 +295,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         target_amount: DEFAULT_TARGET_AMOUNT,
         slogan: DEFAULT_SLOGAN,
         charge_consumed_amount: 0,
+        charge_adjustment_amount: 0,
         last_dianjiang_effect_at: null
       };
     }
@@ -328,6 +335,7 @@ export class SqliteRoomStateRepository implements StateRepository {
         targetAmount: typeof parsed.targetAmount === "number" ? parsed.targetAmount : DEFAULT_TARGET_AMOUNT,
         slogan: typeof parsed.slogan === "string" ? parsed.slogan : DEFAULT_SLOGAN,
         chargeConsumedAmount: typeof parsed.chargeConsumedAmount === "number" ? parsed.chargeConsumedAmount : 0,
+        chargeAdjustmentAmount: typeof parsed.chargeAdjustmentAmount === "number" ? parsed.chargeAdjustmentAmount : 0,
         lastDianjiangEffectAt:
           typeof parsed.lastDianjiangEffectAt === "number" ? parsed.lastDianjiangEffectAt : undefined,
         sponsors: Array.isArray(parsed.sponsors)

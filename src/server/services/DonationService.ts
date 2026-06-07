@@ -5,7 +5,8 @@ import type {
   SponsorRankingItem,
   SponsorRecord,
   StateRepository,
-  UpdateSettingsRequest
+  UpdateSettingsRequest,
+  UpdateSponsorRequest
 } from "../../shared/types";
 import { STARTUP_FUNDING_PROGRAM_NAME } from "../../shared/displayUnits";
 import type { SponsorAvatarStorage } from "./AvatarService";
@@ -202,6 +203,23 @@ export class DonationService {
     return this.deriveState(nextState);
   }
 
+  public async updateCurrentChargeAmount(totalAmount: number): Promise<DerivedAppState> {
+    const nextTotalAmount = Number(totalAmount);
+    if (!Number.isFinite(nextTotalAmount) || nextTotalAmount < 0) {
+      throw new Error("当前启动资金不能小于 0");
+    }
+
+    const state = await this.loadState();
+    const chargeAmount = this.chargeSponsorAmount(state.sponsors);
+    const nextState: AppState = {
+      ...state,
+      chargeAdjustmentAmount: this.roundAmount(nextTotalAmount + state.chargeConsumedAmount - chargeAmount)
+    };
+
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
   public async updateSponsorAmount(id: string, amount: number): Promise<DerivedAppState> {
     const nextAmount = Number(amount);
     if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
@@ -222,6 +240,45 @@ export class DonationService {
     if (!found) {
       throw new Error("赞助记录不存在");
     }
+
+    const nextState = this.normalizeChargeConsumption({ ...state, sponsors });
+    await this.repository.save(nextState);
+    return this.deriveState(nextState);
+  }
+
+  public async updateSponsor(id: string, request: UpdateSponsorRequest): Promise<DerivedAppState> {
+    const nextRecordValues = this.sanitizeSponsorUpdate(request);
+    const state = await this.loadState();
+    const foundRecord = state.sponsors.find((record) => record.id === id);
+
+    if (!foundRecord) {
+      throw new Error("璧炲姪璁板綍涓嶅瓨鍦?");
+    }
+
+    let nextAvatarUrl = foundRecord.avatarUrl;
+    if (Object.prototype.hasOwnProperty.call(request, "avatarDataUrl")) {
+      if (request.avatarDataUrl) {
+        nextAvatarUrl = await this.options.avatarStorage?.saveAvatar(this.roomSlug(), foundRecord.id, request.avatarDataUrl);
+        if (foundRecord.avatarUrl !== nextAvatarUrl) {
+          await this.options.avatarStorage?.clearAvatar(foundRecord.avatarUrl);
+        }
+      } else {
+        await this.options.avatarStorage?.clearAvatar(foundRecord.avatarUrl);
+        nextAvatarUrl = undefined;
+      }
+    }
+
+    const sponsors = state.sponsors.map((record) => {
+      if (record.id !== id) {
+        return record;
+      }
+
+      return {
+        ...record,
+        ...nextRecordValues,
+        avatarUrl: nextAvatarUrl
+      };
+    });
 
     const nextState = this.normalizeChargeConsumption({ ...state, sponsors });
     await this.repository.save(nextState);
@@ -392,6 +449,7 @@ export class DonationService {
       targetAmount: state.targetAmount > 0 ? this.roundAmount(state.targetAmount) : DEFAULT_TARGET_AMOUNT,
       slogan: state.slogan?.trim() || DEFAULT_SLOGAN,
       chargeConsumedAmount: this.sanitizeAmount(state.chargeConsumedAmount),
+      chargeAdjustmentAmount: this.sanitizeAdjustmentAmount(state.chargeAdjustmentAmount),
       lastDianjiangEffectAt: Number.isFinite(state.lastDianjiangEffectAt) ? state.lastDianjiangEffectAt : undefined,
       sponsors
     });
@@ -409,6 +467,29 @@ export class DonationService {
     };
   }
 
+  private sanitizeSponsorUpdate(request: UpdateSponsorRequest): Pick<
+    SponsorRecord,
+    "bossName" | "amount" | "programName" | "note" | "countsTowardCharge" | "createdAt"
+  > {
+    const bossName = request.bossName.trim();
+    const programName = request.programName.trim();
+    const amount = Number(request.amount);
+    const createdAt = Number(request.createdAt);
+
+    if (!bossName || !programName || !Number.isFinite(amount) || amount <= 0 || !Number.isFinite(createdAt) || createdAt <= 0) {
+      throw new Error("璧炲姪璁板綍淇℃伅濉啓涓嶆纭?");
+    }
+
+    return {
+      bossName,
+      amount: this.roundAmount(amount),
+      programName,
+      note: request.note?.trim() ?? "",
+      countsTowardCharge: request.countsTowardCharge !== false,
+      createdAt
+    };
+  }
+
   private deriveState(state: AppState): DerivedAppState {
     const activeSponsors = this.activeRecords(state.sponsors);
     const activeState = { ...state, sponsors: activeSponsors };
@@ -418,6 +499,7 @@ export class DonationService {
 
     return {
       ...activeState,
+      chargeAdjustmentAmount: this.sanitizeAdjustmentAmount(activeState.chargeAdjustmentAmount),
       totalAmount,
       progressPercent,
       goalReached: totalAmount >= state.targetAmount,
@@ -427,15 +509,21 @@ export class DonationService {
   }
 
   private currentChargeAmount(state: AppState): number {
-    const chargeAmount = this.chargeSponsorAmount(state.sponsors);
+    const chargeAmount = this.chargeSponsorAmount(state.sponsors) + this.sanitizeAdjustmentAmount(state.chargeAdjustmentAmount);
 
     return Math.max(0, this.roundAmount(chargeAmount - state.chargeConsumedAmount));
   }
 
   private normalizeChargeConsumption(state: AppState): AppState {
+    const availableChargeAmount = Math.max(
+      0,
+      this.roundAmount(this.chargeSponsorAmount(state.sponsors) + this.sanitizeAdjustmentAmount(state.chargeAdjustmentAmount))
+    );
+
     return {
       ...state,
-      chargeConsumedAmount: Math.min(this.sanitizeAmount(state.chargeConsumedAmount), this.chargeSponsorAmount(state.sponsors))
+      chargeAdjustmentAmount: this.sanitizeAdjustmentAmount(state.chargeAdjustmentAmount),
+      chargeConsumedAmount: Math.min(this.sanitizeAmount(state.chargeConsumedAmount), availableChargeAmount)
     };
   }
 
@@ -555,6 +643,15 @@ export class DonationService {
   private sanitizeAmount(amount: number | undefined): number {
     const nextAmount = Number(amount);
     if (!Number.isFinite(nextAmount) || nextAmount <= 0) {
+      return 0;
+    }
+
+    return this.roundAmount(nextAmount);
+  }
+
+  private sanitizeAdjustmentAmount(amount: number | undefined): number {
+    const nextAmount = Number(amount);
+    if (!Number.isFinite(nextAmount)) {
       return 0;
     }
 

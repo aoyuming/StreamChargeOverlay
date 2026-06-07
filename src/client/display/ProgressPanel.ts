@@ -1,5 +1,10 @@
 import type { DerivedAppState, SponsorRecord } from "../../shared/types";
-import { formatDisplayName, formatRootUnits, neutralizePublicText } from "../../shared/displayUnits";
+import {
+  STARTUP_FUNDING_PROGRAM_NAME,
+  formatDisplayName,
+  formatRootUnits,
+  neutralizePublicText
+} from "../../shared/displayUnits";
 import { amountRarityClass } from "./amountRarity";
 
 export type ProgressEffect = "ice" | "energy" | "water" | "steam" | "fire" | "inferno" | "lightning";
@@ -90,9 +95,10 @@ export class ProgressPanel {
   private createBossCard(sponsor: SponsorRecord): HTMLElement {
     const item = this.currentBossListElement.ownerDocument.createElement("li");
     const noteText = neutralizePublicText(sponsor.note);
+    const startupFundingClass = this.isStartupFunding(sponsor) ? " is-startup-funding" : "";
     item.className = `current-boss-row ${this.amountTierClass(sponsor.amount)}${sponsor.countsTowardCharge ? "" : " is-program-only"}${
       noteText ? "" : " has-empty-note"
-    }`;
+    }${startupFundingClass}`;
 
     const avatar = this.createAvatarElement(sponsor, "current-boss-avatar");
 
@@ -145,6 +151,10 @@ export class ProgressPanel {
     }
 
     return "is-tier-base";
+  }
+
+  private isStartupFunding(sponsor: SponsorRecord): boolean {
+    return sponsor.programName.trim() === STARTUP_FUNDING_PROGRAM_NAME;
   }
 
   private createEmptyBossCard(): HTMLElement {

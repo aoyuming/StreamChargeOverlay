@@ -44,6 +44,7 @@ export class DisplayApp {
       queryRequired("#sponsorBurst"),
       queryRequired("#burstAvatar"),
       queryRequired("#burstTitle"),
+      queryRequired("#burstProgram"),
       queryRequired("#burstNote"),
       new BurstParticles(queryRequired("#burstParticles"))
     );
@@ -88,7 +89,7 @@ export class DisplayApp {
       if (effectEvent.sponsorEffect) {
         this.stageEffects.playSponsorEffect(effectEvent.sponsorEffect);
       }
-      this.sponsorBurst.show(effectEvent.latestNewSponsor);
+      this.sponsorBurst.show(effectEvent.latestNewSponsor, state.speechAlert?.text);
       void this.sponsorSound.play();
       if (state.speechAlert) {
         this.sponsorSpeechAudio.play(state.speechAlert);

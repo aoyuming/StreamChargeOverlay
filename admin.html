@@ -86,11 +86,11 @@
         <aside class="side-stack">
           <form id="targetForm" class="tool-panel compact-panel">
             <h2>目标金额</h2>
-            <label>
+            <label class="compact-input-field target-input-field">
               凑够多少开始
               <input id="targetAmountInput" name="targetAmount" type="number" min="1" step="1" required />
             </label>
-            <label class="wide-field">
+            <label class="compact-input-field wide-field">
               宣传语
               <input
                 id="sloganInput"
@@ -101,29 +101,45 @@
                 required
               />
             </label>
+            <label class="compact-input-field current-charge-field">
+              当前启动资金
+              <input id="currentChargeAmountInput" type="number" min="0" step="0.01" required />
+            </label>
+            <div class="charge-actions">
+              <button id="updateCurrentChargeButton" class="secondary-button" type="button">保存资金</button>
+              <button id="resetCurrentChargeButton" class="secondary-button" type="button">归0</button>
+            </div>
             <button class="secondary-button" type="submit">更新设置</button>
             <button id="startDianjiangButton" class="primary-button" type="button">开始点将</button>
           </form>
 
+          <section id="todayDisplayPanel" class="tool-panel records-panel today-display-panel">
+            <div class="records-header">
+              <h2>今日赞助节目榜单</h2>
+              <button id="removeTodaySponsorsButton" class="ghost-button" type="button">一键移除今日展示</button>
+            </div>
+            <div id="todayDisplayList" class="today-display-list"></div>
+          </section>
+        </aside>
+
+        <div class="right-stack">
           <section class="tool-panel records-panel">
             <div class="records-header">
               <h2>赞助记录</h2>
-              <button id="removeTodaySponsorsButton" class="ghost-button" type="button">一键移除今日榜单</button>
               <button id="deleteAllSponsorsButton" class="ghost-button danger" type="button">一键删除</button>
             </div>
             <div id="recordList" class="record-list"></div>
           </section>
 
-        </aside>
-
-        <section id="trashPanel" class="tool-panel records-panel trash-panel" hidden>
-          <div class="records-header">
-            <h2>回收站</h2>
-            <span class="trash-hint">删除后保留 7 天，可编辑后还原</span>
-            <button id="clearTrashButton" class="ghost-button danger" type="button">清空回收站</button>
-          </div>
-          <div id="trashList" class="record-list"></div>
-        </section>
+          <section id="trashPanel" class="tool-panel records-panel trash-panel" hidden>
+            <div class="records-header">
+              <h2>回收站</h2>
+              <span class="trash-hint">删除后保留 7 天，可还原或彻底删除</span>
+              <button id="clearTrashButton" class="ghost-button danger" type="button">清空回收站</button>
+            </div>
+            <div id="trashList" class="record-list"></div>
+          </section>
+        </div>
       </section>
     </main>
     <script type="module" src="/src/client/admin-main.ts"></script>

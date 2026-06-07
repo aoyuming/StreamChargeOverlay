@@ -15,6 +15,7 @@ export interface AppState {
   targetAmount: number;
   slogan: string;
   chargeConsumedAmount: number;
+  chargeAdjustmentAmount?: number;
   lastDianjiangEffectAt?: number;
   sponsors: SponsorRecord[];
 }
@@ -28,6 +29,7 @@ export interface SponsorRankingItem {
 }
 
 export interface DerivedAppState extends AppState {
+  chargeAdjustmentAmount: number;
   totalAmount: number;
   progressPercent: number;
   goalReached: boolean;
@@ -87,6 +89,16 @@ export interface UpdateSponsorAvatarRequest {
   avatarDataUrl: string | null;
 }
 
+export interface UpdateSponsorRequest {
+  bossName: string;
+  amount: number;
+  programName: string;
+  note?: string;
+  countsTowardCharge: boolean;
+  createdAt: number;
+  avatarDataUrl?: string | null;
+}
+
 export interface UpdateTargetRequest {
   targetAmount: number;
 }
@@ -94,6 +106,10 @@ export interface UpdateTargetRequest {
 export interface UpdateSettingsRequest {
   targetAmount: number;
   slogan: string;
+}
+
+export interface UpdateCurrentChargeRequest {
+  totalAmount: number;
 }
 
 export interface StateRepository {

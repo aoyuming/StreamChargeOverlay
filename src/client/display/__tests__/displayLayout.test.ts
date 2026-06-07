@@ -118,19 +118,29 @@ describe("display layout", () => {
     const sponsorBurst = readFileSync(resolve(process.cwd(), "src/client/display/SponsorBurst.ts"), "utf8");
 
     expect(html).toContain('id="burstAvatar"');
+    expect(html).toContain('id="burstProgram"');
+    expect(html).toContain('id="burstNote"');
     expect(css).toContain(".burst-avatar");
+    expect(css).toContain(".burst-program");
+    expect(css).toContain(".burst-note");
     expect(progressPanel).toContain("current-boss-avatar");
     expect(rankingTicker).toContain("rank-avatar");
     expect(sponsorBurst).toContain("avatarElement");
   });
 
-  it("makes the new sponsor burst avatar and title larger for full-stage entry moments", () => {
-    expect(css).toContain("grid-template-columns: 116px minmax(0, 1fr);");
-    expect(css).toContain("width: 760px;");
+  it("uses an adaptive wide sponsor burst that wraps long program and note text", () => {
+    expect(css).toContain("grid-template-columns: 136px minmax(0, auto);");
+    expect(css).toContain("min-width: 760px;");
+    expect(css).toContain("max-width: min(1500px, calc(100vw - 180px));");
+    expect(css).toContain("width: max-content;");
+    expect(css).not.toContain("\n  width: 760px;");
     expect(css).toContain("width: 104px;");
     expect(css).toContain("height: 104px;");
-    expect(css).toContain("font-size: 56px;");
-    expect(css).toContain("font-size: 26px;");
+    expect(css).toContain("font-size: clamp(38px, 3.2vw, 56px);");
+    expect(css).toContain("animation: burstEnter var(--burst-duration, 4200ms) ease forwards;");
+    expect(css).toContain(".burst-program,\n.burst-note,\n.sponsor-burst em");
+    expect(css).toContain("white-space: normal;");
+    expect(css).toContain("-webkit-line-clamp: 2;");
   });
 
   it("keeps the effect canvas ready for the full 1920 by 1440 stage", () => {

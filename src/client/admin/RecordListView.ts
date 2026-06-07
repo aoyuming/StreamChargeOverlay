@@ -1,11 +1,11 @@
-import type { SponsorRecord } from "../../shared/types";
+import type { SponsorRecord, UpdateSponsorRequest } from "../../shared/types";
 import { clearAndAppend } from "../common/dom";
 import { formatTime } from "../common/format";
 import { compressAvatarFile, readAvatarFromClipboard } from "./AvatarImageProcessor";
 
 type RemoveFromTodayHandler = (id: string) => Promise<void>;
 type AddToTodayHandler = (id: string) => Promise<void>;
-type UpdateAmountHandler = (id: string, amount: number) => Promise<void>;
+type UpdateSponsorHandler = (id: string, request: UpdateSponsorRequest) => Promise<void>;
 type DeletePermanentlyHandler = (id: string) => Promise<void>;
 type RestoreSponsorHandler = (id: string) => Promise<void>;
 type UpdateAvatarHandler = (id: string, avatarDataUrl: string | null) => Promise<void>;
@@ -19,12 +19,13 @@ type RecordAvatarSnapshot = {
 export class RecordListView {
   private removeFromTodayHandler: RemoveFromTodayHandler | null = null;
   private addToTodayHandler: AddToTodayHandler | null = null;
-  private updateAmountHandler: UpdateAmountHandler | null = null;
+  private updateSponsorHandler: UpdateSponsorHandler | null = null;
   private deletePermanentlyHandler: DeletePermanentlyHandler | null = null;
   private restoreSponsorHandler: RestoreSponsorHandler | null = null;
   private updateAvatarHandler: UpdateAvatarHandler | null = null;
   private visibleTodayIds = new Set<string>();
-  private canManage = true;
+  private canManageRecords = true;
+  private canManageToday = true;
 
   public constructor(private readonly listElement: HTMLElement) {
     this.listElement.addEventListener("click", (event) => void this.handleClick(event));
@@ -39,8 +40,8 @@ export class RecordListView {
     this.addToTodayHandler = handler;
   }
 
-  public onUpdateAmount(handler: UpdateAmountHandler): void {
-    this.updateAmountHandler = handler;
+  public onUpdateSponsor(handler: UpdateSponsorHandler): void {
+    this.updateSponsorHandler = handler;
   }
 
   public onDeletePermanently(handler: DeletePermanentlyHandler): void {
@@ -56,8 +57,13 @@ export class RecordListView {
   }
 
   public setCanManage(canManage: boolean): void {
-    this.canManage = canManage;
-    this.listElement.classList.toggle("is-readonly", !canManage);
+    this.setPermissions({ canManageRecords: canManage, canManageToday: canManage });
+  }
+
+  public setPermissions(permissions: { canManageRecords: boolean; canManageToday: boolean }): void {
+    this.canManageRecords = permissions.canManageRecords;
+    this.canManageToday = permissions.canManageToday;
+    this.listElement.classList.toggle("is-readonly", !permissions.canManageRecords && !permissions.canManageToday);
   }
 
   public render(records: SponsorRecord[], visibleTodayRecords: SponsorRecord[] = records): void {
@@ -102,6 +108,7 @@ export class RecordListView {
     const row = document.createElement("article");
     row.className = `record-row${mode === "trash" ? " is-trash" : ""}`;
     row.dataset.id = record.id;
+    row.dataset.visibleToday = String(isVisibleToday);
 
     const avatar = document.createElement("span");
     avatar.className = `record-avatar${record.avatarUrl ? " has-image" : " is-placeholder"}`;
@@ -115,7 +122,7 @@ export class RecordListView {
     title.textContent = record.programName;
 
     const meta = document.createElement("span");
-    meta.textContent = `${record.bossName} / ${formatTime(record.createdAt)}`;
+    meta.textContent = `${record.bossName} / ${formatTime(record.createdAt)} / ￥${this.formatAmount(record.amount)}`;
 
     const note = document.createElement("small");
     note.textContent = record.note || "无备注";
@@ -137,105 +144,165 @@ export class RecordListView {
     const actions = document.createElement("div");
     actions.className = "record-actions";
 
-    const amountInput = document.createElement("input");
-    amountInput.className = "record-amount-input";
-    amountInput.type = "number";
-    amountInput.min = "0.01";
-    amountInput.step = "0.01";
-    amountInput.value = String(record.amount);
-    amountInput.disabled = !this.canManage;
-    amountInput.setAttribute("aria-label", `${record.bossName} 赞助金额`);
+    const editButton = document.createElement("button");
+    editButton.className = "ghost-button";
+    editButton.type = "button";
+    editButton.dataset.action = "edit-record";
+    editButton.disabled = !this.canManageRecords && !this.canManageToday;
+    editButton.textContent = this.canManageRecords ? "编辑" : "今日展示";
 
-    const saveButton = document.createElement("button");
-    saveButton.className = "ghost-button";
-    saveButton.type = "button";
-    saveButton.dataset.action = "save-amount";
-    saveButton.disabled = !this.canManage;
-    saveButton.textContent = "保存金额";
-
-    const removeButton = document.createElement("button");
-    removeButton.className = "ghost-button danger";
-    removeButton.type = "button";
-    removeButton.dataset.action = "remove-today";
-    removeButton.disabled = !this.canManage || !isVisibleToday;
-    removeButton.textContent = isVisibleToday ? "移除今日榜单" : "已移除";
-
-    const addButton = document.createElement("button");
-    addButton.className = "ghost-button";
-    addButton.type = "button";
-    addButton.dataset.action = "add-today";
-    addButton.disabled = !this.canManage || isVisibleToday;
-    addButton.textContent = "加入今日榜单";
+    const quickAddTodayButton = document.createElement("button");
+    quickAddTodayButton.className = "ghost-button";
+    quickAddTodayButton.type = "button";
+    quickAddTodayButton.dataset.action = "add-today";
+    quickAddTodayButton.disabled = !this.canManageToday || isVisibleToday;
+    quickAddTodayButton.textContent = isVisibleToday ? "今日展示中" : "加入今日展示";
 
     const restoreButton = document.createElement("button");
     restoreButton.className = "ghost-button";
     restoreButton.type = "button";
     restoreButton.dataset.action = "restore-sponsor";
-    restoreButton.disabled = !this.canManage;
+    restoreButton.disabled = !this.canManageRecords;
     restoreButton.textContent = "还原";
 
     const deleteButton = document.createElement("button");
     deleteButton.className = "ghost-button danger";
     deleteButton.type = "button";
     deleteButton.dataset.action = "delete-permanent";
-    deleteButton.disabled = !this.canManage;
+    deleteButton.disabled = !this.canManageRecords;
     deleteButton.textContent = mode === "trash" ? "彻底删除" : "删除";
 
-    const updateAvatarButton = document.createElement("button");
-    updateAvatarButton.className = "ghost-button";
-    updateAvatarButton.type = "button";
-    updateAvatarButton.dataset.action = "update-avatar";
-    updateAvatarButton.disabled = !this.canManage;
-    updateAvatarButton.textContent = "更换头像";
+    if (mode === "trash") {
+      actions.append(restoreButton, deleteButton);
+      main.append(title, meta, note, flags);
+      row.append(avatar, main, actions);
+      return row;
+    }
 
-    const pasteAvatarButton = document.createElement("button");
-    pasteAvatarButton.className = "ghost-button";
-    pasteAvatarButton.type = "button";
-    pasteAvatarButton.dataset.action = "paste-avatar";
-    pasteAvatarButton.disabled = !this.canManage;
-    pasteAvatarButton.textContent = "粘贴头像 Ctrl+V";
+    actions.append(editButton, quickAddTodayButton);
+    const editForm = this.createEditForm(record, isVisibleToday);
+    main.append(title, meta, note, flags);
+    row.append(avatar, main, actions, editForm);
+    return row;
+  }
 
-    const clearAvatarButton = document.createElement("button");
-    clearAvatarButton.className = "ghost-button danger";
-    clearAvatarButton.type = "button";
-    clearAvatarButton.dataset.action = "clear-avatar";
-    clearAvatarButton.disabled = !this.canManage || !record.avatarUrl;
-    clearAvatarButton.textContent = "清除头像";
+  private createEditForm(record: SponsorRecord, isVisibleToday: boolean): HTMLElement {
+    const form = document.createElement("div");
+    form.className = "record-edit-form";
+    form.hidden = true;
+
+    const todayLabel = this.createTodayEditControl(isVisibleToday);
+    if (!this.canManageRecords) {
+      const footer = document.createElement("div");
+      footer.className = "record-edit-footer";
+      const saveTodayButton = this.createActionButton("保存今日展示", "save-record");
+      saveTodayButton.disabled = !this.canManageToday;
+      const cancelButton = this.createActionButton("取消", "cancel-edit");
+      footer.append(saveTodayButton, cancelButton);
+      form.append(todayLabel, footer);
+      return form;
+    }
+
+    const bossNameInput = this.createEditInput("record-edit-boss", "老板名", record.bossName);
+    const amountInput = this.createEditInput("record-edit-amount", "金额", String(record.amount), "number");
+    amountInput.min = "0.01";
+    amountInput.step = "0.01";
+    const programInput = this.createEditInput("record-edit-program", "节目", record.programName);
+    const createdAtInput = this.createEditInput("record-edit-created", "时间", this.formatDateTimeLocal(record.createdAt), "datetime-local");
+
+    const noteLabel = document.createElement("label");
+    noteLabel.className = "record-edit-field record-edit-note-field";
+    noteLabel.textContent = "备注";
+    const noteInput = document.createElement("textarea");
+    noteInput.className = "record-edit-note";
+    noteInput.rows = 2;
+    noteInput.value = record.note;
+    noteInput.disabled = !this.canManageRecords;
+    noteLabel.append(noteInput);
+
+    const countsLabel = document.createElement("label");
+    countsLabel.className = "record-edit-check";
+    const countsInput = document.createElement("input");
+    countsInput.className = "record-edit-counts-charge";
+    countsInput.type = "checkbox";
+    countsInput.checked = record.countsTowardCharge;
+    countsInput.disabled = !this.canManageRecords;
+    const countsText = document.createElement("span");
+    countsText.textContent = "加入启动资金";
+    countsLabel.append(countsInput, countsText);
+
+    const avatarActions = document.createElement("div");
+    avatarActions.className = "record-edit-avatar-actions";
+
+    const updateAvatarButton = this.createActionButton("更换头像", "update-avatar");
+    const pasteAvatarButton = this.createActionButton("粘贴头像 Ctrl+V", "paste-avatar");
+    const clearAvatarButton = this.createActionButton("清除头像", "clear-avatar", true);
+    clearAvatarButton.disabled = !record.avatarUrl;
 
     const avatarInput = document.createElement("input");
     avatarInput.className = "record-avatar-input";
     avatarInput.type = "file";
     avatarInput.accept = "image/*";
     avatarInput.hidden = true;
-    avatarInput.disabled = !this.canManage;
+    avatarInput.disabled = !this.canManageRecords;
+    avatarActions.append(updateAvatarButton, pasteAvatarButton, clearAvatarButton, avatarInput);
 
-    if (mode === "trash") {
-      actions.append(
-        amountInput,
-        saveButton,
-        restoreButton,
-        deleteButton,
-        updateAvatarButton,
-        pasteAvatarButton,
-        clearAvatarButton,
-        avatarInput
-      );
-    } else {
-      actions.append(
-        amountInput,
-        saveButton,
-        removeButton,
-        addButton,
-        updateAvatarButton,
-        pasteAvatarButton,
-        clearAvatarButton,
-        deleteButton,
-        avatarInput
-      );
-    }
-    main.append(title, meta, note, flags);
-    row.append(avatar, main, actions);
-    return row;
+    const footer = document.createElement("div");
+    footer.className = "record-edit-footer";
+    const saveButton = this.createActionButton("保存修改", "save-record");
+    const cancelButton = this.createActionButton("取消", "cancel-edit");
+    const deleteButton = this.createActionButton("删除", "delete-permanent", true);
+    footer.append(saveButton, cancelButton, deleteButton);
+
+    form.append(
+      bossNameInput.closest("label") as HTMLLabelElement,
+      amountInput.closest("label") as HTMLLabelElement,
+      programInput.closest("label") as HTMLLabelElement,
+      createdAtInput.closest("label") as HTMLLabelElement,
+      noteLabel,
+      countsLabel,
+      todayLabel,
+      avatarActions,
+      footer
+    );
+    return form;
+  }
+
+  private createTodayEditControl(isVisibleToday: boolean): HTMLElement {
+    const todayLabel = document.createElement("label");
+    todayLabel.className = "record-edit-check record-edit-today-check";
+    const todayInput = document.createElement("input");
+    todayInput.className = "record-edit-today";
+    todayInput.type = "checkbox";
+    todayInput.checked = isVisibleToday;
+    todayInput.disabled = !this.canManageToday;
+    const todayText = document.createElement("span");
+    todayText.textContent = "今日榜单显示中";
+    todayLabel.append(todayInput, todayText);
+    return todayLabel;
+  }
+
+  private createActionButton(text: string, action: string, danger = false): HTMLButtonElement {
+    const button = document.createElement("button");
+    button.className = `ghost-button${danger ? " danger" : ""}`;
+    button.type = "button";
+    button.dataset.action = action;
+    button.disabled = action !== "cancel-edit" && !this.canManageRecords;
+    button.textContent = text;
+    return button;
+  }
+
+  private createEditInput(className: string, labelText: string, value: string, type = "text"): HTMLInputElement {
+    const label = document.createElement("label");
+    label.className = "record-edit-field";
+    label.textContent = labelText;
+    const input = document.createElement("input");
+    input.className = className;
+    input.type = type;
+    input.value = value;
+    input.disabled = !this.canManageRecords;
+    label.append(input);
+    return input;
   }
 
   private createFlag(text: string): HTMLElement {
@@ -254,6 +321,39 @@ export class RecordListView {
     const row = target.closest<HTMLElement>(".record-row");
     const id = row?.dataset.id;
     if (!row || !id) {
+      return;
+    }
+
+    if (target.dataset.action === "edit-record") {
+      row.classList.add("is-editing");
+      const form = row.querySelector<HTMLElement>(".record-edit-form");
+      if (form) {
+        form.hidden = false;
+      }
+      return;
+    }
+
+    if (target.dataset.action === "cancel-edit") {
+      row.classList.remove("is-editing");
+      const form = row.querySelector<HTMLElement>(".record-edit-form");
+      if (form) {
+        form.hidden = true;
+      }
+      return;
+    }
+
+    if (target.dataset.action === "save-record") {
+      const wasVisibleToday = row.dataset.visibleToday === "true";
+      const nextVisibleToday = this.todayVisibilityFromRow(row);
+      if (this.canManageRecords && this.updateSponsorHandler) {
+        await this.updateSponsorHandler(id, this.recordUpdateFromRow(row));
+      }
+      await this.syncTodayVisibility(id, wasVisibleToday, nextVisibleToday);
+      row.classList.remove("is-editing");
+      const form = row.querySelector<HTMLElement>(".record-edit-form");
+      if (form) {
+        form.hidden = true;
+      }
       return;
     }
 
@@ -305,11 +405,51 @@ export class RecordListView {
       return;
     }
 
-    if (target.dataset.action === "save-amount" && this.updateAmountHandler) {
-      const input = row.querySelector<HTMLInputElement>(".record-amount-input");
-      const amount = Number(input?.value ?? 0);
-      await this.updateAmountHandler(id, amount);
+  }
+
+  private todayVisibilityFromRow(row: HTMLElement): boolean {
+    return row.querySelector<HTMLInputElement>(".record-edit-today")?.checked ?? row.dataset.visibleToday === "true";
+  }
+
+  private async syncTodayVisibility(id: string, wasVisibleToday: boolean, nextVisibleToday: boolean): Promise<void> {
+    if (!this.canManageToday || wasVisibleToday === nextVisibleToday) {
+      return;
     }
+
+    if (nextVisibleToday && this.addToTodayHandler) {
+      await this.addToTodayHandler(id);
+      return;
+    }
+
+    if (!nextVisibleToday && this.removeFromTodayHandler) {
+      await this.removeFromTodayHandler(id);
+    }
+  }
+
+  private recordUpdateFromRow(row: HTMLElement): UpdateSponsorRequest {
+    const bossNameInput = this.requiredField<HTMLInputElement>(row, ".record-edit-boss");
+    const amountInput = this.requiredField<HTMLInputElement>(row, ".record-edit-amount");
+    const programInput = this.requiredField<HTMLInputElement>(row, ".record-edit-program");
+    const noteInput = this.requiredField<HTMLTextAreaElement>(row, ".record-edit-note");
+    const createdAtInput = this.requiredField<HTMLInputElement>(row, ".record-edit-created");
+    const countsTowardChargeInput = this.requiredField<HTMLInputElement>(row, ".record-edit-counts-charge");
+
+    return {
+      bossName: bossNameInput.value,
+      amount: Number(amountInput.value),
+      programName: programInput.value,
+      note: noteInput.value,
+      countsTowardCharge: countsTowardChargeInput.checked,
+      createdAt: new Date(createdAtInput.value).getTime()
+    };
+  }
+
+  private requiredField<T extends HTMLElement>(row: HTMLElement, selector: string): T {
+    const element = row.querySelector<T>(selector);
+    if (!element) {
+      throw new Error(`Missing record edit field: ${selector}`);
+    }
+    return element;
   }
 
   private async handleChange(event: Event): Promise<void> {
@@ -336,6 +476,15 @@ export class RecordListView {
 
   private avatarInitial(name: string): string {
     return name.trim().charAt(0).toUpperCase() || "B";
+  }
+
+  private formatAmount(amount: number): string {
+    return amount.toFixed(2).replace(/\.?0+$/, "");
+  }
+
+  private formatDateTimeLocal(timestamp: number): string {
+    const date = new Date(timestamp);
+    return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
   }
 
   private previewRecordAvatar(row: HTMLElement, avatarDataUrl: string): RecordAvatarSnapshot | null {

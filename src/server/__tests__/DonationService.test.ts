@@ -119,6 +119,72 @@ describe("DonationService", () => {
     expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/avatar-record.png");
   });
 
+  it("updates every editable sponsor field and recalculates startup charge", async () => {
+    const createdAt = new Date("2026-06-05T20:30:00+08:00").getTime();
+    const repository = new MemoryStateRepository({
+      sponsors: [
+        baseRecord({ id: "edit-me", bossName: "Old Boss", amount: 120, programName: "Old Program", note: "old note", countsTowardCharge: false, createdAt: 1 })
+      ]
+    });
+    const service = new DonationService(repository);
+
+    const state = await service.updateSponsor("edit-me", {
+      bossName: "New Boss",
+      amount: 260.129,
+      programName: "New Program",
+      note: "new note",
+      countsTowardCharge: true,
+      createdAt
+    });
+    const stored = await repository.load();
+
+    expect(state.sponsors[0]).toMatchObject({
+      bossName: "New Boss",
+      amount: 260.13,
+      programName: "New Program",
+      note: "new note",
+      countsTowardCharge: true,
+      createdAt
+    });
+    expect(state.totalAmount).toBe(260.13);
+    expect(stored.sponsors[0]).toMatchObject(state.sponsors[0] as SponsorRecord);
+  });
+
+  it("rejects invalid full sponsor edits", async () => {
+    const service = new DonationService(new MemoryStateRepository({ sponsors: [baseRecord({ id: "edit-me" })] }));
+    const valid = { bossName: "Boss", amount: 100, programName: "Program", note: "", countsTowardCharge: true, createdAt: 1 };
+
+    await expect(service.updateSponsor("edit-me", { ...valid, bossName: " " })).rejects.toThrow();
+    await expect(service.updateSponsor("edit-me", { ...valid, programName: " " })).rejects.toThrow();
+    await expect(service.updateSponsor("edit-me", { ...valid, amount: 0 })).rejects.toThrow();
+    await expect(service.updateSponsor("edit-me", { ...valid, createdAt: Number.NaN })).rejects.toThrow();
+  });
+
+  it("keeps, clears, or replaces avatars during full sponsor edits", async () => {
+    const avatarStorage = {
+      clearAvatar: vi.fn(),
+      saveAvatar: vi.fn(async (roomSlug: string, sponsorId: string) => `/avatars/${roomSlug}/${sponsorId}.webp`)
+    };
+    const repository = new MemoryStateRepository({
+      sponsors: [baseRecord({ id: "avatar-edit", avatarUrl: "/avatars/alpha/old.webp" } as any)]
+    });
+    const service = new (DonationService as any)(repository, {
+      avatarStorage,
+      roomSlug: "alpha"
+    });
+    const request = { bossName: "Avatar Boss", amount: 100, programName: "Avatar Program", note: "", countsTowardCharge: true, createdAt: 1 };
+
+    const kept = await service.updateSponsor("avatar-edit", request);
+    const cleared = await service.updateSponsor("avatar-edit", { ...request, avatarDataUrl: null });
+    const replaced = await service.updateSponsor("avatar-edit", { ...request, avatarDataUrl: "data:image/webp;base64,next" });
+
+    expect(kept.sponsors[0]?.avatarUrl).toBe("/avatars/alpha/old.webp");
+    expect(cleared.sponsors[0]?.avatarUrl).toBeUndefined();
+    expect(replaced.sponsors[0]?.avatarUrl).toBe("/avatars/alpha/avatar-edit.webp");
+    expect(avatarStorage.clearAvatar).toHaveBeenCalledWith("/avatars/alpha/old.webp");
+    expect(avatarStorage.saveAvatar).toHaveBeenCalledWith("alpha", "avatar-edit", "data:image/webp;base64,next");
+  });
+
   it("keeps non-charge sponsors visible without increasing current charge", async () => {
     const service = new DonationService(new MemoryStateRepository());
 
@@ -314,6 +380,68 @@ describe("DonationService", () => {
     expect(state.totalAmount).toBe(0);
     expect(state.chargeConsumedAmount).toBe(240);
     expect(state.lastDianjiangEffectAt).toBe(new Date("2026-06-04T12:00:00+08:00").getTime());
+  });
+
+  it("sets current startup funding without changing sponsor records or rankings", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(10);
+    const repository = new MemoryStateRepository({
+      targetAmount: 1000,
+      sponsors: [
+        baseRecord({ id: "charge", bossName: "Charge Boss", amount: 300, createdAt: 1 }),
+        baseRecord({ id: "program", bossName: "Program Boss", amount: 200, countsTowardCharge: false, createdAt: 2 })
+      ]
+    });
+    const service = new DonationService(repository);
+
+    const before = await service.getState();
+    const state = await service.updateCurrentChargeAmount(650);
+    const stored = await repository.load();
+
+    expect(before.ranking.map((item) => [item.bossName, item.totalAmount])).toEqual([
+      ["Charge Boss", 300],
+      ["Program Boss", 200]
+    ]);
+    expect(state.totalAmount).toBe(650);
+    expect(state.chargeAdjustmentAmount).toBe(350);
+    expect(state.sponsors.map((record) => [record.id, record.amount])).toEqual([
+      ["charge", 300],
+      ["program", 200]
+    ]);
+    expect(state.ranking.map((item) => [item.bossName, item.totalAmount])).toEqual(before.ranking.map((item) => [
+      item.bossName,
+      item.totalAmount
+    ]));
+    expect(state.programQueue.map((record) => record.id)).toEqual(before.programQueue.map((record) => record.id));
+    expect(stored.chargeAdjustmentAmount).toBe(350);
+  });
+
+  it("adds future startup funding on top of the manually edited current charge", async () => {
+    const repository = new MemoryStateRepository({
+      targetAmount: 500,
+      sponsors: [baseRecord({ id: "charge", amount: 300 })]
+    });
+    const service = new DonationService(repository);
+
+    await service.updateCurrentChargeAmount(100);
+    const afterAdd = await service.addSponsor({
+      bossName: "Fresh Boss",
+      amount: 80,
+      programName: "startup",
+      countsTowardCharge: true
+    });
+    const afterStart = await service.startDianjiang();
+
+    expect(afterAdd.totalAmount).toBe(180);
+    expect(afterAdd.chargeAdjustmentAmount).toBe(-200);
+    expect(afterStart.totalAmount).toBe(0);
+    expect(afterStart.chargeConsumedAmount).toBe(180);
+  });
+
+  it("rejects negative current startup funding edits", async () => {
+    const service = new DonationService(new MemoryStateRepository());
+
+    await expect(service.updateCurrentChargeAmount(-1)).rejects.toThrow("当前启动资金不能小于 0");
   });
 
   it("edits a historical sponsor amount and recalculates charge and ranking", async () => {

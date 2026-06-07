@@ -9,6 +9,8 @@ import type {
   SponsorRecord,
   UpdateRoomViewerPasswordRequest,
   UpdateSponsorAvatarRequest,
+  UpdateCurrentChargeRequest,
+  UpdateSponsorRequest,
   UpdateSettingsRequest
 } from "../../shared/types";
 import { RoomContext } from "./RoomContext";
@@ -117,6 +119,14 @@ export class ApiClient {
     });
   }
 
+  public async updateCurrentChargeAmount(totalAmount: number): Promise<DerivedAppState> {
+    const request: UpdateCurrentChargeRequest = { totalAmount };
+    return this.request<DerivedAppState>(this.apiPath("/charge/current"), {
+      method: "PUT",
+      body: JSON.stringify(request)
+    });
+  }
+
   public async updateSponsorAmount(id: string, amount: number): Promise<DerivedAppState> {
     return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/amount`), {
       method: "PATCH",
@@ -127,6 +137,13 @@ export class ApiClient {
   public async updateSponsorAvatar(id: string, avatarDataUrl: string | null): Promise<DerivedAppState> {
     const request: UpdateSponsorAvatarRequest = { avatarDataUrl };
     return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}/avatar`), {
+      method: "PATCH",
+      body: JSON.stringify(request)
+    });
+  }
+
+  public async updateSponsor(id: string, request: UpdateSponsorRequest): Promise<DerivedAppState> {
+    return this.request<DerivedAppState>(this.apiPath(`/sponsors/${encodeURIComponent(id)}`), {
       method: "PATCH",
       body: JSON.stringify(request)
     });

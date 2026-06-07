@@ -7,6 +7,7 @@ const stateResponse = {
   slogan: "slogan",
   sponsors: [],
   chargeConsumedAmount: 0,
+  chargeAdjustmentAmount: 0,
   totalAmount: 0,
   progressPercent: 0,
   goalReached: false,
@@ -51,6 +52,15 @@ describe("ApiClient", () => {
     );
   });
 
+  it("updates current startup funding through the room-scoped API", async () => {
+    await new ApiClient(new RoomContext("alpha")).updateCurrentChargeAmount(188);
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/rooms/alpha/api/charge/current",
+      expect.objectContaining({ method: "PUT", body: JSON.stringify({ totalAmount: 188 }) })
+    );
+  });
+
   it("updates sponsor amount through the room-scoped API", async () => {
     await new ApiClient(new RoomContext("alpha")).updateSponsorAmount("sponsor id", 420);
 
@@ -68,6 +78,34 @@ describe("ApiClient", () => {
       expect.objectContaining({
         method: "PATCH",
         body: JSON.stringify({ avatarDataUrl: "data:image/webp;base64,next" })
+      })
+    );
+  });
+
+  it("updates all sponsor fields through the room-scoped API", async () => {
+    await new ApiClient(new RoomContext("alpha")).updateSponsor("sponsor id", {
+      bossName: "boss",
+      amount: 420,
+      programName: "program",
+      note: "note",
+      countsTowardCharge: false,
+      createdAt: 1780500000000,
+      avatarDataUrl: null
+    });
+
+    expect(fetch).toHaveBeenCalledWith(
+      "/rooms/alpha/api/sponsors/sponsor%20id",
+      expect.objectContaining({
+        method: "PATCH",
+        body: JSON.stringify({
+          bossName: "boss",
+          amount: 420,
+          programName: "program",
+          note: "note",
+          countsTowardCharge: false,
+          createdAt: 1780500000000,
+          avatarDataUrl: null
+        })
       })
     );
   });

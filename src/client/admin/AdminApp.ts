@@ -13,15 +13,20 @@ import { AdminSummaryView } from "./AdminSummaryView";
 import { RecordListView } from "./RecordListView";
 import { SponsorFormController } from "./SponsorFormController";
 import { TargetFormController } from "./TargetFormController";
+import { TodayDisplayListView } from "./TodayDisplayListView";
 
 export class AdminApp {
   private readonly sponsorForm: SponsorFormController;
   private readonly targetForm: TargetFormController;
   private readonly summaryView: AdminSummaryView;
   private readonly recordListView: RecordListView;
+  private readonly todayDisplayListView: TodayDisplayListView;
   private readonly trashListView: RecordListView;
   private readonly trashPanel: HTMLElement;
   private readonly startDianjiangButton: HTMLButtonElement;
+  private readonly currentChargeAmountInput: HTMLInputElement;
+  private readonly updateCurrentChargeButton: HTMLButtonElement;
+  private readonly resetCurrentChargeButton: HTMLButtonElement;
   private readonly removeTodaySponsorsButton: HTMLButtonElement;
   private readonly deleteAllSponsorsButton: HTMLButtonElement;
   private readonly clearTrashButton: HTMLButtonElement;
@@ -57,9 +62,13 @@ export class AdminApp {
       queryRequired("#adminStatus")
     );
     this.recordListView = new RecordListView(queryRequired("#recordList"));
+    this.todayDisplayListView = new TodayDisplayListView(queryRequired("#todayDisplayList"));
     this.trashListView = new RecordListView(queryRequired("#trashList"));
     this.trashPanel = queryRequired("#trashPanel");
     this.startDianjiangButton = queryRequired("#startDianjiangButton");
+    this.currentChargeAmountInput = queryRequired("#currentChargeAmountInput");
+    this.updateCurrentChargeButton = queryRequired("#updateCurrentChargeButton");
+    this.resetCurrentChargeButton = queryRequired("#resetCurrentChargeButton");
     this.removeTodaySponsorsButton = queryRequired("#removeTodaySponsorsButton");
     this.deleteAllSponsorsButton = queryRequired("#deleteAllSponsorsButton");
     this.clearTrashButton = queryRequired("#clearTrashButton");
@@ -99,6 +108,13 @@ export class AdminApp {
       void this.apiClient.startDianjiang();
     });
 
+    this.updateCurrentChargeButton.addEventListener("click", () => {
+      void this.updateCurrentChargeAmount();
+    });
+    this.resetCurrentChargeButton.addEventListener("click", () => {
+      void this.resetCurrentChargeAmount();
+    });
+
     this.removeTodaySponsorsButton.addEventListener("click", () => {
       void this.apiClient.removeTodaySponsors();
     });
@@ -112,19 +128,21 @@ export class AdminApp {
     });
 
     this.recordListView.onRemoveFromToday(async (id) => {
-      await this.apiClient.removeSponsorFromToday(id);
+      const state = await this.apiClient.removeSponsorFromToday(id);
+      this.render(state);
+    });
+    this.todayDisplayListView.onRemoveFromToday(async (id) => {
+      const state = await this.apiClient.removeSponsorFromToday(id);
+      this.render(state);
     });
 
     this.recordListView.onAddToToday(async (id) => {
-      await this.apiClient.addSponsorToToday(id);
+      const state = await this.apiClient.addSponsorToToday(id);
+      this.render(state);
     });
-
-    this.recordListView.onUpdateAmount(async (id, amount) => {
-      await this.apiClient.updateSponsorAmount(id, amount);
-    });
-    this.trashListView.onUpdateAmount(async (id, amount) => {
-      await this.apiClient.updateSponsorAmount(id, amount);
-      await this.refreshTrash();
+    this.recordListView.onUpdateSponsor(async (id, request) => {
+      const state = await this.apiClient.updateSponsor(id, request);
+      this.render(state);
     });
 
     this.recordListView.onDeletePermanently(async (id) => {
@@ -157,11 +175,8 @@ export class AdminApp {
     });
 
     this.recordListView.onUpdateAvatar(async (id, avatarDataUrl) => {
-      await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
-    });
-    this.trashListView.onUpdateAvatar(async (id, avatarDataUrl) => {
-      await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
-      await this.refreshTrash();
+      const state = await this.apiClient.updateSponsorAvatar(id, avatarDataUrl);
+      this.render(state);
     });
 
     this.session = await this.apiClient.getAuthSession();
@@ -175,19 +190,26 @@ export class AdminApp {
     const visibleProgramQueue = canViewRecords ? state.programQueue : [];
     this.sponsorForm.setKnownSponsors(visibleSponsors);
     this.summaryView.render(state);
-    this.recordListView.render(visibleSponsors, visibleProgramQueue);
+    this.currentChargeAmountInput.value = String(state.totalAmount);
     const canOperate = this.sessionCanOperateCurrentRoom();
     const canManage = this.session?.role === "admin";
+    this.todayDisplayListView.setCanOperate(canOperate);
+    this.recordListView.setPermissions({ canManageRecords: canManage, canManageToday: canOperate });
+    this.trashListView.setCanManage(canManage);
+    this.todayDisplayListView.render(visibleProgramQueue);
+    this.recordListView.render(visibleSponsors, visibleProgramQueue);
     this.startDianjiangButton.disabled = !canOperate || state.totalAmount <= 0;
     this.startDianjiangButton.textContent = state.goalReached ? "开始点将" : "开始点将（当前不足）";
-    this.removeTodaySponsorsButton.disabled = !canManage || state.programQueue.length === 0;
+    this.currentChargeAmountInput.disabled = !canOperate;
+    this.updateCurrentChargeButton.disabled = !canOperate;
+    this.resetCurrentChargeButton.disabled = !canOperate;
+    this.removeTodaySponsorsButton.disabled = !canOperate || state.programQueue.length === 0;
     this.deleteAllSponsorsButton.disabled = !canManage || visibleSponsors.length === 0;
     this.clearTrashButton.disabled = !canManage || this.trashCount === 0;
     this.deleteRoomButton.disabled = !canManage || !this.roomSelect.value;
     this.roomViewerPasswordInput.disabled = !canManage;
     this.updateRoomViewerPasswordButton.disabled = !canManage || !this.roomSelect.value;
     this.trashPanel.hidden = !canManage;
-    this.trashListView.setCanManage(canManage);
     if (canManage) {
       void this.refreshTrash(this.sourceId);
     } else {
@@ -306,6 +328,24 @@ export class AdminApp {
     }
   }
 
+  private async updateCurrentChargeAmount(): Promise<void> {
+    try {
+      const state = await this.apiClient.updateCurrentChargeAmount(Number(this.currentChargeAmountInput.value));
+      this.render(state);
+    } catch (error) {
+      this.authStatus.textContent = error instanceof Error ? error.message : "当前启动资金更新失败";
+    }
+  }
+
+  private async resetCurrentChargeAmount(): Promise<void> {
+    try {
+      const state = await this.apiClient.updateCurrentChargeAmount(0);
+      this.render(state);
+    } catch (error) {
+      this.authStatus.textContent = error instanceof Error ? error.message : "褰撳墠鍚姩璧勯噾褰?澶辫触";
+    }
+  }
+
   private async updateRoomViewerPassword(): Promise<void> {
     const slug = this.roomSelect.value;
     const password = this.roomViewerPasswordInput.value;
@@ -357,7 +397,11 @@ export class AdminApp {
     const canManage = this.session?.role === "admin";
     this.sponsorForm.setEnabled(canAdd);
     this.targetForm.setEnabled(canOperate);
-    this.recordListView.setCanManage(canManage);
+    this.currentChargeAmountInput.disabled = !canOperate;
+    this.updateCurrentChargeButton.disabled = !canOperate;
+    this.resetCurrentChargeButton.disabled = !canOperate;
+    this.todayDisplayListView.setCanOperate(canOperate);
+    this.recordListView.setPermissions({ canManageRecords: canManage, canManageToday: canOperate });
     this.trashListView.setCanManage(canManage);
     this.trashPanel.hidden = !canManage;
     this.deleteAllSponsorsButton.disabled = !canManage || !this.latestState?.sponsors.length;

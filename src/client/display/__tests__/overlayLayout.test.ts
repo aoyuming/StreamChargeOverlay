@@ -6,6 +6,13 @@ describe("overlay layout page", () => {
   const html = readFileSync(resolve(process.cwd(), "overlay.html"), "utf8");
   const css = readFileSync(resolve(process.cwd(), "src/client/styles/overlay.css"), "utf8");
   const main = readFileSync(resolve(process.cwd(), "src/client/overlay-main.ts"), "utf8");
+  const cssRule = (selector: string) => {
+    const start = css.indexOf(selector);
+    expect(start).toBeGreaterThanOrEqual(0);
+    const end = css.indexOf("\n}", start);
+    expect(end).toBeGreaterThan(start);
+    return css.slice(start, end);
+  };
 
   it("defines a transparent 1920 by 1080 OBS overlay entry", () => {
     expect(html).toContain('content="width=1920, height=1080, initial-scale=1"');
@@ -30,6 +37,8 @@ describe("overlay layout page", () => {
     expect(html).toContain('id="progressSlogan"');
     expect(html).toContain('id="progressPercent"');
     expect(html).toContain('id="progressEffectsCanvas"');
+    expect(html).toContain('id="burstProgram"');
+    expect(html).toContain('id="burstNote"');
     expect(html).toContain('data-progress-effect-mask="overlay-charge"');
     expect(html).toContain("当前大哥节目榜单");
     expect(html).toContain("近两月大哥榜单");
@@ -160,6 +169,20 @@ describe("overlay layout page", () => {
     expect(css).toContain(".overlay-current-programs .current-boss-row.has-empty-note .current-boss-amount");
     expect(css).toContain("color: #ffffff;");
     expect(css).toContain("color: #ffe8ad;");
+  });
+
+  it("stacks current boss program and note as labeled overlay rows", () => {
+    expect(css).toContain(".overlay-current-programs .current-boss-program::before");
+    expect(css).toContain('content: "节目:";');
+    expect(css).toContain(".overlay-current-programs .current-boss-note::before");
+    expect(css).toContain('content: "备注:";');
+    expect(css).toContain(".overlay-current-programs .current-boss-program {\n  grid-column: 2 / 4;\n  grid-row: 2;");
+    expect(css).toContain(".overlay-current-programs .current-boss-note {\n  grid-column: 2 / 4;\n  grid-row: 3;");
+    expect(cssRule(".overlay-current-programs .current-boss-note {")).toContain("text-align: left;");
+    expect(css).toContain(".overlay-current-programs .current-boss-row.is-startup-funding .current-boss-program::before");
+    expect(css).toContain("content: \"\";");
+    expect(css).toContain(".overlay-current-programs .current-boss-row.has-empty-note .current-boss-note {\n  display: none;");
+    expect(css).not.toContain(".overlay-current-programs .current-boss-note {\n  grid-column: 3;\n  grid-row: 2;\n  max-width: 96px;");
   });
 
   it("renders the overlay charge progress bar as a single SVG shape instead of clipped CSS caps", () => {

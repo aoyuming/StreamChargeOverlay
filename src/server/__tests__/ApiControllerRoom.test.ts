@@ -260,6 +260,18 @@ describe("ApiController room routing", () => {
       headers: { "Content-Type": "application/json", Cookie: viewerCookie },
       body: JSON.stringify({ avatarDataUrl: "data:image/png;base64,next" })
     });
+    const viewerFullPatch = await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: viewerCookie },
+      body: JSON.stringify({
+        bossName: "viewer renamed",
+        amount: 188,
+        programName: "viewer program",
+        note: "viewer note",
+        countsTowardCharge: false,
+        createdAt: 1780500000000
+      })
+    });
     const adminLogin = await fetch(`${running.baseUrl}/api/auth/login`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -276,14 +288,38 @@ describe("ApiController room routing", () => {
       headers: { "Content-Type": "application/json", Cookie: adminCookie },
       body: JSON.stringify({ avatarDataUrl: null })
     })).json()) as DerivedAppState;
+    const fullPatched = (await (await fetch(`${running.baseUrl}/rooms/alpha/api/sponsors/${sponsorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: adminCookie },
+      body: JSON.stringify({
+        bossName: "admin renamed",
+        amount: 188,
+        programName: "admin program",
+        note: "admin note",
+        countsTowardCharge: false,
+        createdAt: 1780500000000,
+        avatarDataUrl: "data:image/webp;base64,admin"
+      })
+    })).json()) as DerivedAppState;
 
     expect(added.sponsors[0]?.avatarUrl).toBe(`/avatars/alpha/${sponsorId}.webp`);
     expect(viewerPatch.status).toBe(403);
+    expect(viewerFullPatch.status).toBe(403);
     expect(patched.sponsors[0]?.avatarUrl).toBe(`/avatars/alpha/${sponsorId}.webp`);
     expect(cleared.sponsors[0]?.avatarUrl).toBeUndefined();
+    expect(fullPatched.sponsors[0]).toMatchObject({
+      bossName: "admin renamed",
+      amount: 188,
+      programName: "admin program",
+      note: "admin note",
+      countsTowardCharge: false,
+      createdAt: 1780500000000,
+      avatarUrl: `/avatars/alpha/${sponsorId}.webp`
+    });
     expect(avatarStorage.saved.map((item) => item.dataUrl)).toEqual([
       "data:image/webp;base64,first",
-      "data:image/png;base64,next"
+      "data:image/png;base64,next",
+      "data:image/webp;base64,admin"
     ]);
     expect(avatarStorage.cleared).toContain(`/avatars/alpha/${sponsorId}.webp`);
   });
@@ -460,6 +496,27 @@ describe("ApiController room routing", () => {
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ bossName: "viewer boss", amount: 300, programName: "startup", countsTowardCharge: true })
     })).json()) as DerivedAppState;
+    const currentChargeResponse = await fetch(`${running.baseUrl}/api/charge/current`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ totalAmount: 180 })
+    });
+    const currentCharge = (await currentChargeResponse.json()) as DerivedAppState;
+    const removeTodayResponse = await fetch(`${running.baseUrl}/api/sponsors/${added.sponsors[0]?.id ?? ""}/remove-from-today`, {
+      method: "POST",
+      headers: { Cookie: cookie }
+    });
+    const removedToday = (await removeTodayResponse.json()) as DerivedAppState;
+    const addTodayResponse = await fetch(`${running.baseUrl}/api/sponsors/${added.sponsors[0]?.id ?? ""}/add-to-today`, {
+      method: "POST",
+      headers: { Cookie: cookie }
+    });
+    const addedToday = (await addTodayResponse.json()) as DerivedAppState;
+    const bulkRemoveTodayResponse = await fetch(`${running.baseUrl}/api/sponsors/remove-from-today`, {
+      method: "POST",
+      headers: { Cookie: cookie }
+    });
+    const bulkRemovedToday = (await bulkRemoveTodayResponse.json()) as DerivedAppState;
     const startedResponse = await fetch(`${running.baseUrl}/api/charge/start`, {
       method: "POST",
       headers: { Cookie: cookie }
@@ -472,9 +529,18 @@ describe("ApiController room routing", () => {
     const started = (await startedResponse.json()) as DerivedAppState;
 
     expect(settingsResponse.status).toBe(200);
+    expect(currentChargeResponse.status).toBe(200);
+    expect(currentCharge.totalAmount).toBe(180);
+    expect(currentCharge.chargeAdjustmentAmount).toBe(-120);
+    expect(removeTodayResponse.status).toBe(200);
+    expect(removedToday.programQueue).toEqual([]);
+    expect(addTodayResponse.status).toBe(200);
+    expect(addedToday.programQueue.map((record) => record.id)).toEqual([added.sponsors[0]?.id]);
+    expect(bulkRemoveTodayResponse.status).toBe(200);
+    expect(bulkRemovedToday.programQueue).toEqual([]);
     expect(startedResponse.status).toBe(200);
     expect(started.totalAmount).toBe(0);
-    expect(started.chargeConsumedAmount).toBe(300);
+    expect(started.chargeConsumedAmount).toBe(180);
     expect(editResponse.status).toBe(403);
   });
 
@@ -513,6 +579,11 @@ describe("ApiController room routing", () => {
       headers: { "Content-Type": "application/json", Cookie: cookie },
       body: JSON.stringify({ bossName: "beta boss", amount: 100, programName: "beta program" })
     });
+    const betaCurrentChargeResponse = await fetch(`${running.baseUrl}/rooms/beta/api/charge/current`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ totalAmount: 100 })
+    });
     const session = await (await fetch(`${running.baseUrl}/api/auth/me`, {
       headers: { Cookie: cookie }
     })).json();
@@ -520,6 +591,7 @@ describe("ApiController room routing", () => {
     expect(loginResponse.status).toBe(200);
     expect(alphaResponse.status).toBe(201);
     expect(betaResponse.status).toBe(403);
+    expect(betaCurrentChargeResponse.status).toBe(403);
     expect(session).toEqual({ role: "viewer", roomSlug: "alpha" });
   });
 
