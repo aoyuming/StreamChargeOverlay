@@ -53,6 +53,7 @@ export class DisplayApp {
 
   public async start(): Promise<void> {
     const sourceId = ++this.sourceId;
+    this.sponsorSpeechAudio.prepareUnlockNotice();
     this.realtimeClient.onStateUpdated((state) => {
       if (sourceId === this.sourceId) {
         this.render(state);

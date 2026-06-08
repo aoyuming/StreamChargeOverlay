@@ -4,13 +4,14 @@ import { basename, dirname, join } from "node:path";
 import { promisify } from "node:util";
 import { buildSponsorSpeechText } from "../../shared/displayUnits";
 import type { SpeechAlert, SponsorRecord } from "../../shared/types";
+import type { ServerLogSink } from "../logging/ServerLogger";
 
 const execFileAsync = promisify(execFile);
 const POWERSHELL_PATH = "C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe";
 
 // Generates local Windows TTS WAV files so OBS can play normal audio files.
 export class WindowsSpeechService {
-  public constructor(private readonly speechDirectory: string) {}
+  public constructor(private readonly speechDirectory: string, private readonly logger?: ServerLogSink) {}
 
   public async createSponsorSpeech(record: SponsorRecord): Promise<SpeechAlert | null> {
     const text = this.buildSpeechText(record);
@@ -24,10 +25,10 @@ export class WindowsSpeechService {
 
     try {
       await mkdir(dirname(filePath), { recursive: true });
-      console.info("[StreamChargeOverlay][Speech] Generating speech file", context);
+      this.info("generating speech file", { ...context, bossName: record.bossName });
       await this.generateWave(text, filePath);
       const url = `/speech/${encodeURIComponent(basename(filePath))}`;
-      console.info("[StreamChargeOverlay][Speech] Speech file ready", { ...context, url });
+      this.info("speech file ready", { ...context, bossName: record.bossName, url });
       return {
         id: record.id,
         url,
@@ -35,8 +36,9 @@ export class WindowsSpeechService {
         createdAt: Date.now()
       };
     } catch (error) {
-      console.warn("[StreamChargeOverlay][Speech] Failed to generate speech file", {
+      this.warn("speech generation failed", {
         ...context,
+        bossName: record.bossName,
         ...this.describeError(error)
       });
       return null;
@@ -107,12 +109,32 @@ Write-Host "[StreamChargeOverlay][Speech] Wav finished: $path"
     const stderrText = stderr.toString().trim();
 
     if (stdoutText) {
-      console.info("[StreamChargeOverlay][Speech] PowerShell stdout", { filePath, stdout: stdoutText });
+      this.info("PowerShell stdout", { filePath, stdout: stdoutText });
     }
 
     if (stderrText) {
-      console.warn("[StreamChargeOverlay][Speech] PowerShell stderr", { filePath, stderr: stderrText });
+      this.warn("PowerShell stderr", { filePath, stderr: stderrText });
     }
+  }
+
+  private info(message: string, details: Record<string, unknown>): void {
+    if (this.logger) {
+      this.logger.info("speech", message, details);
+      return;
+    }
+
+    console.info(`[StreamChargeOverlay][Speech] ${message}`, details);
+  }
+
+  private warn(message: string, details: Record<string, unknown>): void {
+    if (this.logger) {
+      this.logger.warn("speech", message, details);
+      return;
+    }
+
+    const legacyMessage =
+      message === "speech generation failed" ? "Failed to generate speech file" : message;
+    console.warn(`[StreamChargeOverlay][Speech] ${legacyMessage}`, details);
   }
 
   private describeError(error: unknown): Record<string, unknown> {

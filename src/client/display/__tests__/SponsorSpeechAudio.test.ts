@@ -4,6 +4,7 @@ import { SponsorSpeechAudio } from "../SponsorSpeechAudio";
 describe("SponsorSpeechAudio", () => {
   const originalAudio = globalThis.Audio;
   const originalWindow = (globalThis as { window?: Window }).window;
+  const originalDocument = (globalThis as { document?: Document }).document;
 
   afterEach(() => {
     vi.restoreAllMocks();
@@ -19,9 +20,15 @@ describe("SponsorSpeechAudio", () => {
     } else {
       delete (globalThis as { window?: Window }).window;
     }
+
+    if (originalDocument) {
+      (globalThis as { document?: Document }).document = originalDocument;
+    } else {
+      delete (globalThis as { document?: Document }).document;
+    }
   });
 
-  it("falls back to browser speech when audio playback is rejected", async () => {
+  it("does not fall back to browser speech when server audio playback is rejected", async () => {
     const speak = vi.fn();
     const cancel = vi.fn();
     const audioPlay = vi.fn(() => Promise.reject(new Error("blocked")));
@@ -73,8 +80,130 @@ describe("SponsorSpeechAudio", () => {
         errorMessage: "blocked"
       })
     );
-    expect(cancel).toHaveBeenCalledTimes(1);
-    expect(speak).toHaveBeenCalledTimes(1);
-    expect((speak.mock.calls[0]?.[0] as FakeUtterance | undefined)?.text).toBe("点将 1.9根");
+    expect(cancel).not.toHaveBeenCalled();
+    expect(speak).not.toHaveBeenCalled();
+  });
+
+  it("shows an unlock notice and unlocks future audio after one click", async () => {
+    let clickHandler: (() => void) | undefined;
+    const appended: unknown[] = [];
+    const unlockButton = {
+      type: "",
+      className: "",
+      textContent: "",
+      title: "",
+      hidden: false,
+      style: {},
+      addEventListener: vi.fn((_event: string, handler: () => void) => {
+        clickHandler = handler;
+      })
+    };
+    const audioPlay = vi.fn().mockResolvedValue(undefined);
+    const sources: string[] = [];
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    class FakeAudio {
+      public volume = 1;
+
+      public constructor(public readonly src: string) {
+        sources.push(src);
+      }
+
+      public play(): Promise<void> {
+        return audioPlay();
+      }
+    }
+
+    (globalThis as { Audio?: typeof Audio }).Audio = FakeAudio as unknown as typeof Audio;
+    (globalThis as { document?: Document }).document = {
+      body: {
+        appendChild: (element: unknown) => {
+          appended.push(element);
+          return element;
+        }
+      },
+      createElement: vi.fn(() => unlockButton)
+    } as unknown as Document;
+
+    const player = new SponsorSpeechAudio();
+    player.prepareUnlockNotice();
+
+    expect(appended).toEqual([unlockButton]);
+    expect(unlockButton.textContent).toContain("Doubao");
+    expect(unlockButton.title).toContain("before streaming");
+    expect(clickHandler).toBeTypeOf("function");
+
+    clickHandler?.();
+    await Promise.resolve();
+
+    expect(audioPlay).toHaveBeenCalledTimes(1);
+    expect(sources[0]).toContain("audio/wav");
+    expect(unlockButton.hidden).toBe(true);
+  });
+
+  it("shows a retry notice and replays the same server audio when clicked", async () => {
+    let clickHandler: (() => void) | undefined;
+    const appended: unknown[] = [];
+    const retryButton = {
+      type: "",
+      className: "",
+      textContent: "",
+      title: "",
+      hidden: false,
+      style: {},
+      addEventListener: vi.fn((_event: string, handler: () => void) => {
+        clickHandler = handler;
+      })
+    };
+    const audioPlay = vi.fn().mockRejectedValueOnce(new Error("blocked")).mockResolvedValueOnce(undefined);
+    const sources: string[] = [];
+    vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    vi.spyOn(console, "info").mockImplementation(() => undefined);
+
+    class FakeAudio {
+      public volume = 0;
+
+      public constructor(public readonly src: string) {
+        sources.push(src);
+      }
+
+      public play(): Promise<void> {
+        return audioPlay();
+      }
+    }
+
+    (globalThis as { Audio?: typeof Audio }).Audio = FakeAudio as unknown as typeof Audio;
+    (globalThis as { document?: Document }).document = {
+      body: {
+        appendChild: (element: unknown) => {
+          appended.push(element);
+          return element;
+        }
+      },
+      createElement: vi.fn(() => retryButton)
+    } as unknown as Document;
+
+    const player = new SponsorSpeechAudio();
+
+    await player.play({
+      id: "speech-1",
+      url: "/speech/speech-1-doubao.mp3",
+      text: "speech text",
+      createdAt: 1
+    });
+
+    expect(audioPlay).toHaveBeenCalledTimes(1);
+    expect(appended).toEqual([retryButton]);
+    expect(retryButton.className).toBe("speech-audio-retry-notice");
+    expect(retryButton.textContent).toContain("Doubao");
+    expect(retryButton.title).toContain("blocked");
+    expect(clickHandler).toBeTypeOf("function");
+
+    clickHandler?.();
+    await Promise.resolve();
+
+    expect(audioPlay).toHaveBeenCalledTimes(2);
+    expect(sources).toEqual(["/speech/speech-1-doubao.mp3", "/speech/speech-1-doubao.mp3"]);
+    expect(retryButton.hidden).toBe(true);
   });
 });

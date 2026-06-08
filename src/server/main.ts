@@ -6,12 +6,16 @@ import { normalizeRoomSlug } from "../shared/RoomSlug";
 import { AppConfig } from "./config/AppConfig";
 import { ApiController } from "./controllers/ApiController";
 import { registerFrontendRoutes } from "./frontendRoutes";
+import { createHttpRequestLogger } from "./logging/HttpRequestLogger";
+import { ServerLogger } from "./logging/ServerLogger";
 import { SqliteRoomStateRepositoryFactory } from "./repositories/RoomStateRepositoryFactory";
 import { AuthService } from "./services/AuthService";
 import { AvatarService } from "./services/AvatarService";
 import { DonationService } from "./services/DonationService";
+import { FallbackSpeechService } from "./services/FallbackSpeechService";
 import { RealtimeHub } from "./services/RealtimeHub";
 import { RoomCatalogService } from "./services/RoomCatalogService";
+import { VolcengineSpeechService } from "./services/VolcengineSpeechService";
 import { WindowsSpeechService } from "./services/WindowsSpeechService";
 
 const config = AppConfig.fromEnv();
@@ -19,12 +23,27 @@ const config = AppConfig.fromEnv();
 const app = express();
 const httpServer = createServer(app);
 const io = new SocketServer(httpServer);
+const logger = new ServerLogger({ logFilePath: resolve(config.dataDirectory, "server.log") });
 
 const legacyJsonPath = resolve(config.dataDirectory, "demo-state.json");
 const repositoryFactory = new SqliteRoomStateRepositoryFactory(config.databasePath, legacyJsonPath);
-const realtimeHub = new RealtimeHub(io);
+const realtimeHub = new RealtimeHub(io, logger);
 const speechDirectory = resolve(config.dataDirectory, "speech");
-const speechService = new WindowsSpeechService(speechDirectory);
+const windowsSpeechService = new WindowsSpeechService(speechDirectory, logger);
+const speechService = config.doubaoTts.enabled
+  ? new FallbackSpeechService(
+      new VolcengineSpeechService({
+        speechDirectory,
+        config: config.doubaoTts,
+        logger
+      }),
+      windowsSpeechService,
+      {
+        timeoutMs: config.doubaoTts.timeoutMs,
+        logger
+      }
+    )
+  : windowsSpeechService;
 const avatarDirectory = resolve(config.dataDirectory, "avatars");
 const avatarService = new AvatarService(avatarDirectory);
 const authService = new AuthService({
@@ -40,10 +59,12 @@ const apiController = new ApiController(
   config.defaultRoomSlug,
   authService,
   roomCatalog,
-  avatarService
+  avatarService,
+  logger
 );
 
 app.use(express.json({ limit: "1mb" }));
+app.use(createHttpRequestLogger(logger));
 app.use("/speech", express.static(speechDirectory));
 app.use("/avatars", express.static(avatarDirectory));
 apiController.register(app);
@@ -66,7 +87,15 @@ await registerFrontendRoutes({
 });
 
 httpServer.listen(config.port, () => {
-  console.log(`OBS overlay page: http://localhost:${config.port}/overlay.html`);
-  console.log(`Display page: http://localhost:${config.port}/display.html`);
-  console.log(`Admin page: http://localhost:${config.port}/admin.html`);
+  logger.info("server", "server started", {
+    port: config.port,
+    dataDirectory: config.dataDirectory,
+    databasePath: config.databasePath,
+    logFilePath: logger.logFilePath,
+    doubaoTtsEnabled: config.doubaoTts.enabled,
+    doubaoTtsVoiceType: config.doubaoTts.voiceType,
+    overlayUrl: `http://localhost:${config.port}/overlay.html`,
+    displayUrl: `http://localhost:${config.port}/display.html`,
+    adminUrl: `http://localhost:${config.port}/admin.html`
+  });
 });

@@ -80,4 +80,49 @@ describe("WindowsSpeechService", () => {
       })
     );
   });
+
+  it("writes speech diagnostics through the shared server logger when provided", async () => {
+    const speechDirectory = await createTempSpeechDirectory();
+    const entries: Array<{ module: string; message: string; details?: Record<string, unknown> }> = [];
+    const logger = {
+      info(module: string, message: string, details?: Record<string, unknown>) {
+        entries.push({ module, message, details });
+      },
+      warn(module: string, message: string, details?: Record<string, unknown>) {
+        entries.push({ module, message, details });
+      },
+      error(module: string, message: string, details?: Record<string, unknown>) {
+        entries.push({ module, message, details });
+      }
+    };
+    const service = new (WindowsSpeechService as any)(speechDirectory, logger) as {
+      createSponsorSpeech(record: SponsorRecord): Promise<unknown>;
+      generateWave(): Promise<void>;
+    };
+
+    service.generateWave = async () => {
+      const error = new Error("PowerShell exited with code 1") as Error & {
+        stdout?: string;
+        stderr?: string;
+      };
+      error.stdout = "[StreamChargeOverlay][Speech] Installed voices: 0";
+      error.stderr = "System.Speech failed";
+      throw error;
+    };
+
+    const alert = await service.createSponsorSpeech(sponsor({ bossName: "语音老板" }));
+
+    expect(alert).toBeNull();
+    expect(entries).toContainEqual({
+      module: "speech",
+      message: "speech generation failed",
+      details: expect.objectContaining({
+        sponsorId: "speech-1",
+        bossName: "语音老板",
+        errorMessage: "PowerShell exited with code 1",
+        stdout: "[StreamChargeOverlay][Speech] Installed voices: 0",
+        stderr: "System.Speech failed"
+      })
+    });
+  });
 });

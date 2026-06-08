@@ -33,6 +33,17 @@ class FakeSpeechService {
   }
 }
 
+class FakeSpeechServiceWithAlert {
+  public async createSponsorSpeech(record: SponsorRecord) {
+    return {
+      id: record.id,
+      url: `/speech/${record.id}.wav`,
+      text: "测试语音",
+      createdAt: 123
+    };
+  }
+}
+
 class FakeAvatarStorage {
   public readonly saved: Array<{ roomSlug: string; sponsorId: string; dataUrl: string }> = [];
   public readonly cleared: string[] = [];
@@ -74,6 +85,27 @@ class FakeRoomCatalog {
 
   public updateViewerPassword(roomSlug: string, password: string): void {
     this.viewerPasswords.set(roomSlug, password);
+  }
+}
+
+class FakeLogger {
+  public readonly entries: Array<{
+    level: "info" | "warn" | "error";
+    module: string;
+    message: string;
+    details?: Record<string, unknown>;
+  }> = [];
+
+  public info(module: string, message: string, details?: Record<string, unknown>): void {
+    this.entries.push({ level: "info", module, message, details });
+  }
+
+  public warn(module: string, message: string, details?: Record<string, unknown>): void {
+    this.entries.push({ level: "warn", module, message, details });
+  }
+
+  public error(module: string, message: string, details?: Record<string, unknown>): void {
+    this.entries.push({ level: "error", module, message, details });
   }
 }
 
@@ -542,6 +574,104 @@ describe("ApiController room routing", () => {
     expect(started.totalAmount).toBe(0);
     expect(started.chargeConsumedAmount).toBe(180);
     expect(editResponse.status).toBe(403);
+  });
+
+  it("logs auth, sponsor, charge, permission, and request failures without leaking passwords", async () => {
+    const app = express();
+    const logger = new FakeLogger();
+    app.use(express.json());
+    new (ApiController as any)(
+      new MemoryRoomRepositoryFactory(),
+      new FakeRealtimeHub(),
+      new FakeSpeechServiceWithAlert(),
+      "default",
+      new AuthService({
+        adminPassword: "admin-password",
+        sessionSecret: "test-secret",
+        viewerPassword: "viewer-password"
+      }),
+      null,
+      undefined,
+      logger
+    ).register(app);
+    const running = await listen(app);
+    server = running.server;
+
+    await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "bad-password", roomSlug: "default" })
+    });
+    const loginResponse = await fetch(`${running.baseUrl}/api/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: "viewer-password", roomSlug: "default" })
+    });
+    const cookie = loginResponse.headers.get("set-cookie") ?? "";
+    const added = (await (await fetch(`${running.baseUrl}/api/sponsors`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ bossName: "日志老板", amount: 260, programName: "日志节目" })
+    })).json()) as DerivedAppState;
+    await fetch(`${running.baseUrl}/api/charge/current`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ totalAmount: 88 })
+    });
+    await fetch(`${running.baseUrl}/api/sponsors/${added.sponsors[0]?.id ?? ""}/amount`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ amount: 100 })
+    });
+    await fetch(`${running.baseUrl}/api/charge/current`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", Cookie: cookie },
+      body: JSON.stringify({ totalAmount: -1 })
+    });
+
+    expect(logger.entries).toContainEqual({
+      level: "warn",
+      module: "auth",
+      message: "login failed",
+      details: expect.objectContaining({ roomSlug: "default" })
+    });
+    expect(logger.entries).toContainEqual({
+      level: "info",
+      module: "auth",
+      message: "login succeeded",
+      details: expect.objectContaining({ role: "viewer", roomSlug: "default" })
+    });
+    expect(logger.entries).toContainEqual({
+      level: "info",
+      module: "sponsor",
+      message: "sponsor added",
+      details: expect.objectContaining({
+        roomSlug: "default",
+        bossName: "日志老板",
+        amount: 260,
+        speechGenerated: true
+      })
+    });
+    expect(logger.entries).toContainEqual({
+      level: "info",
+      module: "charge",
+      message: "current charge updated",
+      details: expect.objectContaining({ roomSlug: "default", requestedTotalAmount: 88, totalAmount: 88 })
+    });
+    expect(logger.entries).toContainEqual({
+      level: "warn",
+      module: "auth",
+      message: "permission denied",
+      details: expect.objectContaining({ requiredRole: "admin", roomSlug: "default" })
+    });
+    expect(logger.entries).toContainEqual({
+      level: "error",
+      module: "api",
+      message: "request failed",
+      details: expect.objectContaining({ method: "PUT", path: "/api/charge/current", roomSlug: "default" })
+    });
+    expect(JSON.stringify(logger.entries)).not.toContain("bad-password");
+    expect(JSON.stringify(logger.entries)).not.toContain("viewer-password");
   });
 
   it("binds viewer sessions to the room whose password was used", async () => {

@@ -1,13 +1,28 @@
 import type { SpeechAlert } from "../../shared/types";
 
-type BrowserWindowWithSpeech = Window & {
-  speechSynthesis?: SpeechSynthesis;
-  SpeechSynthesisUtterance?: typeof SpeechSynthesisUtterance;
+const SILENT_AUDIO_DATA_URL =
+  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==";
+
+type WindowWithObsStudio = Window & {
+  obsstudio?: unknown;
 };
 
 export class SponsorSpeechAudio {
   private lastPlayedId = "";
-  private readonly speechWindow = window as BrowserWindowWithSpeech;
+  private retryNotice: HTMLButtonElement | null = null;
+  private pendingAlert: SpeechAlert | null = null;
+
+  public prepareUnlockNotice(): void {
+    if (typeof document === "undefined" || this.isObsBrowserSource()) {
+      return;
+    }
+
+    this.pendingAlert = null;
+    const notice = this.retryNotice ?? this.createRetryNotice();
+    notice.hidden = false;
+    notice.textContent = "Enable Doubao voice";
+    notice.title = "Click once before streaming so this browser can play Doubao voice automatically.";
+  }
 
   public async play(alert: SpeechAlert): Promise<void> {
     if (alert.id === this.lastPlayedId) {
@@ -15,6 +30,10 @@ export class SponsorSpeechAudio {
     }
 
     this.lastPlayedId = alert.id;
+    await this.playAudio(alert);
+  }
+
+  private async playAudio(alert: SpeechAlert): Promise<void> {
     const audio = new Audio(alert.url);
     audio.volume = 1;
     try {
@@ -28,6 +47,7 @@ export class SponsorSpeechAudio {
         id: alert.id,
         url: alert.url
       });
+      this.hideRetryNotice();
       return;
     } catch (error) {
       console.warn("[StreamChargeOverlay][Speech] Browser audio playback failed", {
@@ -35,37 +55,73 @@ export class SponsorSpeechAudio {
         url: alert.url,
         ...this.describeError(error)
       });
-      this.playFallbackSpeech(alert.text, alert.id);
+      this.showRetryNotice(alert, error);
+      return;
     }
   }
 
-  private playFallbackSpeech(text: string, id: string): void {
-    if (!this.speechWindow.speechSynthesis || !this.speechWindow.SpeechSynthesisUtterance) {
-      console.warn("[StreamChargeOverlay][Speech] Browser speech synthesis unavailable", {
-        id,
-        textLength: text.length
-      });
+  private showRetryNotice(alert: SpeechAlert, error: unknown): void {
+    if (typeof document === "undefined") {
       return;
     }
 
-    const utterance = new this.speechWindow.SpeechSynthesisUtterance(text);
-    utterance.lang = "zh-CN";
-    utterance.rate = 1.08;
-    utterance.pitch = 1.05;
-    utterance.volume = 1;
-    utterance.onerror = (event) => {
-      console.warn("[StreamChargeOverlay][Speech] Browser fallback speech failed", {
-        id,
-        error: event.error
-      });
-    };
+    this.pendingAlert = alert;
+    const notice = this.retryNotice ?? this.createRetryNotice();
+    const message = this.describeError(error).errorMessage;
+    notice.hidden = false;
+    notice.textContent = "Click to enable Doubao voice";
+    notice.title = `Doubao voice playback failed: ${String(message)}`;
+  }
 
-    console.info("[StreamChargeOverlay][Speech] Using browser speech fallback", {
-      id,
-      textLength: text.length
+  private hideRetryNotice(): void {
+    if (this.retryNotice) {
+      this.retryNotice.hidden = true;
+    }
+  }
+
+  private createRetryNotice(): HTMLButtonElement {
+    const notice = document.createElement("button");
+    notice.type = "button";
+    notice.className = "speech-audio-retry-notice";
+    notice.addEventListener("click", () => {
+      void this.handleNoticeClick();
     });
-    this.speechWindow.speechSynthesis.cancel();
-    this.speechWindow.speechSynthesis.speak(utterance);
+    document.body.appendChild(notice);
+    this.retryNotice = notice;
+    return notice;
+  }
+
+  private async handleNoticeClick(): Promise<void> {
+    if (this.pendingAlert) {
+      await this.playAudio(this.pendingAlert);
+      return;
+    }
+
+    await this.unlockBrowserAudio();
+  }
+
+  private async unlockBrowserAudio(): Promise<void> {
+    try {
+      const audio = new Audio(SILENT_AUDIO_DATA_URL);
+      audio.volume = 0;
+      await audio.play();
+      console.info("[StreamChargeOverlay][Speech] Browser audio unlocked");
+      this.hideRetryNotice();
+    } catch (error) {
+      console.warn("[StreamChargeOverlay][Speech] Browser audio unlock failed", this.describeError(error));
+      if (this.retryNotice) {
+        const message = this.describeError(error).errorMessage;
+        this.retryNotice.hidden = false;
+        this.retryNotice.textContent = "Click to enable Doubao voice";
+        this.retryNotice.title = `Browser audio unlock failed: ${String(message)}`;
+      }
+    }
+  }
+
+  private isObsBrowserSource(): boolean {
+    const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
+    const hasObsBridge = typeof window !== "undefined" && Boolean((window as WindowWithObsStudio).obsstudio);
+    return hasObsBridge || /obs|obs-browser|obsstudio/i.test(userAgent);
   }
 
   private describeError(error: unknown): Record<string, unknown> {

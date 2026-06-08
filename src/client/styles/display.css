@@ -988,6 +988,33 @@ html.is-preview-fit .overlay-shell {
   animation: dianjiangStartText 2600ms cubic-bezier(0.18, 0.84, 0.2, 1) forwards;
 }
 
+.speech-audio-retry-notice {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 80;
+  min-width: 164px;
+  min-height: 34px;
+  padding: 7px 12px;
+  color: #fff5d6;
+  font-size: 14px;
+  font-weight: 900;
+  letter-spacing: 0;
+  cursor: pointer;
+  background: rgba(12, 16, 18, 0.84);
+  border: 1px solid rgba(255, 226, 142, 0.68);
+  border-radius: 6px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.44),
+    0 8px 24px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  text-shadow: 0 1px 2px #000;
+}
+
+.speech-audio-retry-notice[hidden] {
+  display: none;
+}
+
 .sponsor-burst {
   position: absolute;
   z-index: 7;

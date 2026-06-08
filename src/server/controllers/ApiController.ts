@@ -19,6 +19,7 @@ import type {
   UpdateTargetRequest
 } from "../../shared/types";
 import type { RoomStateRepositoryFactory } from "../repositories/RoomStateRepositoryFactory";
+import type { ServerLogSink } from "../logging/ServerLogger";
 import { AuthService } from "../services/AuthService";
 import type { SponsorAvatarStorage } from "../services/AvatarService";
 import { DonationService } from "../services/DonationService";
@@ -51,7 +52,8 @@ export class ApiController {
     private readonly defaultRoomSlug: string,
     private readonly authService = AuthService.disabled(),
     private readonly roomCatalog: RoomCatalog | null = null,
-    private readonly avatarStorage?: SponsorAvatarStorage
+    private readonly avatarStorage?: SponsorAvatarStorage,
+    private readonly logger?: ServerLogSink
   ) {}
 
   public register(app: Express): void {
@@ -132,7 +134,9 @@ export class ApiController {
       throw new Error("房间管理服务未启用");
     }
 
-    response.status(201).json(this.roomCatalog.createRoom(request.body as CreateRoomRequest));
+    const room = this.roomCatalog.createRoom(request.body as CreateRoomRequest);
+    this.logger?.info("room", "room created", { roomSlug: room.slug, roomName: room.name });
+    response.status(201).json(room);
   }
 
   private async deleteRoom(request: Request, response: Response): Promise<void> {
@@ -144,7 +148,10 @@ export class ApiController {
       throw new Error("房间管理服务未启用");
     }
 
-    response.json(this.roomCatalog.deleteRoom(String(request.params.roomSlug ?? "")));
+    const roomSlug = String(request.params.roomSlug ?? "");
+    const rooms = this.roomCatalog.deleteRoom(roomSlug);
+    this.logger?.info("room", "room deleted", { roomSlug, remainingRoomCount: rooms.length });
+    response.json(rooms);
   }
 
   private async updateRoomViewerPassword(request: Request, response: Response): Promise<void> {
@@ -157,7 +164,9 @@ export class ApiController {
     }
 
     const body = request.body as UpdateRoomViewerPasswordRequest;
-    this.roomCatalog.updateViewerPassword(String(request.params.roomSlug ?? ""), String(body.password ?? ""));
+    const roomSlug = String(request.params.roomSlug ?? "");
+    this.roomCatalog.updateViewerPassword(roomSlug, String(body.password ?? ""));
+    this.logger?.info("room", "viewer password updated", { roomSlug });
     response.json({ ok: true });
   }
 
@@ -173,11 +182,13 @@ export class ApiController {
           : null
         : this.authService.loginViewer(password, roomSlug));
     if (!session) {
+      this.logger?.warn("auth", "login failed", { roomSlug });
       response.status(401).json({ error: "密码不正确" });
       return;
     }
 
     response.setHeader("Set-Cookie", this.authService.createSessionCookie(session));
+    this.logger?.info("auth", "login succeeded", { role: session.role, roomSlug: session.roomSlug ?? roomSlug });
     response.json(session);
   }
 
@@ -193,6 +204,7 @@ export class ApiController {
 
   private async logout(_request: Request, response: Response): Promise<void> {
     response.setHeader("Set-Cookie", this.authService.createClearCookie());
+    this.logger?.info("auth", "logout succeeded");
     response.json({ ok: true });
   }
 
@@ -212,6 +224,12 @@ export class ApiController {
     }, state.sponsors[0]);
     const speechAlert = newRecord ? await this.speechService.createSponsorSpeech(newRecord) : null;
     const stateWithSpeech = speechAlert ? { ...state, speechAlert } : state;
+    this.logger?.info("sponsor", "sponsor added", {
+      roomSlug,
+      ...this.sponsorSummary(newRecord),
+      speechGenerated: Boolean(speechAlert),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, stateWithSpeech);
     response.status(201).json(stateWithSpeech);
   }
@@ -223,6 +241,11 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteSponsor(String(request.params.id ?? ""));
+    this.logger?.info("sponsor", "sponsor moved to trash", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -242,6 +265,10 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteAllSponsors();
+    this.logger?.info("sponsor", "all sponsors moved to trash", {
+      roomSlug,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -253,6 +280,11 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).deleteSponsorPermanently(String(request.params.id ?? ""));
+    this.logger?.info("trash", "sponsor permanently deleted", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -264,6 +296,10 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).clearSponsorTrash();
+    this.logger?.info("trash", "trash cleared", {
+      roomSlug,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -275,6 +311,11 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).restoreSponsor(String(request.params.id ?? ""));
+    this.logger?.info("trash", "sponsor restored", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -287,6 +328,12 @@ export class ApiController {
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateSponsorAmountRequest;
     const state = await (await this.serviceFor(request)).updateSponsorAmount(String(request.params.id ?? ""), body.amount);
+    this.logger?.info("sponsor", "sponsor amount updated", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      amount: body.amount,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -299,6 +346,14 @@ export class ApiController {
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateSponsorRequest;
     const state = await (await this.serviceFor(request)).updateSponsor(String(request.params.id ?? ""), body);
+    const record = state.sponsors.find((sponsor) => sponsor.id === String(request.params.id ?? ""));
+    this.logger?.info("sponsor", "sponsor updated", {
+      roomSlug,
+      ...this.sponsorSummary(record),
+      countsTowardCharge: body.countsTowardCharge !== false,
+      hasAvatarChange: Object.prototype.hasOwnProperty.call(body, "avatarDataUrl"),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -314,6 +369,13 @@ export class ApiController {
       String(request.params.id ?? ""),
       body.avatarDataUrl
     );
+    this.logger?.info("sponsor", "sponsor avatar updated", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      avatarCleared: body.avatarDataUrl === null,
+      avatarProvided: Boolean(body.avatarDataUrl),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -325,6 +387,11 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).removeSponsorFromToday(String(request.params.id ?? ""));
+    this.logger?.info("today", "sponsor removed from today", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -336,6 +403,11 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).addSponsorToToday(String(request.params.id ?? ""));
+    this.logger?.info("today", "sponsor added to today", {
+      roomSlug,
+      sponsorId: String(request.params.id ?? ""),
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -347,6 +419,10 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).removeTodaySponsors();
+    this.logger?.info("today", "today list cleared", {
+      roomSlug,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -358,6 +434,10 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).startDianjiang();
+    this.logger?.info("charge", "dianjiang started", {
+      roomSlug,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -370,6 +450,11 @@ export class ApiController {
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateCurrentChargeRequest;
     const state = await (await this.serviceFor(request)).updateCurrentChargeAmount(body.totalAmount);
+    this.logger?.info("charge", "current charge updated", {
+      roomSlug,
+      requestedTotalAmount: body.totalAmount,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -382,6 +467,11 @@ export class ApiController {
     const roomSlug = this.roomSlugFrom(request);
     const body = request.body as UpdateTargetRequest;
     const state = await (await this.serviceFor(request)).updateTargetAmount(body.targetAmount);
+    this.logger?.info("settings", "target amount updated", {
+      roomSlug,
+      targetAmount: body.targetAmount,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -393,6 +483,12 @@ export class ApiController {
 
     const roomSlug = this.roomSlugFrom(request);
     const state = await (await this.serviceFor(request)).updateSettings(request.body as UpdateSettingsRequest);
+    this.logger?.info("settings", "settings updated", {
+      roomSlug,
+      targetAmount: state.targetAmount,
+      sloganLength: state.slogan.length,
+      ...this.stateSummary(state)
+    });
     this.realtimeHub.broadcastState(roomSlug, state);
     response.json(state);
   }
@@ -411,6 +507,13 @@ export class ApiController {
     }
 
     const session = this.authService.sessionFromCookie(request.headers.cookie);
+    this.logger?.warn("auth", "permission denied", {
+      requiredRole: role,
+      currentRole: session?.role ?? "anonymous",
+      roomSlug: this.roomSlugFrom(request),
+      method: request.method,
+      path: request.path
+    });
     response.status(session ? 403 : 401).json({ error: session ? "权限不足" : "请先登录后台" });
     return false;
   }
@@ -424,11 +527,42 @@ export class ApiController {
       try {
         await route(request, response);
       } catch (error) {
+        this.logger?.error("api", "request failed", {
+          method: request.method,
+          path: request.path,
+          roomSlug: this.roomSlugFrom(request),
+          errorMessage: error instanceof Error ? error.message : String(error)
+        });
         const body: ApiErrorResponse = {
           error: error instanceof Error ? error.message : "服务器处理请求失败"
         };
         response.status(400).json(body);
       }
+    };
+  }
+
+  private stateSummary(state: DerivedAppState): Record<string, number | boolean> {
+    return {
+      sponsorCount: state.sponsors.length,
+      todayCount: state.programQueue.length,
+      totalAmount: state.totalAmount,
+      progressPercent: state.progressPercent,
+      goalReached: state.goalReached
+    };
+  }
+
+  private sponsorSummary(record: SponsorRecord | undefined): Record<string, unknown> {
+    if (!record) {
+      return {};
+    }
+
+    return {
+      sponsorId: record.id,
+      bossName: record.bossName,
+      amount: record.amount,
+      programName: record.programName,
+      noteLength: record.note.length,
+      countsTowardCharge: record.countsTowardCharge
     };
   }
 }
