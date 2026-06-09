@@ -45,6 +45,7 @@ describe("displayUnits", () => {
 
     expect(formatRootUnits(record.amount)).toBe("1.5根");
     expect(buildSponsorSpeechText(record)).toBe("张三大哥，点亮 一点五根，红眼竞速");
+    expect(buildSponsorSpeechText(record)).not.toContain("节目红眼竞速");
     expect(buildSponsorSpeechText(record)).not.toContain("1.5根");
     expect(buildSponsorSpeechText(record)).not.toContain("1.50根");
   });
@@ -83,6 +84,24 @@ describe("displayUnits", () => {
 
     expect(text).toContain("红眼竞速");
     expect(text).toContain("指定职业");
-    expect(text).toBe("张三大哥，点亮 一点九根，红眼竞速，指定职业");
+    expect(text).toBe("张三大哥，点亮 一点九根，红眼竞速，备注指定职业");
+    expect(text).not.toContain("节目红眼竞速");
+  });
+
+  it("does not prefix startup funding as a program in sponsor speech text", () => {
+    const record: SponsorRecord = {
+      id: "speech-startup",
+      bossName: "小M",
+      amount: 300,
+      programName: "启动资金",
+      note: "老王用男大枪",
+      countsTowardCharge: true,
+      createdAt: 1
+    };
+
+    const text = buildSponsorSpeechText(record);
+
+    expect(text).toBe("小M大哥，点亮 三根，启动资金，备注老王用男大枪");
+    expect(text).not.toContain("节目启动资金");
   });
 });

@@ -129,9 +129,12 @@ export const buildRootUnitSpeechText = (name: string, amount: number, detail: st
 };
 
 export const buildSponsorSpeechText = (record: SponsorRecord): string => {
-  const details = [record.programName, record.note]
-    .map((item) => neutralizePublicText(item ?? ""))
-    .filter((item) => item.length > 0);
+  const programName = neutralizePublicText(record.programName ?? "");
+  const note = neutralizePublicText(record.note ?? "");
+  const details = [
+    programName,
+    note ? `备注${note}` : ""
+  ].filter((item) => item.length > 0);
   const baseText = `${formatDisplayNameWithTitle(record.bossName)}，点亮 ${formatRootUnitsForSpeech(record.amount)}`;
 
   return details.length > 0 ? `${baseText}，${details.join("，")}` : baseText;

@@ -20,8 +20,8 @@ export class SponsorSpeechAudio {
     this.pendingAlert = null;
     const notice = this.retryNotice ?? this.createRetryNotice();
     notice.hidden = false;
-    notice.textContent = "Enable Doubao voice";
-    notice.title = "Click once before streaming so this browser can play Doubao voice automatically.";
+    notice.textContent = "启用豆包语音";
+    notice.title = "开播前点击一次，让浏览器可以自动播放豆包语音。";
   }
 
   public async play(alert: SpeechAlert): Promise<void> {
@@ -69,8 +69,8 @@ export class SponsorSpeechAudio {
     const notice = this.retryNotice ?? this.createRetryNotice();
     const message = this.describeError(error).errorMessage;
     notice.hidden = false;
-    notice.textContent = "Click to enable Doubao voice";
-    notice.title = `Doubao voice playback failed: ${String(message)}`;
+    notice.textContent = "点击启用豆包语音";
+    notice.title = `豆包语音播放失败：${String(message)}`;
   }
 
   private hideRetryNotice(): void {
@@ -112,8 +112,8 @@ export class SponsorSpeechAudio {
       if (this.retryNotice) {
         const message = this.describeError(error).errorMessage;
         this.retryNotice.hidden = false;
-        this.retryNotice.textContent = "Click to enable Doubao voice";
-        this.retryNotice.title = `Browser audio unlock failed: ${String(message)}`;
+        this.retryNotice.textContent = "点击启用豆包语音";
+        this.retryNotice.title = `浏览器音频解锁失败：${String(message)}`;
       }
     }
   }

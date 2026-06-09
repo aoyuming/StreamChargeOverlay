@@ -146,6 +146,15 @@ describe("SponsorBurst", () => {
     view.burst.show(sponsor({ programName: "红眼竞速巴卡尔困难", note: "讲清楚装备搭配" }));
 
     expect(view.program.textContent).toBe("红眼竞速巴卡尔困难");
-    expect(view.note.textContent).toBe("讲清楚装备搭配");
+    expect(view.note.textContent).toBe("备注:讲清楚装备搭配");
+  });
+
+  it("keeps an empty burst note empty so the visual row stays hidden", () => {
+    const view = createBurst();
+
+    view.burst.show(sponsor({ programName: "红眼竞速巴卡尔困难", note: "" }));
+
+    expect(view.program.textContent).toBe("红眼竞速巴卡尔困难");
+    expect(view.note.textContent).toBe("");
   });
 });

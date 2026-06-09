@@ -1,12 +1,12 @@
-# Doubao TTS Deployment Notes
+# 豆包 TTS 部署说明
 
-This project can use Volcengine Doubao TTS 2.0 for sponsor voice alerts.
+这个项目支持使用火山引擎 Doubao TTS 2.0 作为赞助语音播报。
 
-Do not commit a real API key into this repository. Replace `<DOUBAO_API_KEY>` with the key from the Volcengine console when running the commands.
+不要把真实的 API Key 提交到仓库里。运行命令时，把 `<DOUBAO_API_KEY>` 替换成你在火山控制台拿到的真实 key。
 
-## Required Variables
+## 必填环境变量
 
-| Variable | Value |
+| 变量名 | 值 |
 | --- | --- |
 | `DOUBAO_TTS_ENABLED` | `true` |
 | `DOUBAO_TTS_API_KEY` | `<DOUBAO_API_KEY>` |
@@ -14,9 +14,9 @@ Do not commit a real API key into this repository. Replace `<DOUBAO_API_KEY>` wi
 | `DOUBAO_TTS_VOICE_TYPE` | `zh_female_jiaochuannv_uranus_bigtts` |
 | `DOUBAO_TTS_TIMEOUT_MS` | `7000` |
 
-## Local Windows Setup
+## 本地 Windows 配置
 
-Run these commands in PowerShell or Command Prompt:
+在 PowerShell 或命令提示符里执行：
 
 ```bat
 setx DOUBAO_TTS_ENABLED "true"
@@ -26,39 +26,39 @@ setx DOUBAO_TTS_VOICE_TYPE "zh_female_jiaochuannv_uranus_bigtts"
 setx DOUBAO_TTS_TIMEOUT_MS "7000"
 ```
 
-After changing `setx` variables, close the old server window and start the server again:
+修改完 `setx` 变量后，要关掉旧的服务器窗口，再重新启动：
 
 ```bat
 npm.cmd run dev
 ```
 
-Or double-click:
+或者直接双击：
 
 ```text
 start-server.bat
 ```
 
-## Cloud Linux Setup
+## 云端 Linux 配置
 
-For the current cloud deployment under `/opt/sponsor-overlay`, use:
+当前云端部署目录是 `/opt/sponsor-overlay`，可直接执行：
 
 ```bash
 cd /opt/sponsor-overlay && DOUBAO_TTS_ENABLED=true DOUBAO_TTS_API_KEY='<DOUBAO_API_KEY>' DOUBAO_TTS_RESOURCE_ID='seed-tts-2.0' DOUBAO_TTS_VOICE_TYPE='zh_female_jiaochuannv_uranus_bigtts' DOUBAO_TTS_TIMEOUT_MS=7000 pm2 restart sponsor-overlay --update-env
 ```
 
-Check logs:
+查看日志：
 
 ```bash
 pm2 logs sponsor-overlay --lines 30
 ```
 
-The startup log should contain:
+启动日志里应该能看到：
 
 ```text
 doubaoTtsEnabled:true
 ```
 
-When a sponsor is added successfully, logs should contain:
+新增赞助成功后，日志里应该能看到：
 
 ```text
 doubao speech started
@@ -66,15 +66,15 @@ doubao speech ready
 primary speech selected
 ```
 
-The generated speech URL should look like:
+成功生成的语音地址通常是：
 
 ```text
 /speech/<sponsor-id>-doubao.mp3
 ```
 
-## Full Cloud Update Flow
+## 云端完整更新流程
 
-Use this when uploading a new `sponsor-overlay-server-package.zip`:
+上传新的 `sponsor-overlay-server-package.zip` 后，可按下面流程更新：
 
 ```bash
 cd /opt/sponsor-overlay
@@ -85,12 +85,12 @@ DOUBAO_TTS_ENABLED=true DOUBAO_TTS_API_KEY='<DOUBAO_API_KEY>' DOUBAO_TTS_RESOURC
 pm2 list
 ```
 
-## Browser Audio Unlock
+## 浏览器语音启用
 
-OBS browser source can play the Doubao MP3 directly. Normal desktop browsers may require one click before they allow page-triggered audio playback.
+OBS 浏览器源可以直接播放豆包 MP3。普通桌面浏览器有时需要先点一次，才允许页面后续自动播放语音。
 
-For normal browsers, the page shows an `Enable Doubao voice` button. Click it once before testing sponsor alerts. OBS browser source hides this button when OBS is detected.
+普通浏览器打开页面后，会看到一个 `启用豆包语音` 按钮。测试前先点一次，后面的豆包语音就能自动播放。检测到是 OBS 浏览器源时，这个按钮会自动隐藏。
 
-## Security Note
+## 安全提醒
 
-If a real API key is accidentally pasted into chat, logs, or a repository, rotate it in the Volcengine console and update the environment variable with the new key.
+如果真实 API Key 不小心发到了聊天、日志或仓库里，建议马上去火山控制台重新生成一个新的 key，然后更新环境变量。

@@ -129,8 +129,8 @@ describe("SponsorSpeechAudio", () => {
     player.prepareUnlockNotice();
 
     expect(appended).toEqual([unlockButton]);
-    expect(unlockButton.textContent).toContain("Doubao");
-    expect(unlockButton.title).toContain("before streaming");
+    expect(unlockButton.textContent).toBe("启用豆包语音");
+    expect(unlockButton.title).toContain("开播前");
     expect(clickHandler).toBeTypeOf("function");
 
     clickHandler?.();
@@ -195,7 +195,7 @@ describe("SponsorSpeechAudio", () => {
     expect(audioPlay).toHaveBeenCalledTimes(1);
     expect(appended).toEqual([retryButton]);
     expect(retryButton.className).toBe("speech-audio-retry-notice");
-    expect(retryButton.textContent).toContain("Doubao");
+    expect(retryButton.textContent).toBe("点击启用豆包语音");
     expect(retryButton.title).toContain("blocked");
     expect(clickHandler).toBeTypeOf("function");
 

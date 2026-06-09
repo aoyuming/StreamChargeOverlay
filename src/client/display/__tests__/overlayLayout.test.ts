@@ -15,6 +15,8 @@ describe("overlay layout page", () => {
   };
 
   it("defines a transparent 1920 by 1080 OBS overlay entry", () => {
+    expect(html).toContain("<title>直播赞助叠加层</title>");
+    expect(html).not.toContain("StreamCharge Overlay 直播叠加层");
     expect(html).toContain('content="width=1920, height=1080, initial-scale=1"');
     expect(html).toContain('class="stream-overlay-shell"');
     expect(html).toContain('data-overlay-stage-width="1920"');

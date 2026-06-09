@@ -32,7 +32,8 @@ export class SponsorBurst {
     this.renderAvatar(record);
     this.titleElement.textContent = buildRootUnitActionText(record.bossName, record.amount);
     this.programElement.textContent = neutralizePublicText(record.programName ?? "");
-    this.noteElement.textContent = neutralizePublicText(record.note ?? "");
+    const note = neutralizePublicText(record.note ?? "");
+    this.noteElement.textContent = note ? `备注:${note}` : "";
     const durationMs = estimateSponsorBurstDurationMs(speechText || buildSponsorSpeechText(record));
     this.rootElement.style.setProperty("--burst-duration", `${durationMs}ms`);
 
