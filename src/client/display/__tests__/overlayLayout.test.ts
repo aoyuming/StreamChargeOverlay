@@ -27,6 +27,40 @@ describe("overlay layout page", () => {
     expect(main).toContain("width: 1920, height: 1080");
   });
 
+  it("supports desktop capture background modes for live companion windows", () => {
+    expect(main).toContain("applyDesktopCaptureBackground(window.location, document.documentElement)");
+    expect(main).toContain('captureBg")');
+    expect(main).toContain("is-desktop-capture-transparent");
+    expect(main).toContain("is-desktop-capture-black");
+    expect(main).toContain("is-desktop-capture-green");
+    expect(css).toContain("html.is-desktop-capture-transparent");
+    expect(css).toContain("background: transparent;");
+    expect(css).toContain("html.is-desktop-capture-black");
+    expect(css).toContain("background: #000000;");
+    expect(css).toContain("html.is-desktop-capture-green");
+    expect(css).toContain("background: #00ff00;");
+  });
+
+  it("draws a Windows style frame only for desktop capture windows", () => {
+    expect(html).toContain('id="desktopCaptureChrome"');
+    expect(html).toContain('class="desktop-capture-titlebar"');
+    expect(html).toContain('class="desktop-capture-title">StreamCharge直播叠加窗口</span>');
+    expect(html).toContain('aria-label="最小化"');
+    expect(html).toContain('aria-label="最大化"');
+    expect(html).toContain('aria-label="关闭"');
+    expect(main).toContain("applyDesktopCaptureChrome(window.location, document.documentElement)");
+    expect(main).toContain('captureChrome")');
+    expect(main).toContain("is-desktop-capture-chrome");
+    expect(css).toContain(".desktop-capture-chrome");
+    expect(css).toContain("display: none;");
+    expect(css).toContain("html.is-desktop-capture-chrome .desktop-capture-chrome");
+    expect(css).toContain("-webkit-app-region: drag;");
+    expect(css).toContain(".desktop-capture-window-button");
+    expect(css).toContain("pointer-events: none;");
+    expect(css).toContain("html.is-desktop-capture-chrome .overlay-room-panel");
+    expect(css).toContain("top: 50%;");
+  });
+
   it("wires the current list, recent ranking, and charge bar to the existing display app ids", () => {
     expect(html).toContain('data-overlay-widget="todayPrograms"');
     expect(html).toContain('data-overlay-widget="recentRanking"');
@@ -80,6 +114,10 @@ describe("overlay layout page", () => {
     expect(html).not.toContain('class="overlay-charge-tools"');
     expect(html).not.toContain('id="overlayRoomSelect"');
     expect(css).toContain(".overlay-room-panel");
+    expect(css).toContain("top: 50%;");
+    expect(css).toContain("transform: translateY(-50%) translateX(10px);");
+    expect(css).toContain("body.is-overlay-controls-active .overlay-room-panel");
+    expect(css).toContain("transform: translateY(-50%) translateX(0);");
     expect(css).toContain("body.is-overlay-controls-active .overlay-room-panel");
     expect(css).toContain(".overlay-room-panel.is-room-panel-open");
     expect(css).toContain(".overlay-layout-tools");

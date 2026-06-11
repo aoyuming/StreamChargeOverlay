@@ -1,27 +1,12 @@
 import type { SpeechAlert } from "../../shared/types";
 
-const SILENT_AUDIO_DATA_URL =
-  "data:audio/wav;base64,UklGRiYAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQIAAAAAAA==";
-
-type WindowWithObsStudio = Window & {
-  obsstudio?: unknown;
-};
-
 export class SponsorSpeechAudio {
   private lastPlayedId = "";
   private retryNotice: HTMLButtonElement | null = null;
   private pendingAlert: SpeechAlert | null = null;
 
   public prepareUnlockNotice(): void {
-    if (typeof document === "undefined" || this.isObsBrowserSource()) {
-      return;
-    }
-
     this.pendingAlert = null;
-    const notice = this.retryNotice ?? this.createRetryNotice();
-    notice.hidden = false;
-    notice.textContent = "启用豆包语音";
-    notice.title = "开播前点击一次，让浏览器可以自动播放豆包语音。";
   }
 
   public async play(alert: SpeechAlert): Promise<void> {
@@ -97,31 +82,7 @@ export class SponsorSpeechAudio {
       return;
     }
 
-    await this.unlockBrowserAudio();
-  }
-
-  private async unlockBrowserAudio(): Promise<void> {
-    try {
-      const audio = new Audio(SILENT_AUDIO_DATA_URL);
-      audio.volume = 0;
-      await audio.play();
-      console.info("[StreamChargeOverlay][Speech] Browser audio unlocked");
-      this.hideRetryNotice();
-    } catch (error) {
-      console.warn("[StreamChargeOverlay][Speech] Browser audio unlock failed", this.describeError(error));
-      if (this.retryNotice) {
-        const message = this.describeError(error).errorMessage;
-        this.retryNotice.hidden = false;
-        this.retryNotice.textContent = "点击启用豆包语音";
-        this.retryNotice.title = `浏览器音频解锁失败：${String(message)}`;
-      }
-    }
-  }
-
-  private isObsBrowserSource(): boolean {
-    const userAgent = typeof navigator === "undefined" ? "" : navigator.userAgent;
-    const hasObsBridge = typeof window !== "undefined" && Boolean((window as WindowWithObsStudio).obsstudio);
-    return hasObsBridge || /obs|obs-browser|obsstudio/i.test(userAgent);
+    this.hideRetryNotice();
   }
 
   private describeError(error: unknown): Record<string, unknown> {

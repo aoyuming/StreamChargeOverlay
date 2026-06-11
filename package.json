@@ -3,10 +3,14 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "desktop/main.cjs",
   "scripts": {
     "dev": "tsx src/server/main.ts",
     "start": "tsx src/server/main.ts",
+    "desktop:dev": "electron desktop/main.cjs",
     "package:server": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-server-package.ps1",
+    "package:desktop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-desktop.ps1",
+    "package:webview2": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/package-webview2-desktop.ps1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "build": "tsc --noEmit && vite build"
@@ -24,6 +28,8 @@
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^24.10.1",
+    "electron": "^42.4.0",
+    "electron-packager": "^17.1.2",
     "typescript": "^5.9.3",
     "vitest": "^4.0.14"
   }

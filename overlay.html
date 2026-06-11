@@ -166,6 +166,17 @@
         <button id="overlayResetLayout" type="button">重置默认</button>
         <span id="overlayEditorMessage" class="overlay-editor-message"></span>
       </div>
+
+      <div id="desktopCaptureChrome" class="desktop-capture-chrome" aria-label="桌面窗口外框">
+        <div class="desktop-capture-titlebar">
+          <span class="desktop-capture-title">StreamCharge直播叠加窗口</span>
+          <span class="desktop-capture-window-controls">
+            <button class="desktop-capture-window-button" type="button" data-desktop-window-action="minimize" aria-label="最小化">-</button>
+            <button class="desktop-capture-window-button" type="button" data-desktop-window-action="maximize" aria-label="最大化">□</button>
+            <button class="desktop-capture-window-button is-close" type="button" data-desktop-window-action="close" aria-label="关闭">×</button>
+          </span>
+        </div>
+      </div>
     </main>
     <script type="module" src="/src/client/overlay-main.ts"></script>
   </body>

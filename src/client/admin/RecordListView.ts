@@ -30,6 +30,7 @@ export class RecordListView {
   public constructor(private readonly listElement: HTMLElement) {
     this.listElement.addEventListener("click", (event) => void this.handleClick(event));
     this.listElement.addEventListener("change", (event) => void this.handleChange(event));
+    this.listElement.addEventListener("paste", (event) => void this.handlePaste(event));
   }
 
   public onRemoveFromToday(handler: RemoveFromTodayHandler): void {
@@ -383,20 +384,7 @@ export class RecordListView {
     }
 
     if (target.dataset.action === "paste-avatar" && this.updateAvatarHandler) {
-      let previousAvatar: RecordAvatarSnapshot | null = null;
-      try {
-        const avatarDataUrl = await readAvatarFromClipboard();
-        previousAvatar = this.previewRecordAvatar(row, avatarDataUrl);
-        if (!window.confirm("确认用剪切板中的图片更换这条赞助记录的头像吗？")) {
-          this.restoreRecordAvatar(row, previousAvatar);
-          return;
-        }
-
-        await this.updateAvatarHandler(id, avatarDataUrl);
-      } catch (error) {
-        this.restoreRecordAvatar(row, previousAvatar);
-        window.alert(error instanceof Error ? error.message : "头像处理失败");
-      }
+      await this.setRecordAvatarFromClipboard(row, id);
       return;
     }
 
@@ -471,6 +459,57 @@ export class RecordListView {
       window.alert(error instanceof Error ? error.message : "头像处理失败");
     } finally {
       target.value = "";
+    }
+  }
+
+  private async handlePaste(event: ClipboardEvent): Promise<void> {
+    const target = event.target;
+    if (!(target instanceof Element)) {
+      return;
+    }
+
+    const form = target.closest<HTMLElement>(".record-edit-form");
+    const row = target.closest<HTMLElement>(".record-row");
+    const id = row?.dataset.id;
+    if (!form || form.hidden || !row || !id || !this.canManageRecords || !this.updateAvatarHandler) {
+      return;
+    }
+
+    const file = [...(event.clipboardData?.files ?? [])].find((item) => item.type.startsWith("image/"));
+    if (!file) {
+      return;
+    }
+
+    event.preventDefault();
+    await this.setRecordAvatarFromBlob(row, id, file);
+  }
+
+  private async setRecordAvatarFromClipboard(row: HTMLElement, id: string): Promise<void> {
+    let previousAvatar: RecordAvatarSnapshot | null = null;
+    try {
+      const avatarDataUrl = await readAvatarFromClipboard();
+      previousAvatar = this.previewRecordAvatar(row, avatarDataUrl);
+      if (!window.confirm("确认用剪切板中的图片更换这条赞助记录的头像吗？")) {
+        this.restoreRecordAvatar(row, previousAvatar);
+        return;
+      }
+
+      await this.updateAvatarHandler?.(id, avatarDataUrl);
+    } catch (error) {
+      this.restoreRecordAvatar(row, previousAvatar);
+      window.alert(error instanceof Error ? error.message : "头像处理失败");
+    }
+  }
+
+  private async setRecordAvatarFromBlob(row: HTMLElement, id: string, file: Blob): Promise<void> {
+    let previousAvatar: RecordAvatarSnapshot | null = null;
+    try {
+      const avatarDataUrl = await compressAvatarFile(file);
+      previousAvatar = this.previewRecordAvatar(row, avatarDataUrl);
+      await this.updateAvatarHandler?.(id, avatarDataUrl);
+    } catch (error) {
+      this.restoreRecordAvatar(row, previousAvatar);
+      window.alert(error instanceof Error ? error.message : "头像处理失败");
     }
   }
 

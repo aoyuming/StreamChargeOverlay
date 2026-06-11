@@ -84,8 +84,7 @@ describe("SponsorSpeechAudio", () => {
     expect(speak).not.toHaveBeenCalled();
   });
 
-  it("shows an unlock notice and unlocks future audio after one click", async () => {
-    let clickHandler: (() => void) | undefined;
+  it("does not show the Doubao voice button before real playback failure", () => {
     const appended: unknown[] = [];
     const unlockButton = {
       type: "",
@@ -94,27 +93,9 @@ describe("SponsorSpeechAudio", () => {
       title: "",
       hidden: false,
       style: {},
-      addEventListener: vi.fn((_event: string, handler: () => void) => {
-        clickHandler = handler;
-      })
+      addEventListener: vi.fn()
     };
-    const audioPlay = vi.fn().mockResolvedValue(undefined);
-    const sources: string[] = [];
-    vi.spyOn(console, "info").mockImplementation(() => undefined);
 
-    class FakeAudio {
-      public volume = 1;
-
-      public constructor(public readonly src: string) {
-        sources.push(src);
-      }
-
-      public play(): Promise<void> {
-        return audioPlay();
-      }
-    }
-
-    (globalThis as { Audio?: typeof Audio }).Audio = FakeAudio as unknown as typeof Audio;
     (globalThis as { document?: Document }).document = {
       body: {
         appendChild: (element: unknown) => {
@@ -128,17 +109,9 @@ describe("SponsorSpeechAudio", () => {
     const player = new SponsorSpeechAudio();
     player.prepareUnlockNotice();
 
-    expect(appended).toEqual([unlockButton]);
-    expect(unlockButton.textContent).toBe("启用豆包语音");
-    expect(unlockButton.title).toContain("开播前");
-    expect(clickHandler).toBeTypeOf("function");
-
-    clickHandler?.();
-    await Promise.resolve();
-
-    expect(audioPlay).toHaveBeenCalledTimes(1);
-    expect(sources[0]).toContain("audio/wav");
-    expect(unlockButton.hidden).toBe(true);
+    expect(appended).toEqual([]);
+    expect(document.createElement).not.toHaveBeenCalled();
+    expect(unlockButton.addEventListener).not.toHaveBeenCalled();
   });
 
   it("shows a retry notice and replays the same server audio when clicked", async () => {

@@ -10,6 +10,8 @@ import { DisplayStageScaler } from "./display/DisplayStageScaler";
 import { OverlayLayoutEditor } from "./overlay/OverlayLayoutEditor";
 import { applyOverlayLayout, loadOverlayLayout } from "./overlay/OverlayLayoutConfig";
 
+applyDesktopCaptureBackground(window.location, document.documentElement);
+applyDesktopCaptureChrome(window.location, document.documentElement);
 new DisplayStageScaler(document.documentElement, window, { width: 1920, height: 1080 }).start();
 
 const roomContext = RoomContext.fromPath(window.location.pathname);
@@ -35,6 +37,7 @@ const overlayChargeHeightDown = queryRequired<HTMLButtonElement>("#overlayCharge
 const overlayChargeHeightUp = queryRequired<HTMLButtonElement>("#overlayChargeHeightUp");
 const overlayChargeSizeLabel = queryRequired<HTMLElement>("#overlayChargeSizeLabel");
 const overlayLayoutPanelMessage = queryRequired<HTMLElement>("#overlayLayoutPanelMessage");
+const desktopCaptureChrome = document.querySelector<HTMLElement>("#desktopCaptureChrome");
 const editorMessage = queryRequired<HTMLElement>("#overlayEditorMessage");
 const fullEditor = OverlayLayoutEditor.isEditing(window.location);
 let activeRoomSlug = selectedSlug;
@@ -59,6 +62,7 @@ renderOverlayRoomOptions(selectedSlug);
 refreshChargeBarControls();
 bindOverlayRoomPanel();
 bindOverlayChargeTools();
+bindDesktopCaptureChrome();
 await app.start();
 
 function apiClientForRoom(roomSlug: string): ApiClient {
@@ -287,5 +291,45 @@ function showOverlayControls(): void {
         document.body.classList.remove("is-overlay-controls-active");
       }
     }, 4500);
+  }
+}
+
+function applyDesktopCaptureBackground(location: Location, root: HTMLElement): void {
+  const mode = new URLSearchParams(location.search).get("captureBg");
+  root.classList.toggle("is-desktop-capture-transparent", mode === "transparent");
+  root.classList.toggle("is-desktop-capture-black", mode === "black");
+  root.classList.toggle("is-desktop-capture-green", mode === "green");
+}
+
+function applyDesktopCaptureChrome(location: Location, root: HTMLElement): void {
+  const params = new URLSearchParams(location.search);
+  const isDesktop = params.get("desktop") === "1";
+  const captureChrome = params.get("captureChrome") !== "0";
+  root.classList.toggle("is-desktop-capture-chrome", isDesktop && captureChrome);
+}
+
+function bindDesktopCaptureChrome(): void {
+  if (!desktopCaptureChrome) {
+    return;
+  }
+
+  desktopCaptureChrome.addEventListener("click", (event) => {
+    const button = (event.target as HTMLElement | null)?.closest<HTMLButtonElement>("[data-desktop-window-action]");
+    if (!button) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    const desktopApi = window.streamChargeDesktop;
+    desktopApi?.windowControl(button.dataset.desktopWindowAction ?? "");
+  });
+}
+
+declare global {
+  interface Window {
+    streamChargeDesktop?: {
+      windowControl(action: string): void;
+    };
   }
 }

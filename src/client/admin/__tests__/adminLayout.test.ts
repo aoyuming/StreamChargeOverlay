@@ -163,6 +163,10 @@ describe("admin layout", () => {
     expect(recordListView).toContain("update-avatar");
     expect(recordListView).toContain("paste-avatar");
     expect(recordListView).toContain("粘贴头像 Ctrl+V");
+    expect(recordListView).toContain('this.listElement.addEventListener("paste"');
+    expect(recordListView).toContain("handlePaste");
+    expect(recordListView).toContain("event.clipboardData?.files");
+    expect(recordListView).toContain("setRecordAvatarFromBlob");
     expect(recordListView).toContain("readAvatarFromClipboard");
     expect(recordListView).toContain("window.confirm");
     expect(recordListView).toContain("previewRecordAvatar");

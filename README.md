@@ -54,6 +54,54 @@ http://localhost:3000/overlay.html
 - 4:3 展示页：`/display.html`
 - 后台页：`/admin.html`
 
+## 直播伴侣窗口版
+
+如果主播不会用 OBS 网页源，可以使用桌面套壳窗口：
+
+```powershell
+npm.cmd run desktop:dev
+```
+
+窗口标题是 `DNF赞助系统`，默认加载公网叠加页：
+
+```text
+http://47.109.149.111:3000/overlay.html?desktop=1&captureBg=transparent&captureChrome=0
+```
+
+直播伴侣里优先添加“游戏进程捕获”，选择 `DNF赞助系统`。窗口默认使用无边框透明悬浮保底模式，标题栏和边框会在窗口获得焦点时显示，窗口失去焦点后自动隐藏；鼠标移到上方标题栏时不会消失。窗口默认不置顶，像普通 Windows 窗口一样显示；按 `F11` 可以临时切换置顶。按 `F6` 可切到 Windows 原生标题栏模式；按 `F9` 切换黑底保底；如果直播伴侣支持抠色，按 `F10` 切换绿幕；按 `F8` 回到透明模式，按 `F5` 刷新。
+
+打包 Windows 便携版：
+
+```powershell
+npm.cmd run package:desktop
+```
+
+产物在：
+
+```text
+dist/DNF赞助系统.exe
+dist/desktop/DNF赞助系统-win32-x64/DNF赞助系统.exe
+```
+
+发给主播时优先发 `dist/DNF赞助系统.exe` 这个单文件版。主播只需要双击它，程序会自动解压到本机用户目录并启动窗口；下面的 `dist/desktop/...` 是完整文件夹版，主要留给开发调试。
+
+### WebView2 小体积窗口版
+
+如果想发更小的窗口程序，可以打包 WebView2 版：
+
+```powershell
+npm.cmd run package:webview2
+```
+
+产物在：
+
+```text
+dist/DNF赞助系统-WebView2.exe
+dist/webview2/DNF赞助系统-WebView2/DNF赞助系统-WebView2.exe
+```
+
+WebView2 版保留同一套叠加页功能，默认加载公网 `http://47.109.149.111:3000/overlay.html?desktop=1&captureBg=transparent&captureChrome=0`。为了避免直播伴侣把原生标题栏和边框捕获进去，WebView2 版默认是无边框透明窗口；鼠标悬浮在窗口内时会显示临时标题栏和边框，鼠标离开窗口后自动隐藏。鼠标贴近窗口边缘可以拖拽缩放，鼠标在窗口顶部标题栏区域可以拖动窗口。快捷键仍是 `F5` 刷新、`F6` 临时切换原生标题栏/无边框、`F8` 透明、`F9` 黑底、`F10` 绿幕、`F11` 置顶。直播时建议保持无边框模式，原生标题栏模式主要用于临时调试。它不内置完整浏览器内核，依赖系统 Microsoft Edge WebView2 Runtime；如果主播电脑没装，程序会提示并使用微软在线安装器安装。
+
 ## 后台使用
 
 后台地址：
@@ -161,6 +209,8 @@ npm.cmd run build
 npm.cmd run test
 npm.cmd run typecheck
 npm.cmd run package:server
+npm.cmd run desktop:dev
+npm.cmd run package:desktop
 ```
 
 说明：
@@ -170,6 +220,8 @@ npm.cmd run package:server
 - `test`：运行 Vitest 测试。
 - `typecheck`：仅运行 TypeScript 类型检查。
 - `package:server`：构建并生成服务端部署压缩包。
+- `desktop:dev`：启动直播伴侣窗口版。
+- `package:desktop`：生成 Windows 桌面便携版。
 
 ## 技术栈
 
