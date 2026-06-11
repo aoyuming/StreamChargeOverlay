@@ -22,7 +22,7 @@ describe("WebView2 desktop shell packaging", () => {
     const shell = readFileSync(shellPath, "utf8");
 
     expect(shell).toContain("StreamChargeWebView2Shell");
-    expect(shell).toContain('private const string WindowTitle = "DNF\\u8D5E\\u52A9\\u7CFB\\u7EDF";');
+    expect(shell).toContain('private const string WindowTitle = "DNF赞助系统";');
     expect(shell).toContain("http://47.109.149.111:3000/overlay.html");
     expect(shell).toContain('query["desktop"] = "1"');
     expect(shell).toContain('query["captureBg"] = captureBackground');
@@ -31,6 +31,9 @@ describe("WebView2 desktop shell packaging", () => {
     expect(shell).toContain("Color.Transparent");
     expect(shell).toContain("FormBorderStyle = FormBorderStyle.None");
     expect(shell).toContain("FormBorderStyle.Sizable");
+    expect(shell).toContain("启动 WebView2 窗口失败：");
+    expect(shell).toContain("未检测到 Microsoft Edge WebView2 运行库。");
+    expect(shell).toContain("WebView2 运行库在线安装失败：");
   });
 
   it("defaults to a borderless capture surface and uses invisible web hit zones for moving and resizing", () => {
@@ -60,6 +63,8 @@ describe("WebView2 desktop shell packaging", () => {
     expect(shell).toContain("WINDOW_MINIMIZE");
     expect(shell).toContain("WINDOW_MAXIMIZE");
     expect(shell).toContain("WINDOW_CLOSE");
+    expect(shell).toContain("handleWindowButtonMouseDown");
+    expect(shell).toContain("button.addEventListener('mousedown', handleWindowButtonMouseDown)");
     expect(shell).toContain("HandleWindowControlMessage");
   });
 
@@ -81,6 +86,28 @@ describe("WebView2 desktop shell packaging", () => {
     expect(shell).toContain("--autoplay-policy=no-user-gesture-required");
     expect(shell).toContain("CreateWebView2EnvironmentOptions");
     expect(shell).toContain("CoreWebView2Environment.CreateAsync(null, GetUserDataFolder(), environmentOptions)");
+  });
+
+  it("enables high DPI rendering and keeps WebView2 at native zoom for sharper capture", () => {
+    const shell = readFileSync(shellPath, "utf8");
+
+    expect(shell).toContain("EnableHighDpiRendering();");
+    expect(shell).toContain("SetProcessDpiAwarenessContext");
+    expect(shell).toContain("DpiAwarenessContextPerMonitorAwareV2");
+    expect(shell).toContain("SetProcessDPIAware");
+    expect(shell).toContain("AutoScaleMode = AutoScaleMode.Dpi");
+    expect(shell).toContain("webView.ZoomFactor = 1.0;");
+    expect(shell).toContain("webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;");
+  });
+
+  it("passes Chromium rendering flags that avoid blurry WebView2 scaling", () => {
+    const shell = readFileSync(shellPath, "utf8");
+
+    expect(shell).toContain("--force-device-scale-factor=1");
+    expect(shell).toContain("--high-dpi-support=1");
+    expect(shell).toContain("--disable-pinch");
+    expect(shell).toContain("--enable-gpu-rasterization");
+    expect(shell).toContain("--enable-zero-copy");
   });
 
   it("supports WebView2 runtime online installation and fallback instructions", () => {
@@ -120,12 +147,17 @@ describe("WebView2 desktop shell packaging", () => {
     expect(script).toContain("lib\\net462\\Microsoft.Web.WebView2.Core.dll");
     expect(script).toContain("lib\\net462\\Microsoft.Web.WebView2.WinForms.dll");
     expect(script).toContain("runtimes\\win-x64\\native\\WebView2Loader.dll");
+    expect(script).toContain("/codepage:65001");
+    expect(script).toContain("/utf8output");
     expect(script).toContain("dist\\webview2");
     expect(script).toContain("dist\\DNF$([char]0x8D5E)$([char]0x52A9)$([char]0x7CFB)$([char]0x7EDF)-WebView2.exe");
     expect(script).toContain('[System.Text.Encoding]::ASCII.GetBytes("SCZIP1__")');
     expect(launcher).toContain("SCZIP1__");
     expect(launcher).toContain("webview2");
-    expect(launcher).toContain("DNF\\u8D5E\\u52A9\\u7CFB\\u7EDF-WebView2");
-    expect(launcher).toContain("DNF\\u8D5E\\u52A9\\u7CFB\\u7EDF-WebView2.exe");
+    expect(launcher).toContain("DNF赞助系统-WebView2");
+    expect(launcher).toContain("DNF赞助系统-WebView2.exe");
+    expect(launcher).toContain("启动 DNF赞助系统 WebView2 失败：");
+    expect(launcher).toContain("单文件包不完整");
+    expect(launcher).toContain("单文件包格式不正确");
   });
 });

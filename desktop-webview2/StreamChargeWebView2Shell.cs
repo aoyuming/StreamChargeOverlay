@@ -14,10 +14,10 @@ using Microsoft.Web.WebView2.WinForms;
 internal sealed class StreamChargeWebView2Shell : Form
 {
     private const string DefaultOverlayUrl = "http://47.109.149.111:3000/overlay.html";
-    private const string WindowTitle = "DNF\u8D5E\u52A9\u7CFB\u7EDF";
+    private const string WindowTitle = "DNF赞助系统";
     private const string RuntimeInstallerFileName = "MicrosoftEdgeWebview2Setup.exe";
     private const string RuntimeInstallerUrl = "https://go.microsoft.com/fwlink/p/?LinkId=2124703";
-    private const string WebView2BrowserArguments = "--autoplay-policy=no-user-gesture-required";
+    private const string WebView2BrowserArguments = "--autoplay-policy=no-user-gesture-required --force-device-scale-factor=1 --high-dpi-support=1 --disable-pinch --enable-gpu-rasterization --enable-zero-copy";
     private const int WindowHitTestEdgeSize = 8;
     private const int WindowDragCaptionHeight = 36;
     private const int WM_NCLBUTTONDOWN = 0x00A1;
@@ -40,6 +40,7 @@ internal sealed class StreamChargeWebView2Shell : Form
     [STAThread]
     private static void Main()
     {
+        EnableHighDpiRendering();
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
         Application.Run(new StreamChargeWebView2Shell());
@@ -53,6 +54,7 @@ internal sealed class StreamChargeWebView2Shell : Form
         MinimumSize = new Size(640, 360);
         StartPosition = FormStartPosition.CenterScreen;
         FormBorderStyle = FormBorderStyle.None;
+        AutoScaleMode = AutoScaleMode.Dpi;
         KeyPreview = true;
         BackColor = TransparentKeyColor;
         TransparencyKey = TransparentKeyColor;
@@ -132,6 +134,9 @@ internal sealed class StreamChargeWebView2Shell : Form
             // equivalent public API is WebView2.DefaultBackgroundColor, backed by
             // CoreWebView2Controller.DefaultBackgroundColor.
             webView.DefaultBackgroundColor = Color.Transparent;
+            webView.ZoomFactor = 1.0;
+            webView.CoreWebView2.Settings.IsPinchZoomEnabled = false;
+            webView.CoreWebView2.Settings.IsZoomControlEnabled = false;
             webView.CoreWebView2.WebMessageReceived += HandleWebMessageReceived;
             await InstallWindowHitTestScriptAsync();
             webViewReady = true;
@@ -141,7 +146,7 @@ internal sealed class StreamChargeWebView2Shell : Form
         catch (Exception error)
         {
             MessageBox.Show(
-                "\u542F\u52A8 WebView2 \u7A97\u53E3\u5931\u8D25\uFF1A\r\n" + error.Message,
+                "启动 WebView2 窗口失败：\r\n" + error.Message,
                 WindowTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
@@ -155,6 +160,30 @@ internal sealed class StreamChargeWebView2Shell : Form
         hoverChromeGuardTimer.Stop();
         hoverChromeGuardTimer.Dispose();
         base.OnFormClosed(e);
+    }
+
+    private static void EnableHighDpiRendering()
+    {
+        try
+        {
+            if (SetProcessDpiAwarenessContext(DpiAwarenessContextPerMonitorAwareV2))
+            {
+                return;
+            }
+        }
+        catch
+        {
+            // Older Windows versions do not support per-monitor DPI v2.
+        }
+
+        try
+        {
+            SetProcessDPIAware();
+        }
+        catch
+        {
+            // If DPI APIs are unavailable, Windows will keep its default behavior.
+        }
     }
 
     private static CoreWebView2EnvironmentOptions CreateWebView2EnvironmentOptions()
@@ -352,12 +381,15 @@ html[data-streamcharge-webview2-hover=""1""] .streamcharge-webview2-button {
     ].join('');
 
     chrome.querySelector('.streamcharge-webview2-title').textContent = title;
+    function handleWindowButtonMouseDown(event) {
+      event.preventDefault();
+      event.stopPropagation();
+      setHoverChromeVisible(true);
+      postWindowMessage(event.currentTarget.dataset.windowAction);
+    }
+
     chrome.querySelectorAll('[data-window-action]').forEach((button) => {
-      button.addEventListener('click', (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        postWindowMessage(button.dataset.windowAction);
-      });
+      button.addEventListener('mousedown', handleWindowButtonMouseDown);
     });
 
     (document.head || document.documentElement).appendChild(style);
@@ -537,7 +569,7 @@ html[data-streamcharge-webview2-hover=""1""] .streamcharge-webview2-button {
         }
 
         DialogResult choice = MessageBox.Show(
-            "\u672A\u68C0\u6D4B\u5230 Microsoft Edge WebView2 \u8FD0\u884C\u5E93\u3002\r\n\r\n\u70B9\u201C\u662F\u201D\u540E\u5C06\u4E0B\u8F7D\u5E76\u5B89\u88C5\u5B98\u65B9\u5728\u7EBF\u8FD0\u884C\u5E93\uFF0C\u5B89\u88C5\u5B8C\u6210\u540E\u4F1A\u81EA\u52A8\u7EE7\u7EED\u6253\u5F00\u7A97\u53E3\u3002",
+            "未检测到 Microsoft Edge WebView2 运行库。\r\n\r\n点“是”后将下载并安装官方在线运行库，安装完成后会自动继续打开窗口。",
             WindowTitle,
             MessageBoxButtons.YesNo,
             MessageBoxIcon.Information
@@ -575,7 +607,7 @@ html[data-streamcharge-webview2-hover=""1""] .streamcharge-webview2-button {
         catch (Exception error)
         {
             MessageBox.Show(
-                "WebView2 \u8FD0\u884C\u5E93\u5728\u7EBF\u5B89\u88C5\u5931\u8D25\uFF1A\r\n" + error.Message + "\r\n\r\n\u53EF\u4EE5\u624B\u52A8\u5B89\u88C5\u5B98\u65B9 Microsoft Edge WebView2 Runtime \u540E\u518D\u91CD\u65B0\u6253\u5F00\u3002",
+                "WebView2 运行库在线安装失败：\r\n" + error.Message + "\r\n\r\n可以手动安装官方 Microsoft Edge WebView2 Runtime 后再重新打开。",
                 WindowTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
@@ -709,6 +741,14 @@ html[data-streamcharge-webview2-hover=""1""] .streamcharge-webview2-button {
         builder.Append('"');
         return builder.ToString();
     }
+
+    [DllImport("user32.dll")]
+    private static extern bool SetProcessDpiAwarenessContext(IntPtr value);
+
+    [DllImport("user32.dll")]
+    private static extern bool SetProcessDPIAware();
+
+    private static readonly IntPtr DpiAwarenessContextPerMonitorAwareV2 = new IntPtr(-4);
 
     [DllImport("user32.dll")]
     private static extern bool ReleaseCapture();

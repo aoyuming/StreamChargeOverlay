@@ -9,8 +9,8 @@ using System.Windows.Forms;
 internal static class SingleExeLauncher
 {
     private const string Magic = "SCZIP1__";
-    private const string AppFolderName = "DNF\u8D5E\u52A9\u7CFB\u7EDF-WebView2";
-    private const string AppExeName = "DNF\u8D5E\u52A9\u7CFB\u7EDF-WebView2.exe";
+    private const string AppFolderName = "DNF赞助系统-WebView2";
+    private const string AppExeName = "DNF赞助系统-WebView2.exe";
 
     [STAThread]
     private static int Main()
@@ -44,8 +44,8 @@ internal static class SingleExeLauncher
         catch (Exception error)
         {
             MessageBox.Show(
-                "\u542F\u52A8 DNF\u8D5E\u52A9\u7CFB\u7EDF WebView2 \u5931\u8D25\uFF1A\r\n" + error.Message,
-                "DNF\u8D5E\u52A9\u7CFB\u7EDF WebView2",
+                "启动 DNF赞助系统 WebView2 失败：\r\n" + error.Message,
+                "DNF赞助系统 WebView2",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -59,7 +59,7 @@ internal static class SingleExeLauncher
         {
             if (stream.Length < 16)
             {
-                throw new InvalidDataException("\u5355\u6587\u4EF6\u5305\u4E0D\u5B8C\u6574");
+                throw new InvalidDataException("单文件包不完整");
             }
 
             byte[] footer = new byte[16];
@@ -72,7 +72,7 @@ internal static class SingleExeLauncher
 
             if (magic != Magic || packageLength <= 0 || packageOffset <= 0)
             {
-                throw new InvalidDataException("\u5355\u6587\u4EF6\u5305\u683C\u5F0F\u4E0D\u6B63\u786E");
+                throw new InvalidDataException("单文件包格式不正确");
             }
 
             return new PackageInfo(packageOffset, packageLength);

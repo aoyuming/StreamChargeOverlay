@@ -68,6 +68,8 @@ foreach ($requiredPath in @($webView2CoreDll, $webView2WinFormsDll, $webView2Loa
   /target:winexe `
   /platform:x64 `
   /optimize+ `
+  /codepage:65001 `
+  /utf8output `
   "/out:$exePath" `
   "/reference:System.dll" `
   "/reference:System.Core.dll" `
@@ -92,6 +94,8 @@ Compress-Archive -LiteralPath $appFolderPath -DestinationPath $singleZipPath -Co
   /target:winexe `
   /platform:anycpu `
   /optimize+ `
+  /codepage:65001 `
+  /utf8output `
   "/out:$singleLauncherExePath" `
   "/reference:System.IO.Compression.dll" `
   "/reference:System.IO.Compression.FileSystem.dll" `
